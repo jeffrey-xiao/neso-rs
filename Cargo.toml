@@ -1,0 +1,35 @@
+[package]
+name = "nes-wasm"
+version = "0.1.0"
+authors = ["Jeffrey Xiao <jeffrey.xiao1998@gmail.com>"]
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://gitlab.com/jeffrey-xiao/nes-rs"
+documentation = "https://docs.rs/nes-rs"
+description = """
+An NES emulator.
+"""
+categories = ["wasm", "emulators"]
+keywords = ["nes", "emulator"]
+include = ["src/**/*", "Cargo.toml"]
+
+[badges]
+travis-ci = { repository = "jeffrey-xiao/nes-rs", branch = "master" }
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+default-features = ["console_error_panic_hook", "wee_alloc"]
+
+[dependencies]
+cfg-if = "0.1.2"
+console_error_panic_hook = { version = "0.1.1", optional = true }
+js-sys = "0.2"
+wasm-bindgen = "0.2"
+wee_alloc = { version = "0.4.1", optional = true }
+
+[profile.release]
+debug = false
+lto = true
+opt-level = 'z'
