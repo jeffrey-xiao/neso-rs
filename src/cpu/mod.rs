@@ -1,3 +1,27 @@
+macro_rules! generate_instructions {
+    (
+        $cpu:ident,
+        $opcode:expr,
+        {
+            $($opcode_matcher:tt: ($((
+                $instruction_fn:ident,
+                $addressing_mode:ident,
+                $cycles:expr$(,)*
+            ))*)$(,)*)*
+        }
+    ) => {
+        match $opcode {
+            $($(
+                $opcode_matcher => {
+                    $cpu.cycle += $cycles;
+                    $instruction_fn($cpu, AddressingMode::$addressing_mode);
+                },
+            )*)*
+            _ => panic!(format!("No matching instruction for: {:02x}", $opcode))
+        }
+    }
+}
+
 struct Cpu {
     pub cycle: u8,
     pub pc: u16,
@@ -19,10 +43,12 @@ impl Cpu {
     fn read_u16(&self, addr: u16) -> u16 { 0 }
 
     fn execute_opcode(&mut self, opcode: u8) {
-        match opcode {
-            _ => panic!(format!("Opcode not implemented {:2x}", opcode)),
-        }
+        generate_instructions!(self, opcode, { 0x73: ((adc, Immediate, 2)) })
     }
+}
+
+fn adc(cpu: &mut Cpu, addressing_mode: AddressingMode) {
+
 }
 
 enum AddressingMode {
