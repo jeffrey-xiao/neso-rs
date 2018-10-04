@@ -40,6 +40,7 @@ struct Cpu {
     pub x: u8,
     pub y: u8,
     pub p: u8,
+    pub memory: CpuMemory,
 }
 
 impl Cpu {
@@ -52,6 +53,7 @@ impl Cpu {
             x: 0,
             y: 0,
             p: 0x34,
+            memory: CpuMemory::new(),
         }
     }
 
@@ -61,8 +63,41 @@ impl Cpu {
     }
 }
 
-struct CpuMemoryMap {
+struct CpuMemory{
+    ram: [u8; 0x800],
+}
 
+impl CpuMemory {
+    pub fn new() -> Self {
+        CpuMemory {
+            ram: [0; 0x800],
+        }
+    }
+    pub fn read_byte(&self, addr: u16) -> u8 {
+        match addr {
+            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
+            0x2000..=0x3FFF => panic!("PPU registers not implemented."),
+            0x4000..=0x4017 => panic!("APU and IO registers not implemented."),
+            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
+            0x4020..=0xFFFE => panic!("Cartridge space not implemented."),
+            _ => panic!(format!("Invalid memory address: {:#6x}.", addr)),
+        }
+    }
+
+    pub fn read_word(&self, addr: u16) -> u16 {
+        ((self.read_byte(addr + 1) as u16) << 8) | self.read_byte(addr) as u16
+    }
+
+    pub fn write_byte(&mut self, addr: u16, byte: u8) {
+        match addr {
+            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = byte,
+            0x2000..=0x3FFF => panic!("PPU registers not implemented."),
+            0x4000..=0x4017 => panic!("APU and IO registers not implemented."),
+            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
+            0x4020..=0xFFFE => panic!("Cartridge space not implemented."),
+            _ => panic!(format!("Invalid memory address: {:#6x}.", addr)),
+        }
+    }
 }
 
 struct Operand {
@@ -78,15 +113,11 @@ impl Cpu {
     fn decode_word(&mut self) -> u16 { 0 }
 
     // memory related instructions
-    // TODO(jeffreyxiao): Abstract logic into CpuMemoryMap
-    fn read_byte(&self, addr: u16) -> u8 { 0 }
-    fn read_word(&self, addr: u16) -> u16 { 0 }
-    fn write_byte(&self, addr: u16, byte: u8) {}
-    fn write_word(&self, addr: u16, word: u16) {}
+    // TODO(jeffreyxiao): Abstract logic into CpuMemory
 
     // stack related instructions
     fn push_byte(&mut self, byte: u8) {
-        self.write_byte(self.sp as u16 + STACK_START, byte);
+        self.memory.write_byte(self.sp as u16 + STACK_START, byte);
         self.sp -= 1;
     }
 
@@ -97,7 +128,7 @@ impl Cpu {
 
     fn pop_byte(&mut self) -> u8 {
         self.sp += 1;
-        self.read_byte(self.sp as u16 + STACK_START)
+        self.memory.read_byte(self.sp as u16 + STACK_START)
     }
 
     fn pop_word(&mut self) -> u16 {
@@ -334,7 +365,7 @@ impl Cpu {
             _ => {
                 let (addr, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
                 Operand {
-                    val: self.read_byte(addr),
+                    val: self.memory.read_byte(addr),
                     addr: Some(addr),
                     page_crossing,
                 }
@@ -344,7 +375,7 @@ impl Cpu {
 
     fn write_operand(&mut self, operand: Operand) {
         match operand.addr {
-            Some(addr) => self.write_byte(addr, operand.val),
+            Some(addr) => self.memory.write_byte(addr, operand.val),
             None => self.a = operand.val,
         }
     }
@@ -725,17 +756,17 @@ impl Cpu {
 
     fn sta(&mut self, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        self.write_byte(addr, self.a);
+        self.memory.write_byte(addr, self.a);
     }
 
     fn stx(&mut self, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        self.write_byte(addr, self.x);
+        self.memory.write_byte(addr, self.x);
     }
 
     fn sty(&mut self, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        self.write_byte(addr, self.y);
+        self.memory.write_byte(addr, self.y);
     }
 
     fn tax(&mut self, addressing_mode: AddressingMode) {
@@ -825,18 +856,20 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
         if addr & 0xFF == 0xFF {
-            (cpu.read_byte(addr) as u16 | ((cpu.read_byte(addr & 0xFF00) as u16) << 8), false)
+            let hi = (cpu.memory.read_byte(addr & 0xFF00) as u16) << 8;
+            let lo = cpu.memory.read_byte(addr) as u16;
+            (hi | lo, false)
         } else {
-            (cpu.read_word(addr), false)
+            (cpu.memory.read_word(addr), false)
         }
     },
     |cpu: &mut Cpu| {
         let addr = (cpu.decode_byte() as u16).wrapping_add(cpu.x as u16);
-        (cpu.read_word(addr), false)
+        (cpu.memory.read_word(addr), false)
     },
     |cpu: &mut Cpu| {
         let addr = cpu.decode_byte() as u16;
-        let ret = cpu.read_word(addr).wrapping_add(cpu.y as u16);
+        let ret = cpu.memory.read_word(addr).wrapping_add(cpu.y as u16);
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
             page_crossing = true;
