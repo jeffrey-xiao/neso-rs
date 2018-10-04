@@ -14,13 +14,23 @@ macro_rules! generate_instructions {
             $($(
                 $opcode_matcher => {
                     $cpu.cycle += $cycles;
-                    $instruction_fn($cpu, AddressingMode::$addressing_mode);
+                    $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
             )*)*
             _ => panic!(format!("No matching instruction for: {:02x}", $opcode))
         }
     }
 }
+
+const STATUS_CARRY_MASK: u8 = 1 << 0;
+const STATUS_ZERO_MASK: u8 = 1 << 1;
+const STATUS_INTERRUPT_DISABLE_MASK: u8 = 1 << 2;
+const STATUS_DECIMAL_MODE_MASK: u8 = 1 << 3;
+const STATUS_BREAK_COMMAND_MASK: u8 = 1 << 4;
+const STATUS_OVERFLOW_MASK: u8 = 1 << 6;
+const STATUS_NEGATIVE_MASK: u8 = 1 << 7;
+
+const STACK_START: u16 = 0x100;
 
 struct Cpu {
     pub cycle: u8,
@@ -36,11 +46,58 @@ struct CpuMemoryMap {
 
 }
 
+
 impl Cpu {
-    fn pop_byte(&mut self) -> u8 { 0 }
-    fn pop_word(&mut self) -> u16 { 0 }
+    // pc related instructions
+    fn decode_byte(&mut self) -> u8 { 0 }
+    fn decode_word(&mut self) -> u16 { 0 }
+
+    // memory related instructions
+    // TODO(jeffreyxiao): Abstract logic into CpuMemoryMap
     fn read_byte(&self, addr: u16) -> u8 { 0 }
     fn read_word(&self, addr: u16) -> u16 { 0 }
+    fn write_byte(&self, addr: u16, byte: u8) {}
+    fn write_word(&self, addr: u16, word: u16) {}
+
+    // stack related instructions
+    fn push_byte(&mut self, byte: u8) {
+        self.write_byte(self.sp as u16 + STACK_START, byte);
+        self.sp -= 1;
+    }
+
+    fn push_word(&mut self, word: u16) {
+        self.push_byte((word >> 8) as u8);
+        self.push_byte((word & 0xFF) as u8);
+    }
+
+    fn pop_byte(&mut self) -> u8 {
+        self.sp += 1;
+        self.read_byte(self.sp as u16 + STACK_START)
+    }
+
+    fn pop_word(&mut self) -> u16 {
+        (self.pop_byte() as u16) | ((self.pop_byte() as u16) << 8)
+    }
+
+    fn set_status_flag(&mut self, mask: u8, set: bool) {
+        if set {
+            self.p |= mask;
+        } else {
+            self.p &= mask;
+        }
+    }
+
+    fn get_status_flag(&mut self, mask: u8) -> bool {
+        self.p & mask != 0
+    }
+
+    fn update_negative_flag(&mut self, val: u8) {
+        self.set_status_flag(STATUS_NEGATIVE_MASK, val & 0x80 != 0);
+    }
+
+    fn update_zero_flag(&mut self, val: u8) {
+        self.set_status_flag(STATUS_NEGATIVE_MASK, val == 0);
+    }
 
     fn execute_opcode(&mut self, opcode: u8) {
         generate_instructions!(self, opcode, {
@@ -241,66 +298,97 @@ impl Cpu {
             tya: ((0x98, Implied, 2)),
         })
     }
+
+    fn adc_impl(&mut self, val: u8) {
+        let carry = if self.p & STATUS_CARRY_MASK == 0 { 0 } else { 1 };
+        let (res, is_overflow_1) = self.a.overflowing_add(val);
+        let (res, is_overflow_2) = res.overflowing_add(carry);
+        let overflow = !(val ^ self.a) & (res ^ self.a) & 0x80 != 0;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.set_status_flag(STATUS_CARRY_MASK, is_overflow_1 | is_overflow_2);
+        self.set_status_flag(STATUS_OVERFLOW_MASK, overflow);
+        self.a = res;
+    }
+
+    fn adc(&mut self, addressing_mode: AddressingMode) {
+        let (addr, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        if page_crossing {
+            self.cycle += 1;
+        }
+
+        let val = self.read_byte(addr);
+        self.adc_impl(val);
+    }
+
+    fn and(&mut self, addressing_mode: AddressingMode) {
+        let (addr, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        if page_crossing {
+            self.cycle += 1;
+        }
+
+        self.a &= self.read_byte(addr);
+        let res = self.a;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+    }
+
+    fn asl(&mut self, addressing_mode: AddressingMode) {}
+    fn bcc(&mut self, addressing_mode: AddressingMode) {}
+    fn bcs(&mut self, addressing_mode: AddressingMode) {}
+    fn beq(&mut self, addressing_mode: AddressingMode) {}
+    fn bit(&mut self, addressing_mode: AddressingMode) {}
+    fn bmi(&mut self, addressing_mode: AddressingMode) {}
+    fn bne(&mut self, addressing_mode: AddressingMode) {}
+    fn bpl(&mut self, addressing_mode: AddressingMode) {}
+    fn brk(&mut self, addressing_mode: AddressingMode) {}
+    fn bvc(&mut self, addressing_mode: AddressingMode) {}
+    fn bvs(&mut self, addressing_mode: AddressingMode) {}
+    fn clc(&mut self, addressing_mode: AddressingMode) {}
+    fn cld(&mut self, addressing_mode: AddressingMode) {}
+    fn cli(&mut self, addressing_mode: AddressingMode) {}
+    fn clv(&mut self, addressing_mode: AddressingMode) {}
+    fn cmp(&mut self, addressing_mode: AddressingMode) {}
+    fn cpx(&mut self, addressing_mode: AddressingMode) {}
+    fn cpy(&mut self, addressing_mode: AddressingMode) {}
+    fn dec(&mut self, addressing_mode: AddressingMode) {}
+    fn dex(&mut self, addressing_mode: AddressingMode) {}
+    fn dey(&mut self, addressing_mode: AddressingMode) {}
+    fn eor(&mut self, addressing_mode: AddressingMode) {}
+    fn inc(&mut self, addressing_mode: AddressingMode) {}
+    fn inx(&mut self, addressing_mode: AddressingMode) {}
+    fn iny(&mut self, addressing_mode: AddressingMode) {}
+    fn jmp(&mut self, addressing_mode: AddressingMode) {}
+    fn jsr(&mut self, addressing_mode: AddressingMode) {}
+    fn lda(&mut self, addressing_mode: AddressingMode) {}
+    fn ldx(&mut self, addressing_mode: AddressingMode) {}
+    fn ldy(&mut self, addressing_mode: AddressingMode) {}
+    fn lsr(&mut self, addressing_mode: AddressingMode) {}
+    fn nop(&mut self, addressing_mode: AddressingMode) {}
+    fn ora(&mut self, addressing_mode: AddressingMode) {}
+    fn pha(&mut self, addressing_mode: AddressingMode) {}
+    fn php(&mut self, addressing_mode: AddressingMode) {}
+    fn pla(&mut self, addressing_mode: AddressingMode) {}
+    fn plp(&mut self, addressing_mode: AddressingMode) {}
+    fn rol(&mut self, addressing_mode: AddressingMode) {}
+    fn ror(&mut self, addressing_mode: AddressingMode) {}
+    fn rti(&mut self, addressing_mode: AddressingMode) {}
+    fn rts(&mut self, addressing_mode: AddressingMode) {}
+    fn sbc(&mut self, addressing_mode: AddressingMode) {}
+    fn sec(&mut self, addressing_mode: AddressingMode) {}
+    fn sed(&mut self, addressing_mode: AddressingMode) {}
+    fn sei(&mut self, addressing_mode: AddressingMode) {}
+    fn sta(&mut self, addressing_mode: AddressingMode) {}
+    fn stx(&mut self, addressing_mode: AddressingMode) {}
+    fn sty(&mut self, addressing_mode: AddressingMode) {}
+    fn tax(&mut self, addressing_mode: AddressingMode) {}
+    fn tay(&mut self, addressing_mode: AddressingMode) {}
+    fn tsx(&mut self, addressing_mode: AddressingMode) {}
+    fn txa(&mut self, addressing_mode: AddressingMode) {}
+    fn txs(&mut self, addressing_mode: AddressingMode) {}
+    fn tya(&mut self, addressing_mode: AddressingMode) {}
 }
 
-fn adc(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn and(cpu: &mut Cpu, addressing_mode: AddressingMode) {
-
-}
-fn asl(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn bcc(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn bcs(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn beq(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn bit(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn bmi(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn bne(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn bpl(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn brk(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn bvc(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn bvs(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn clc(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn cld(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn cli(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn clv(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn cmp(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn cpx(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn cpy(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn dec(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn dex(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn dey(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn eor(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn inc(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn inx(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn iny(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn jmp(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn jsr(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn lda(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn ldx(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn ldy(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn lsr(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn nop(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn ora(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn pha(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn php(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn pla(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn plp(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn rol(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn ror(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn rti(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn rts(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn sbc(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn sec(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn sed(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn sei(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn sta(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn stx(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn sty(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn tax(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn tay(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn tsx(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn txa(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn txs(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn tya(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
 
 enum AddressingMode {
     Absolute = 0,
@@ -319,9 +407,9 @@ enum AddressingMode {
 }
 
 const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
-    |cpu: &mut Cpu| { (cpu.pop_word(), false) },
+    |cpu: &mut Cpu| { (cpu.decode_word(), false) },
     |cpu: &mut Cpu| {
-        let addr = cpu.pop_word();
+        let addr = cpu.decode_word();
         let ret = addr + cpu.x as u16;
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
@@ -330,7 +418,7 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         (ret, page_crossing)
     },
     |cpu: &mut Cpu| {
-        let addr = cpu.pop_word();
+        let addr = cpu.decode_word();
         let ret = addr + cpu.y as u16;
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
@@ -345,13 +433,13 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     },
     |_: &mut Cpu| { panic!("No address associated with implied mode.") },
     // TODO(jeffreyxiao): Handle errata with JMP
-    |cpu: &mut Cpu| { (cpu.pop_word(), false) },
+    |cpu: &mut Cpu| { (cpu.decode_word(), false) },
     |cpu: &mut Cpu| {
-        let addr = cpu.pop_byte().wrapping_add(cpu.x) as u16;
+        let addr = cpu.decode_byte().wrapping_add(cpu.x) as u16;
         (cpu.read_word(addr), false)
     },
     |cpu: &mut Cpu| {
-        let addr = cpu.pop_byte() as u16;
+        let addr = cpu.decode_byte() as u16;
         let ret = cpu.read_word(addr).wrapping_add(cpu.y as u16);
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
@@ -359,9 +447,9 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         }
         (ret, page_crossing)
     },
-    |cpu: &mut Cpu| { ((cpu.pop_byte() as i32 + cpu.pc as i32) as u16, false) },
-    |cpu: &mut Cpu| { (cpu.pop_byte() as u16, false) },
-    |cpu: &mut Cpu| { (cpu.pop_byte().wrapping_add(cpu.x) as u16, false) },
-    |cpu: &mut Cpu| { (cpu.pop_byte().wrapping_add(cpu.y) as u16, false) },
+    |cpu: &mut Cpu| { ((cpu.decode_byte() as i32 + cpu.pc as i32) as u16, false) },
+    |cpu: &mut Cpu| { (cpu.decode_byte() as u16, false) },
+    |cpu: &mut Cpu| { (cpu.decode_byte().wrapping_add(cpu.x) as u16, false) },
+    |cpu: &mut Cpu| { (cpu.decode_byte().wrapping_add(cpu.y) as u16, false) },
 ];
 
