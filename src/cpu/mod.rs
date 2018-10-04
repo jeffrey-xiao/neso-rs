@@ -42,6 +42,25 @@ struct Cpu {
     pub p: u8,
 }
 
+impl Cpu {
+    pub fn new() -> Self {
+        Cpu {
+            cycle: 0,
+            pc: 0,
+            sp: 0xFD,
+            a: 0,
+            x: 0,
+            y: 0,
+            p: 0x34,
+        }
+    }
+
+    pub fn execute_cycle(&mut self) {
+        let opcode = self.decode_byte();
+        self.execute_opcode(opcode);
+    }
+}
+
 struct CpuMemoryMap {
 
 }
