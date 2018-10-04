@@ -26,10 +26,10 @@ struct Cpu {
     pub cycle: u8,
     pub pc: u16,
     pub sp: u8,
-    pub acc: u8,
+    pub a: u8,
     pub x: u8,
     pub y: u8,
-    pub ps: u8,
+    pub p: u8,
 }
 
 struct CpuMemoryMap {
@@ -37,10 +37,10 @@ struct CpuMemoryMap {
 }
 
 impl Cpu {
-    fn pop_u8(&mut self) -> u8 { 0 }
-    fn pop_u16(&mut self) -> u16 { 0 }
-    fn read_u8(&self, addr: u16) -> u8 { 0 }
-    fn read_u16(&self, addr: u16) -> u16 { 0 }
+    fn pop_byte(&mut self) -> u8 { 0 }
+    fn pop_word(&mut self) -> u16 { 0 }
+    fn read_byte(&self, addr: u16) -> u8 { 0 }
+    fn read_word(&self, addr: u16) -> u16 { 0 }
 
     fn execute_opcode(&mut self, opcode: u8) {
         generate_instructions!(self, opcode, {
@@ -49,20 +49,20 @@ impl Cpu {
                 (0x65, ZeroPage, 3),
                 (0x69, Immediate, 2),
                 (0x6D, Absolute, 4),
-                (0x71, IndirectY, 5/* * */),
+                (0x71, IndirectY, 5),
                 (0x75, ZeroPageX, 4),
-                (0x79, AbsoluteY, 4/* * */),
-                (0x7D, AbsoluteX, 4/* * */),
+                (0x79, AbsoluteY, 4),
+                (0x7D, AbsoluteX, 4),
             ),
             and: (
                 (0x29, Immediate, 2),
                 (0x25, ZeroPage, 3),
                 (0x35, ZeroPageX, 4),
                 (0x2D, Absolute, 4),
-                (0x3D, AbsoluteX, 4/* * */),
-                (0x39, AbsoluteY, 4/* * */),
+                (0x3D, AbsoluteX, 4),
+                (0x39, AbsoluteY, 4),
                 (0x21, IndirectX, 6),
-                (0x31, IndirectY, 5/* * */),
+                (0x31, IndirectY, 5),
             ),
             asl: (
                 (0x0A, Accumulator, 2),
@@ -71,19 +71,19 @@ impl Cpu {
                 (0x0E, Absolute, 6),
                 (0x1E, AbsoluteX, 7),
             ),
-            bcc: ((0x90, Relative, 2/* ** */)),
-            bcs: ((0xB0, Relative, 2/* ** */)),
-            beq: ((0xF0, Relative, 2/* ** */)),
+            bcc: ((0x90, Relative, 2)),
+            bcs: ((0xB0, Relative, 2)),
+            beq: ((0xF0, Relative, 2)),
             bit: (
                 (0x24, ZeroPage, 3),
                 (0x2C, Absolute, 4),
             ),
-            bmi: ((0x30, Relative, 2/* ** */)),
-            bne: ((0xD0, Relative, 2/* ** */)),
-            bpl: ((0x10, Relative, 2/* ** */)),
+            bmi: ((0x30, Relative, 2)),
+            bne: ((0xD0, Relative, 2)),
+            bpl: ((0x10, Relative, 2)),
             brk: ((0x00, Implied, 7)),
-            bvc: ((0x50, Relative, 2/* ** */)),
-            bvs: ((0x70, Relative, 2/* ** */)),
+            bvc: ((0x50, Relative, 2)),
+            bvs: ((0x70, Relative, 2)),
             clc: ((0x18, Implied, 2)),
             cld: ((0xD8, Implied, 2)),
             cli: ((0x58, Implied, 2)),
@@ -93,10 +93,10 @@ impl Cpu {
                 (0xC5, ZeroPage, 3),
                 (0xD5, ZeroPageX, 4),
                 (0xCD, Absolute, 4),
-                (0xDD, AbsoluteX, 4/* * */),
-                (0xD9, AbsoluteY, 4/* * */),
+                (0xDD, AbsoluteX, 4),
+                (0xD9, AbsoluteY, 4),
                 (0xC1, IndirectX, 6),
-                (0xD1, IndirectY, 5/* * */),
+                (0xD1, IndirectY, 5),
             ),
             cpx: (
                 (0xE0, Immediate, 2),
@@ -121,10 +121,10 @@ impl Cpu {
                 (0x45, ZeroPage, 3),
                 (0x55, ZeroPageX, 4),
                 (0x4D, Absolute, 4),
-                (0x5D, AbsoluteX, 4/* * */),
-                (0x59, AbsoluteY, 4/* * */),
+                (0x5D, AbsoluteX, 4),
+                (0x59, AbsoluteY, 4),
                 (0x41, IndirectX, 6),
-                (0x51, IndirectY, 5/* * */),
+                (0x51, IndirectY, 5),
             ),
             inc: (
                 (0xE6, ZeroPage, 5),
@@ -144,24 +144,24 @@ impl Cpu {
                 (0xA5, ZeroPage, 3),
                 (0xB5, ZeroPageX, 4),
                 (0xAD, Absolute, 4),
-                (0xBD, AbsoluteX, 4/* * */),
-                (0xB9, AbsoluteY, 4/* * */),
+                (0xBD, AbsoluteX, 4),
+                (0xB9, AbsoluteY, 4),
                 (0xA1, IndirectX, 6),
-                (0xB1, IndirectY, 5/* * */),
+                (0xB1, IndirectY, 5),
             ),
             ldx: (
                 (0xA2, Immediate, 2),
                 (0xA6, ZeroPage, 3),
                 (0xB6, ZeroPageY, 4),
                 (0xAE, Absolute, 4),
-                (0xBE, AbsoluteY, 4/* * */),
+                (0xBE, AbsoluteY, 4),
             ),
             ldy: (
                 (0xA0, Immediate, 2),
                 (0xA4, ZeroPage, 3),
                 (0xB4, ZeroPageX, 4),
                 (0xAC, Absolute, 4),
-                (0xBC, AbsoluteX, 4/* * */),
+                (0xBC, AbsoluteX, 4),
             ),
             lsr: (
                 (0x4A, Accumulator, 2),
@@ -176,10 +176,10 @@ impl Cpu {
                 (0x05, ZeroPage, 3),
                 (0x15, ZeroPageX, 4),
                 (0x0D, Absolute, 4),
-                (0x1D, AbsoluteX, 4/* * */),
-                (0x19, AbsoluteY, 4/* * */),
+                (0x1D, AbsoluteX, 4),
+                (0x19, AbsoluteY, 4),
                 (0x01, IndirectX, 6),
-                (0x11, IndirectY, 5/* * */),
+                (0x11, IndirectY, 5),
             ),
             pha: ((0x48, Implied, 3)),
             php: ((0x08, Implied, 3)),
@@ -206,10 +206,10 @@ impl Cpu {
                 (0xE5, ZeroPage, 3),
                 (0xF5, ZeroPageX, 4),
                 (0xED, Absolute, 4),
-                (0xFD, AbsoluteX, 4/* * */),
-                (0xF9, AbsoluteY, 4/* * */),
+                (0xFD, AbsoluteX, 4),
+                (0xF9, AbsoluteY, 4),
                 (0xE1, IndirectX, 6),
-                (0xF1, IndirectY, 5/* * */),
+                (0xF1, IndirectY, 5),
             ),
             sec: ((0x38, Implied, 2)),
             sed: ((0xF8, Implied, 2)),
@@ -244,7 +244,9 @@ impl Cpu {
 }
 
 fn adc(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
-fn and(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
+fn and(cpu: &mut Cpu, addressing_mode: AddressingMode) {
+
+}
 fn asl(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
 fn bcc(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
 fn bcs(cpu: &mut Cpu, addressing_mode: AddressingMode) {}
@@ -316,40 +318,47 @@ enum AddressingMode {
     ZeroPageY = 12,
 }
 
-const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> u16; 13] = [
-    |cpu: &mut Cpu| { cpu.pop_u16() },
-    |cpu: &mut Cpu| {
-        let ret = cpu.pop_u16();
-        if ret & 0xFF00 != (ret + cpu.x as u16) & 0xFF00 {
-            cpu.cycle += 1;
+const ADDRESSING_MODE_TABLE: [fn(&mut Cpu, &mut bool) -> u16; 13] = [
+    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_word() },
+    |cpu: &mut Cpu, page_crossing: &mut bool| {
+        let addr = cpu.pop_word();
+        let ret = addr + cpu.x as u16;
+        if addr & 0xFF00 != ret & 0xFF00 {
+            *page_crossing = true;
         }
-        ret + cpu.x as u16
+        ret
     },
-    |cpu: &mut Cpu| {
-        let ret = cpu.pop_u16();
-        if ret & 0xFF00 != (ret + cpu.x as u16) & 0xFF00 {
-            cpu.cycle += 1;
+    |cpu: &mut Cpu, page_crossing: &mut bool| {
+        let addr = cpu.pop_word();
+        let ret = addr + cpu.y as u16;
+        if addr & 0xFF00 != ret & 0xFF00 {
+            *page_crossing = true;
         }
-        ret + cpu.y as u16
+        ret
     },
-    |_: &mut Cpu| { panic!("No address associated with accumulator mode.") },
-    |cpu: &mut Cpu| {
+    |_: &mut Cpu, _: &mut bool| { panic!("No address associated with accumulator mode.") },
+    |cpu: &mut Cpu, _: &mut bool| {
         cpu.pc += 1;
         cpu.pc
     },
-    |_: &mut Cpu| { panic!("No address associated with implied mode.") },
-    |cpu: &mut Cpu| { cpu.pop_u16() },
-    |cpu: &mut Cpu| {
-        let addr = cpu.pop_u8().wrapping_add(cpu.x) as u16;
-        cpu.read_u16(addr)
+    |_: &mut Cpu, _: &mut bool| { panic!("No address associated with implied mode.") },
+    // TODO(jeffreyxiao): Handle errata with JMP
+    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_word() },
+    |cpu: &mut Cpu, _: &mut bool| {
+        let addr = cpu.pop_byte().wrapping_add(cpu.x) as u16;
+        cpu.read_word(addr)
     },
-    |cpu: &mut Cpu| {
-        let addr = cpu.pop_u8() as u16;
-        cpu.read_u16(addr).wrapping_add(cpu.y as u16)
+    |cpu: &mut Cpu, page_crossing: &mut bool| {
+        let addr = cpu.pop_byte() as u16;
+        let ret = cpu.read_word(addr).wrapping_add(cpu.y as u16);
+        if addr & 0xFF00 != ret & 0xFF00 {
+            *page_crossing = true;
+        }
+        ret
     },
-    |cpu: &mut Cpu| { (cpu.pop_u8() as i32 + cpu.pc as i32) as u16 },
-    |cpu: &mut Cpu| { cpu.pop_u8() as u16 },
-    |cpu: &mut Cpu| { cpu.pop_u8().wrapping_add(cpu.x) as u16 },
-    |cpu: &mut Cpu| { cpu.pop_u8().wrapping_add(cpu.y) as u16 },
+    |cpu: &mut Cpu, _: &mut bool| { (cpu.pop_byte() as i32 + cpu.pc as i32) as u16 },
+    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_byte() as u16 },
+    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_byte().wrapping_add(cpu.x) as u16 },
+    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_byte().wrapping_add(cpu.y) as u16 },
 ];
 
