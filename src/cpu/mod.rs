@@ -318,47 +318,50 @@ enum AddressingMode {
     ZeroPageY = 12,
 }
 
-const ADDRESSING_MODE_TABLE: [fn(&mut Cpu, &mut bool) -> u16; 13] = [
-    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_word() },
-    |cpu: &mut Cpu, page_crossing: &mut bool| {
+const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
+    |cpu: &mut Cpu| { (cpu.pop_word(), false) },
+    |cpu: &mut Cpu| {
         let addr = cpu.pop_word();
         let ret = addr + cpu.x as u16;
+        let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
-            *page_crossing = true;
+            page_crossing = true;
         }
-        ret
+        (ret, page_crossing)
     },
-    |cpu: &mut Cpu, page_crossing: &mut bool| {
+    |cpu: &mut Cpu| {
         let addr = cpu.pop_word();
         let ret = addr + cpu.y as u16;
+        let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
-            *page_crossing = true;
+            page_crossing = true;
         }
-        ret
+        (ret, page_crossing)
     },
-    |_: &mut Cpu, _: &mut bool| { panic!("No address associated with accumulator mode.") },
-    |cpu: &mut Cpu, _: &mut bool| {
+    |_: &mut Cpu| { panic!("No address associated with accumulator mode.") },
+    |cpu: &mut Cpu| {
         cpu.pc += 1;
-        cpu.pc
+        (cpu.pc, false)
     },
-    |_: &mut Cpu, _: &mut bool| { panic!("No address associated with implied mode.") },
+    |_: &mut Cpu| { panic!("No address associated with implied mode.") },
     // TODO(jeffreyxiao): Handle errata with JMP
-    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_word() },
-    |cpu: &mut Cpu, _: &mut bool| {
+    |cpu: &mut Cpu| { (cpu.pop_word(), false) },
+    |cpu: &mut Cpu| {
         let addr = cpu.pop_byte().wrapping_add(cpu.x) as u16;
-        cpu.read_word(addr)
+        (cpu.read_word(addr), false)
     },
-    |cpu: &mut Cpu, page_crossing: &mut bool| {
+    |cpu: &mut Cpu| {
         let addr = cpu.pop_byte() as u16;
         let ret = cpu.read_word(addr).wrapping_add(cpu.y as u16);
+        let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
-            *page_crossing = true;
+            page_crossing = true;
         }
-        ret
+        (ret, page_crossing)
     },
-    |cpu: &mut Cpu, _: &mut bool| { (cpu.pop_byte() as i32 + cpu.pc as i32) as u16 },
-    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_byte() as u16 },
-    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_byte().wrapping_add(cpu.x) as u16 },
-    |cpu: &mut Cpu, _: &mut bool| { cpu.pop_byte().wrapping_add(cpu.y) as u16 },
+    |cpu: &mut Cpu| { ((cpu.pop_byte() as i32 + cpu.pc as i32) as u16, false) },
+    |cpu: &mut Cpu| { (cpu.pop_byte() as u16, false) },
+    |cpu: &mut Cpu| { (cpu.pop_byte().wrapping_add(cpu.x) as u16, false) },
+    |cpu: &mut Cpu| { (cpu.pop_byte().wrapping_add(cpu.y) as u16, false) },
 ];
 
