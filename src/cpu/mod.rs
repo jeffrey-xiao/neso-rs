@@ -330,7 +330,12 @@ impl Cpu {
         }
     }
 
-    fn adc_impl(&mut self, operand: Operand) {
+    fn adc(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
         let carry = if self.p & STATUS_CARRY_MASK == 0 { 0 } else { 1 };
         let (res, is_overflow_1) = self.a.overflowing_add(operand.val);
         let (res, is_overflow_2) = res.overflowing_add(carry);
@@ -340,15 +345,6 @@ impl Cpu {
         self.set_status_flag(STATUS_CARRY_MASK, is_overflow_1 | is_overflow_2);
         self.set_status_flag(STATUS_OVERFLOW_MASK, overflow);
         self.a = res;
-    }
-
-    fn adc(&mut self, addressing_mode: AddressingMode) {
-        let operand = self.get_operand(addressing_mode);
-        if operand.page_crossing {
-            self.cycle += 1;
-        }
-
-        self.adc_impl(operand);
     }
 
     fn and(&mut self, addressing_mode: AddressingMode) {
@@ -370,12 +366,11 @@ impl Cpu {
         }
 
         let (res, overflow) = self.a.overflowing_shl(1);
-        operand.val = res;
-
         self.update_negative_flag(res);
         self.update_zero_flag(res);
         self.set_status_flag(STATUS_CARRY_MASK, overflow);
 
+        operand.val = res;
         self.write_operand(operand);
     }
 
@@ -411,7 +406,6 @@ impl Cpu {
 
         operand.val &= self.a;
         self.update_zero_flag(operand.val);
-
         self.write_operand(operand);
     }
 
@@ -461,77 +455,309 @@ impl Cpu {
     }
 
     fn cmp(&mut self, addressing_mode: AddressingMode) {
-        let mut operand = self.get_operand(addressing_mode);
+        let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
             self.cycle += 1;
         }
 
-        let diff = self.a.wrapping_sub(operand.val);
-        self.set_status_flag(STATUS_CARRY_MASK, self.a >= operand.val);
-        self.set_zero_flag(diff);
-        self.set_negative_flag(diff);
+        let (diff, underflow) = self.a.overflowing_sub(operand.val);
+        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+        self.update_zero_flag(diff);
+        self.update_negative_flag(diff);
     }
 
     fn cpx(&mut self, addressing_mode: AddressingMode) {
-        let mut operand = self.get_operand(addressing_mode);
-        if operand.page_crossing {
-            self.cycle += 1;
-        }
-
-        let diff = self.x.wrapping_sub(operand.val);
-        self.set_status_flag(STATUS_CARRY_MASK, self.x >= operand.val);
-        self.set_zero_flag(diff);
-        self.set_negative_flag(diff);
+        let operand = self.get_operand(addressing_mode);
+        let (diff, underflow) = self.x.overflowing_sub(operand.val);
+        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+        self.update_zero_flag(diff);
+        self.update_negative_flag(diff);
     }
 
     fn cpy(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        let (diff, underflow) = self.y.overflowing_sub(operand.val);
+        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+        self.update_zero_flag(diff);
+        self.update_negative_flag(diff);
+    }
+
+    fn dec(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+        let res = operand.val.wrapping_sub(1);
+        self.update_zero_flag(res);
+        self.update_negative_flag(res);
+
+        operand.val = res;
+        self.write_operand(operand);
+    }
+
+    fn dex(&mut self, addressing_mode: AddressingMode) {
+        let res = self.x.wrapping_sub(1);
+        self.update_zero_flag(res);
+        self.update_negative_flag(res);
+        self.x = res;
+    }
+
+    fn dey(&mut self, addressing_mode: AddressingMode) {
+        let res = self.y.wrapping_sub(1);
+        self.update_zero_flag(res);
+        self.update_negative_flag(res);
+        self.y = res;
+    }
+
+    fn eor(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        self.a ^= operand.val;
+        let res = self.a;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+    }
+
+    fn inc(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+        let res = operand.val.wrapping_add(1);
+        self.update_zero_flag(res);
+        self.update_negative_flag(res);
+
+        operand.val = res;
+        self.write_operand(operand);
+    }
+
+    fn inx(&mut self, addressing_mode: AddressingMode) {
+        let res = self.x.wrapping_add(1);
+        self.update_zero_flag(res);
+        self.update_negative_flag(res);
+        self.x = res;
+    }
+
+    fn iny(&mut self, addressing_mode: AddressingMode) {
+        let res = self.y.wrapping_add(1);
+        self.update_zero_flag(res);
+        self.update_negative_flag(res);
+        self.y = res;
+    }
+
+    fn jmp(&mut self, addressing_mode: AddressingMode) {
+        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        self.pc = addr;
+    }
+
+    fn jsr(&mut self, addressing_mode: AddressingMode) {
+        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        self.pc = addr;
+        let ret = self.pc - 1;
+        self.push_word(ret);
+    }
+
+    fn lda(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        self.a = operand.val;
+        self.update_zero_flag(operand.val);
+        self.update_negative_flag(operand.val);
+    }
+
+    fn ldx(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        self.x = operand.val;
+        self.update_zero_flag(operand.val);
+        self.update_negative_flag(operand.val);
+    }
+
+    fn ldy(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        self.y = operand.val;
+        self.update_zero_flag(operand.val);
+        self.update_negative_flag(operand.val);
+    }
+
+    fn lsr(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
             self.cycle += 1;
         }
 
-        let diff = self.y.wrapping_sub(operand.val);
-        self.set_status_flag(STATUS_CARRY_MASK, self.y >= operand.val);
-        self.set_zero_flag(diff);
-        self.set_negative_flag(diff);
+        let (res, underflow) = self.a.overflowing_shr(1);
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+
+        operand.val = res;
+        self.write_operand(operand);
     }
 
-    fn dec(&mut self, addressing_mode: AddressingMode) {}
-    fn dex(&mut self, addressing_mode: AddressingMode) {}
-    fn dey(&mut self, addressing_mode: AddressingMode) {}
-    fn eor(&mut self, addressing_mode: AddressingMode) {}
-    fn inc(&mut self, addressing_mode: AddressingMode) {}
-    fn inx(&mut self, addressing_mode: AddressingMode) {}
-    fn iny(&mut self, addressing_mode: AddressingMode) {}
-    fn jmp(&mut self, addressing_mode: AddressingMode) {}
-    fn jsr(&mut self, addressing_mode: AddressingMode) {}
-    fn lda(&mut self, addressing_mode: AddressingMode) {}
-    fn ldx(&mut self, addressing_mode: AddressingMode) {}
-    fn ldy(&mut self, addressing_mode: AddressingMode) {}
-    fn lsr(&mut self, addressing_mode: AddressingMode) {}
     fn nop(&mut self, addressing_mode: AddressingMode) {}
-    fn ora(&mut self, addressing_mode: AddressingMode) {}
-    fn pha(&mut self, addressing_mode: AddressingMode) {}
-    fn php(&mut self, addressing_mode: AddressingMode) {}
-    fn pla(&mut self, addressing_mode: AddressingMode) {}
-    fn plp(&mut self, addressing_mode: AddressingMode) {}
-    fn rol(&mut self, addressing_mode: AddressingMode) {}
-    fn ror(&mut self, addressing_mode: AddressingMode) {}
-    fn rti(&mut self, addressing_mode: AddressingMode) {}
-    fn rts(&mut self, addressing_mode: AddressingMode) {}
-    fn sbc(&mut self, addressing_mode: AddressingMode) {}
-    fn sec(&mut self, addressing_mode: AddressingMode) {}
-    fn sed(&mut self, addressing_mode: AddressingMode) {}
-    fn sei(&mut self, addressing_mode: AddressingMode) {}
-    fn sta(&mut self, addressing_mode: AddressingMode) {}
-    fn stx(&mut self, addressing_mode: AddressingMode) {}
-    fn sty(&mut self, addressing_mode: AddressingMode) {}
-    fn tax(&mut self, addressing_mode: AddressingMode) {}
-    fn tay(&mut self, addressing_mode: AddressingMode) {}
-    fn tsx(&mut self, addressing_mode: AddressingMode) {}
-    fn txa(&mut self, addressing_mode: AddressingMode) {}
-    fn txs(&mut self, addressing_mode: AddressingMode) {}
-    fn tya(&mut self, addressing_mode: AddressingMode) {}
+
+    fn ora(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        self.a |= operand.val;
+        let res = self.a;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+    }
+
+    fn pha(&mut self, addressing_mode: AddressingMode) {
+        let res = self.a;
+        self.push_byte(res);
+    }
+
+    fn php(&mut self, addressing_mode: AddressingMode) {
+        let res = self.p | 0x30;
+        self.push_byte(res);
+    }
+
+    fn pla(&mut self, addressing_mode: AddressingMode) {
+        let res = self.pop_byte();
+        self.a = res;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+    }
+
+    fn plp(&mut self, addressing_mode: AddressingMode) {
+        let res = (self.pop_byte() & !0x30) | (self.p & 0x30);
+        self.p = res;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+    }
+
+    fn rol(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+        let (mut res, overflow) = operand.val.overflowing_shl(1);
+
+        res |= if self.get_status_flag(STATUS_CARRY_MASK) { 1 } else { 0 };
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.set_status_flag(STATUS_CARRY_MASK, overflow);
+
+        operand.val = res;
+        self.write_operand(operand);
+    }
+
+    fn ror(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+        let (mut res, underflow) = operand.val.overflowing_shr(1);
+
+        res |= if self.get_status_flag(STATUS_CARRY_MASK) { 0x80 } else { 0 };
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+
+        operand.val = res;
+        self.write_operand(operand);
+    }
+
+    fn rti(&mut self, addressing_mode: AddressingMode) {
+        self.plp(AddressingMode::Implied);
+        self.pc = self.pop_word();
+    }
+
+    fn rts(&mut self, addressing_mode: AddressingMode) {
+        self.pc = self.pop_word() + 1;
+    }
+
+    fn sbc(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        let carry = if self.p & STATUS_CARRY_MASK == 0 { 1 } else { 0 };
+        let (res, is_underflow_1) = self.a.overflowing_sub(operand.val);
+        let (res, is_underflow_2) = res.overflowing_sub(carry);
+        let underflow = (operand.val ^ self.a) & (res ^ self.a) & 0x80 != 0;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.set_status_flag(STATUS_CARRY_MASK, !is_underflow_1 && !is_underflow_2);
+        self.set_status_flag(STATUS_OVERFLOW_MASK, underflow);
+        self.a = res;
+    }
+
+    fn sec(&mut self, addressing_mode: AddressingMode) {
+        self.set_status_flag(STATUS_CARRY_MASK, true);
+    }
+
+    fn sed(&mut self, addressing_mode: AddressingMode) {
+        self.set_status_flag(STATUS_DECIMAL_MODE_MASK, true);
+    }
+
+    fn sei(&mut self, addressing_mode: AddressingMode) {
+        self.set_status_flag(STATUS_INTERRUPT_DISABLE_MASK, true);
+    }
+
+    fn sta(&mut self, addressing_mode: AddressingMode) {
+        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        self.write_byte(addr, self.a);
+    }
+
+    fn stx(&mut self, addressing_mode: AddressingMode) {
+        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        self.write_byte(addr, self.x);
+    }
+
+    fn sty(&mut self, addressing_mode: AddressingMode) {
+        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        self.write_byte(addr, self.y);
+    }
+
+    fn tax(&mut self, addressing_mode: AddressingMode) {
+        let res = self.a;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.x = res;
+    }
+
+    fn tay(&mut self, addressing_mode: AddressingMode) {
+        let res = self.a;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.y = res;
+    }
+
+    fn tsx(&mut self, addressing_mode: AddressingMode) {
+        let res = self.sp;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.x = res;
+    }
+
+    fn txa(&mut self, addressing_mode: AddressingMode) {
+        let res = self.x;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.a = res;
+    }
+
+    fn txs(&mut self, addressing_mode: AddressingMode) {
+        let res = self.x;
+        self.sp = res;
+    }
+
+    fn tya(&mut self, addressing_mode: AddressingMode) {
+        let res = self.y;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+        self.a = res;
+    }
 }
 
 
@@ -552,7 +778,7 @@ enum AddressingMode {
 }
 
 const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
-    |cpu: &mut Cpu| { (cpu.decode_word(), false) },
+    |cpu: &mut Cpu| (cpu.decode_word(), false),
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
         let ret = addr + cpu.x as u16;
@@ -571,16 +797,22 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         }
         (ret, page_crossing)
     },
-    |_: &mut Cpu| { panic!("No address associated with accumulator mode.") },
+    |_: &mut Cpu| panic!("No address associated with accumulator mode."),
     |cpu: &mut Cpu| {
         cpu.pc += 1;
         (cpu.pc, false)
     },
-    |_: &mut Cpu| { panic!("No address associated with implied mode.") },
-    // TODO(jeffreyxiao): Handle errata with JMP
-    |cpu: &mut Cpu| { (cpu.decode_word(), false) },
+    |_: &mut Cpu| panic!("No address associated with implied mode."),
     |cpu: &mut Cpu| {
-        let addr = cpu.decode_byte().wrapping_add(cpu.x) as u16;
+        let addr = cpu.decode_word();
+        if addr & 0xFF == 0xFF {
+            (cpu.read_byte(addr) as u16 | ((cpu.read_byte(addr & 0xFF00) as u16) << 8), false)
+        } else {
+            (cpu.read_word(addr), false)
+        }
+    },
+    |cpu: &mut Cpu| {
+        let addr = (cpu.decode_byte() as u16).wrapping_add(cpu.x as u16);
         (cpu.read_word(addr), false)
     },
     |cpu: &mut Cpu| {
