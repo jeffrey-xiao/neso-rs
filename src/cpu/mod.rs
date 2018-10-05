@@ -1,5 +1,6 @@
 use std::rc::Rc;
 use std::cell::RefCell;
+use cartridge::Cartridge;
 
 macro_rules! generate_instructions {
     (
@@ -35,107 +36,6 @@ const STATUS_NEGATIVE_MASK: u8 = 1 << 7;
 
 const STACK_START: u16 = 0x100;
 
-const CARTRIDGE_HEADER: u32 = 0x1A53454E;
-
-struct Cartridge {
-    prg_rom: Vec<u8>,
-    chr_rom: Vec<u8>,
-    prg_ram: Vec<u8>,
-    flags_6: u8,
-    flags_7: u8,
-    flags_9: u8,
-    flags_10: u8,
-}
-
-// TODO(jeffreyxiao): Make proper errors
-impl Cartridge {
-    // Create empty cartridge that allocates nothing.
-    pub fn new() -> Self {
-        Cartridge {
-            prg_rom: Vec::new(),
-            chr_rom: Vec::new(),
-            prg_ram: Vec::new(),
-            flags_6: 0,
-            flags_7: 0,
-            flags_9: 0,
-            flags_10: 0,
-        }
-    }
-
-    pub fn from_buffer(mut buffer: &[u8]) -> Self {
-        let header = (buffer[0] as u32) |
-            ((buffer[1] as u32) << 8) |
-            ((buffer[2] as u32) << 16) |
-            ((buffer[3] as u32) << 24);
-        assert_eq!(header, CARTRIDGE_HEADER, "Error reading cartridge: expected header[0..4] = 0x1A53454E.");
-
-        for byte in buffer[11..=15].iter() {
-            assert_eq!(*byte, 0, "Error reading cartridge: expected header[11..16] = 0x0.");
-        }
-
-        let prg_rom_len = buffer[4] as usize * 0x4000;
-        let chr_rom_len = buffer[5] as usize * 0x2000;
-        let prg_ram_len = buffer[8] as usize * 0x2000;
-
-        let flags_6 = buffer[6];
-        let flags_7 = buffer[7];
-        let flags_9 = buffer[9];
-        let flags_10 = buffer[10];
-
-        buffer = buffer.split_at(16).1;
-
-        if flags_6 & 1 << 2 != 0 {
-            buffer = buffer.split_at(512).1;
-        }
-
-        let (prg_rom_buffer, buffer) = buffer.split_at(prg_rom_len);
-        let prg_rom = prg_rom_buffer.to_vec();
-
-        let chr_rom;
-        if chr_rom_len > 0 {
-            let (chr_rom_buffer, _) = buffer.split_at(chr_rom_len);
-            chr_rom = chr_rom_buffer.to_vec();
-        } else {
-            chr_rom = vec![0; 0x2000];
-        }
-
-        Cartridge {
-            prg_rom,
-            chr_rom,
-            prg_ram: vec![0; prg_ram_len],
-            flags_6,
-            flags_7,
-            flags_9,
-            flags_10,
-        }
-    }
-
-    pub fn mapper(&self) -> u8 {
-        (self.flags_7 & 0xF0) | (self.flags_6 >> 4)
-    }
-
-    pub fn read_prg_rom(&self, addr: u16) -> u8 {
-        self.prg_rom[addr as usize]
-    }
-
-    pub fn read_chr_rom(&self, addr: u16) -> u8 {
-        self.chr_rom[addr as usize]
-    }
-
-    // chr_rom is ram if the size reported in the header is 0.
-    pub fn write_chr_rom(&mut self, addr: u16, val: u8) {
-        self.chr_rom[addr as usize] = val;
-    }
-
-    pub fn read_prg_ram(&mut self, addr: u16) -> u8 {
-        self.prg_ram[addr as usize]
-    }
-
-    pub fn write_prg_ram(&mut self, addr: u16, val: u8) {
-        self.prg_ram[addr as usize] = val;
-    }
-}
-
 struct Cpu {
     pub cycle: u8,
     pub pc: u16,
@@ -157,7 +57,7 @@ impl Cpu {
             x: 0,
             y: 0,
             p: 0x34,
-            memory: Rc::clone(memory),
+            memory,
         }
     }
 
@@ -224,7 +124,7 @@ impl Cpu {
 
     // stack related instructions
     fn push_byte(&mut self, byte: u8) {
-        self.memory.write_byte(self.sp as u16 + STACK_START, byte);
+        self.memory.borrow_mut().write_byte(self.sp as u16 + STACK_START, byte);
         self.sp -= 1;
     }
 
@@ -235,7 +135,7 @@ impl Cpu {
 
     fn pop_byte(&mut self) -> u8 {
         self.sp += 1;
-        self.memory.read_byte(self.sp as u16 + STACK_START)
+        self.memory.borrow().read_byte(self.sp as u16 + STACK_START)
     }
 
     fn pop_word(&mut self) -> u16 {
@@ -472,7 +372,7 @@ impl Cpu {
             _ => {
                 let (addr, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
                 Operand {
-                    val: self.memory.read_byte(addr),
+                    val: self.memory.borrow_mut().read_byte(addr),
                     addr: Some(addr),
                     page_crossing,
                 }
@@ -482,7 +382,7 @@ impl Cpu {
 
     fn write_operand(&mut self, operand: Operand) {
         match operand.addr {
-            Some(addr) => self.memory.write_byte(addr, operand.val),
+            Some(addr) => self.memory.borrow_mut().write_byte(addr, operand.val),
             None => self.a = operand.val,
         }
     }
@@ -863,17 +763,17 @@ impl Cpu {
 
     fn sta(&mut self, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        self.memory.write_byte(addr, self.a);
+        self.memory.borrow_mut().write_byte(addr, self.a);
     }
 
     fn stx(&mut self, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        self.memory.write_byte(addr, self.x);
+        self.memory.borrow_mut().write_byte(addr, self.x);
     }
 
     fn sty(&mut self, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        self.memory.write_byte(addr, self.y);
+        self.memory.borrow_mut().write_byte(addr, self.y);
     }
 
     fn tax(&mut self, addressing_mode: AddressingMode) {
@@ -963,20 +863,20 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
         if addr & 0xFF == 0xFF {
-            let hi = (cpu.memory.read_byte(addr & 0xFF00) as u16) << 8;
-            let lo = cpu.memory.read_byte(addr) as u16;
+            let hi = (cpu.memory.borrow().read_byte(addr & 0xFF00) as u16) << 8;
+            let lo = cpu.memory.borrow().read_byte(addr) as u16;
             (hi | lo, false)
         } else {
-            (cpu.memory.read_word(addr), false)
+            (cpu.memory.borrow().read_word(addr), false)
         }
     },
     |cpu: &mut Cpu| {
         let addr = (cpu.decode_byte() as u16).wrapping_add(cpu.x as u16);
-        (cpu.memory.read_word(addr), false)
+        (cpu.memory.borrow().read_word(addr), false)
     },
     |cpu: &mut Cpu| {
         let addr = cpu.decode_byte() as u16;
-        let ret = cpu.memory.read_word(addr).wrapping_add(cpu.y as u16);
+        let ret = cpu.memory.borrow().read_word(addr).wrapping_add(cpu.y as u16);
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
             page_crossing = true;

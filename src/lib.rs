@@ -4,3 +4,5 @@ extern crate wasm_bindgen;
 
 mod cpu;
 mod utils;
+mod cartridge;
+mod mapper;
