@@ -77,8 +77,16 @@ impl Cartridge {
         (self.flags_7 & 0xF0) | (self.flags_6 >> 4)
     }
 
+    pub fn prg_rom_len(&self) -> usize {
+        self.prg_rom.len()
+    }
+
     pub fn read_prg_rom(&self, addr: u16) -> u8 {
         self.prg_rom[addr as usize]
+    }
+
+    pub fn chr_rom_len(&self) -> usize {
+        self.chr_rom.len()
     }
 
     pub fn read_chr_rom(&self, addr: u16) -> u8 {
@@ -90,7 +98,11 @@ impl Cartridge {
         self.chr_rom[addr as usize] = val;
     }
 
-    pub fn read_prg_ram(&mut self, addr: u16) -> u8 {
+    pub fn prg_ram_len(&self) -> usize {
+        self.prg_ram.len()
+    }
+
+    pub fn read_prg_ram(&self, addr: u16) -> u8 {
         self.prg_ram[addr as usize]
     }
 

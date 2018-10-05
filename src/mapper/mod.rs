@@ -11,6 +11,6 @@ fn from_cartridge(cartridge: Cartridge) -> impl Mapper {
 }
 
 trait Mapper {
-    fn read(addr: u16) -> u8;
-    fn write(addr: u16, val: u8);
+    fn read(&self, addr: u16) -> u8;
+    fn write(&mut self, addr: u16, val: u8);
 }
