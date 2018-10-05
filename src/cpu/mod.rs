@@ -1,6 +1,6 @@
 use std::rc::Rc;
 use std::cell::RefCell;
-use cartridge::Cartridge;
+use memory::Memory;
 
 macro_rules! generate_instructions {
     (
@@ -17,6 +17,7 @@ macro_rules! generate_instructions {
         match $opcode {
             $($(
                 $opcode_matcher => {
+                    println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}", $cpu.a, $cpu.x, $cpu.y, $cpu.p, $cpu.sp, $cpu.cycle * 3);
                     $cpu.cycle += $cycles;
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
@@ -36,7 +37,7 @@ const STATUS_NEGATIVE_MASK: u8 = 1 << 7;
 
 const STACK_START: u16 = 0x100;
 
-struct Cpu {
+pub struct Cpu {
     pub cycle: u8,
     pub pc: u16,
     pub sp: u8,
@@ -51,59 +52,22 @@ impl Cpu {
     pub fn new(memory: Rc<RefCell<Memory>>) -> Self {
         Cpu {
             cycle: 0,
-            pc: 0,
+            // pc: 0,
+            pc: 0xC000,
             sp: 0xFD,
             a: 0,
             x: 0,
             y: 0,
-            p: 0x34,
+            p: 0x24,
             memory,
         }
     }
 
     pub fn execute_cycle(&mut self) {
+        print!("{:X} ", self.pc);
         let opcode = self.decode_byte();
+        print!("{:X} ", opcode);
         self.execute_opcode(opcode);
-    }
-}
-
-struct Memory {
-    ram: [u8; 0x800],
-    cartridge: Cartridge,
-}
-
-impl Memory {
-    pub fn new() -> Self {
-        Memory {
-            ram: [0; 0x800],
-            cartridge: Cartridge::new(),
-        }
-    }
-
-    pub fn read_byte(&self, addr: u16) -> u8 {
-        match addr {
-            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
-            0x2000..=0x3FFF => panic!("PPU registers not implemented."),
-            0x4000..=0x4017 => panic!("APU and IO registers not implemented."),
-            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
-            0x4020..=0xFFFE => panic!("Cartridge space not implemented."),
-            _ => panic!(format!("Invalid memory address: {:#6x}.", addr)),
-        }
-    }
-
-    pub fn read_word(&self, addr: u16) -> u16 {
-        ((self.read_byte(addr + 1) as u16) << 8) | self.read_byte(addr) as u16
-    }
-
-    pub fn write_byte(&mut self, addr: u16, byte: u8) {
-        match addr {
-            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = byte,
-            0x2000..=0x3FFF => panic!("PPU registers not implemented."),
-            0x4000..=0x4017 => panic!("APU and IO registers not implemented."),
-            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
-            0x4020..=0xFFFE => panic!("Cartridge space not implemented."),
-            _ => panic!(format!("Invalid memory address: {:#6x}.", addr)),
-        }
     }
 }
 
@@ -116,15 +80,24 @@ struct Operand {
 
 impl Cpu {
     // pc related instructions
-    fn decode_byte(&mut self) -> u8 { 0 }
-    fn decode_word(&mut self) -> u16 { 0 }
+    fn decode_byte(&mut self) -> u8 {
+        let ret = self.memory.borrow().read_byte(self.pc);
+        self.pc += 1;
+        ret
+    }
+
+    fn decode_word(&mut self) -> u16 {
+        let ret = self.memory.borrow().read_word(self.pc);
+        self.pc += 1;
+        ret
+    }
 
     // memory related instructions
     // TODO(jeffreyxiao): Abstract logic into CpuMemory
 
     // stack related instructions
-    fn push_byte(&mut self, byte: u8) {
-        self.memory.borrow_mut().write_byte(self.sp as u16 + STACK_START, byte);
+    fn push_byte(&mut self, val: u8) {
+        self.memory.borrow_mut().write_byte(self.sp as u16 + STACK_START, val);
         self.sp -= 1;
     }
 
@@ -146,7 +119,7 @@ impl Cpu {
         if set {
             self.p |= mask;
         } else {
-            self.p &= mask;
+            self.p &= !mask;
         }
     }
 
@@ -159,7 +132,7 @@ impl Cpu {
     }
 
     fn update_zero_flag(&mut self, val: u8) {
-        self.set_status_flag(STATUS_NEGATIVE_MASK, val == 0);
+        self.set_status_flag(STATUS_ZERO_MASK, val == 0);
     }
 
     fn execute_opcode(&mut self, opcode: u8) {
@@ -856,8 +829,9 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     },
     |_: &mut Cpu| panic!("No address associated with accumulator mode."),
     |cpu: &mut Cpu| {
+        let ret = cpu.pc;
         cpu.pc += 1;
-        (cpu.pc, false)
+        (ret, false)
     },
     |_: &mut Cpu| panic!("No address associated with implied mode."),
     |cpu: &mut Cpu| {

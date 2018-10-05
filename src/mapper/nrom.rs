@@ -14,7 +14,7 @@ impl Nrom {
 }
 
 impl Mapper for Nrom {
-    fn read(&self, addr: u16) -> u8 {
+    fn read_byte(&self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => self.cartridge.read_chr_rom(addr),
             0x6000..=0x7FFF => {
@@ -33,7 +33,7 @@ impl Mapper for Nrom {
         }
     }
 
-    fn write(&mut self, addr: u16, val: u8) {
+    fn write_byte(&mut self, addr: u16, val: u8) {
         match addr {
             0x0000..=0x1FFF => self.cartridge.write_chr_rom(addr, val),
             _ => panic!("Invalid memory address to write."),

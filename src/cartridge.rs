@@ -32,8 +32,8 @@ impl Cartridge {
             ((buffer[3] as u32) << 24);
         assert_eq!(header, CARTRIDGE_HEADER, "Error reading cartridge: expected header[0..4] = 0x1A53454E.");
 
-        for byte in buffer[11..=15].iter() {
-            assert_eq!(*byte, 0, "Error reading cartridge: expected header[11..16] = 0x0.");
+        for val in buffer[11..=15].iter() {
+            assert_eq!(*val, 0, "Error reading cartridge: expected header[11..16] = 0x0.");
         }
 
         let prg_rom_len = buffer[4] as usize * 0x4000;
