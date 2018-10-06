@@ -22,7 +22,7 @@ macro_rules! generate_instructions {
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
             )*)*
-            _ => panic!(format!("No matching instruction for: {:02x}", $opcode))
+            _ => panic!("No matching instruction for: {:02x}", $opcode)
         }
     }
 }
@@ -92,9 +92,6 @@ impl Cpu {
         ret
     }
 
-    // memory related instructions
-    // TODO(jeffreyxiao): Abstract logic into CpuMemory
-
     // stack related instructions
     fn push_byte(&mut self, val: u8) {
         self.memory.borrow_mut().write_byte(self.sp as u16 + STACK_START, val);
@@ -138,6 +135,12 @@ impl Cpu {
 
     fn execute_opcode(&mut self, opcode: u8) {
         generate_instructions!(self, opcode, {
+            aax: (
+                (0x87, ZeroPage, 3),  // unofficial
+                (0x97, ZeroPageY, 4), // unofficial
+                (0x83, IndirectX, 6), // unofficial
+                (0x8F, Absolute, 4),  // unofficial
+            ),
             adc: (
                 (0x61, IndirectX, 6),
                 (0x65, ZeroPage, 3),
@@ -202,6 +205,15 @@ impl Cpu {
                 (0xC4, ZeroPage, 3),
                 (0xCC, Absolute, 4),
             ),
+            dcp: (
+                (0xC7, ZeroPage, 5),  // unofficial
+                (0xD7, ZeroPageX, 6), // unofficial
+                (0xCF, Absolute, 6),  // unofficial
+                (0xDF, AbsoluteX, 7), // unofficial
+                (0xDB, AbsoluteY, 7), // unofficial
+                (0xC3, IndirectX, 8), // unofficial
+                (0xD3, IndirectY, 8), // unofficial
+            ),
             dec: (
                 (0xC6, ZeroPage, 5),
                 (0xD6, ZeroPageX, 6),
@@ -244,18 +256,27 @@ impl Cpu {
             ),
             inx: ((0xE8, Implied, 2)),
             iny: ((0xC8, Implied, 2)),
+            isc: (
+                (0xE7, ZeroPage, 5),
+                (0xF7, ZeroPageX, 6),
+                (0xEF, Absolute, 6),
+                (0xFF, AbsoluteX, 7),
+                (0xFB, AbsoluteY, 7),
+                (0xE3, IndirectX, 8),
+                (0xF3, IndirectY, 8),
+            ),
             jmp: (
                 (0x4C, Absolute, 3),
                 (0x6C, Indirect, 5),
             ),
             jsr: ((0x20, Absolute, 6)),
             lax: (
-                (0xA7, ZeroPage, 3),
-                (0xB7, ZeroPageY, 4),
-                (0xAF, Absolute, 4),
-                (0xBF, AbsoluteY, 4),
-                (0xA3, IndirectX, 6),
-                (0xB3, IndirectY, 5),
+                (0xA7, ZeroPage, 3),  // unofficial
+                (0xB7, ZeroPageY, 4), // unofficial
+                (0xAF, Absolute, 4),  // unofficial
+                (0xBF, AbsoluteY, 4), // unofficial
+                (0xA3, IndirectX, 6), // unofficial
+                (0xB3, IndirectY, 5), // unofficial
             ),
             lda: (
                 (0xA9, Immediate, 2),
@@ -311,6 +332,15 @@ impl Cpu {
             php: ((0x08, Implied, 3)),
             pla: ((0x68, Implied, 4)),
             plp: ((0x28, Implied, 4)),
+            rla: (
+                (0x27, ZeroPage, 5),
+                (0x37, ZeroPageX, 6),
+                (0x2F, Absolute, 6),
+                (0x3F, AbsoluteX, 7),
+                (0x3B, AbsoluteY, 7),
+                (0x23, IndirectX, 8),
+                (0x33, IndirectY, 8),
+            ),
             rol: (
                 (0x2A, Accumulator, 2),
                 (0x26, ZeroPage, 5),
@@ -327,19 +357,38 @@ impl Cpu {
             ),
             rti: ((0x40, Implied, 6)),
             rts: ((0x60, Implied, 6)),
+            rra: (
+                (0x67, ZeroPage, 5),
+                (0x77, ZeroPageX, 6),
+                (0x6F, Absolute, 6),
+                (0x7F, AbsoluteX, 7),
+                (0x7B, AbsoluteY, 7),
+                (0x63, IndirectX, 8),
+                (0x73, IndirectY, 8),
+            ),
             sbc: (
-                (0xE9, Immediate, 2),
-                (0xE5, ZeroPage, 3),
-                (0xF5, ZeroPageX, 4),
-                (0xED, Absolute, 4),
-                (0xFD, AbsoluteX, 4),
-                (0xF9, AbsoluteY, 4),
                 (0xE1, IndirectX, 6),
+                (0xE5, ZeroPage, 3),
+                (0xE9, Immediate, 2),
+                (0xEB, Immediate, 2), // unofficial
+                (0xED, Absolute, 4),
                 (0xF1, IndirectY, 5),
+                (0xF5, ZeroPageX, 4),
+                (0xF9, AbsoluteY, 4),
+                (0xFD, AbsoluteX, 4),
             ),
             sec: ((0x38, Implied, 2)),
             sed: ((0xF8, Implied, 2)),
             sei: ((0x78, Implied, 2)),
+            slo: (
+                (0x07, ZeroPage, 5),
+                (0x17, ZeroPageX, 6),
+                (0x0F, Absolute, 6),
+                (0x1F, AbsoluteX, 7),
+                (0x1B, AbsoluteY, 7),
+                (0x03, IndirectX, 8),
+                (0x13, IndirectY, 8),
+            ),
             sta: (
                 (0x85, ZeroPage, 3),
                 (0x95, ZeroPageX, 4),
@@ -358,6 +407,15 @@ impl Cpu {
                 (0x84, ZeroPage, 3),
                 (0x94, ZeroPageX, 4),
                 (0x8C, Absolute, 4),
+            ),
+            sre: (
+                (0x47, ZeroPage, 5),
+                (0x57, ZeroPageX, 6),
+                (0x4F, Absolute, 6),
+                (0x5F, AbsoluteX, 7),
+                (0x5B, AbsoluteY, 7),
+                (0x43, IndirectX, 8),
+                (0x53, IndirectY, 8),
             ),
             tax: ((0xAA, Implied, 2)),
             tay: ((0xA8, Implied, 2)),
@@ -395,19 +453,23 @@ impl Cpu {
         }
     }
 
-    fn write_operand(&mut self, operand: Operand) {
+    fn write_operand(&mut self, operand: &mut Operand) {
         match operand.addr {
             Some(addr) => self.memory.borrow_mut().write_byte(addr, operand.val),
             None => self.a = operand.val,
         }
     }
 
-    fn adc(&mut self, addressing_mode: AddressingMode) {
-        let operand = self.get_operand(addressing_mode);
-        if operand.page_crossing {
-            self.cycle += 1;
-        }
+    fn aax(&mut self, addressing_mode: AddressingMode) {
+        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
 
+        let res = self.x & self.a;
+        // self.update_negative_flag(res);
+        // self.update_zero_flag(res);
+        self.memory.borrow_mut().write_byte(addr, res);
+    }
+
+    fn adc_impl(&mut self, operand: &Operand) {
         let carry = if self.p & STATUS_CARRY_MASK == 0 { 0 } else { 1 };
         let (res, is_overflow_1) = self.a.overflowing_add(operand.val);
         let (res, is_overflow_2) = res.overflowing_add(carry);
@@ -419,24 +481,32 @@ impl Cpu {
         self.a = res;
     }
 
-    fn and(&mut self, addressing_mode: AddressingMode) {
+    fn adc(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
             self.cycle += 1;
         }
 
+        self.adc_impl(&operand);
+    }
+
+    fn and_impl(&mut self, operand: &Operand) {
         self.a &= operand.val;
         let res = self.a;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
     }
 
-    fn asl(&mut self, addressing_mode: AddressingMode) {
-        let mut operand = self.get_operand(addressing_mode);
+    fn and(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
             self.cycle += 1;
         }
 
+        self.and_impl(&operand);
+    }
+
+    fn asl_impl(&mut self, operand: &mut Operand) {
         let res = operand.val << 1;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
@@ -446,10 +516,19 @@ impl Cpu {
         self.write_operand(operand);
     }
 
+    fn asl(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        self.asl_impl(&mut operand);
+    }
+
     fn branch_impl(&mut self, cond: bool, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         if cond {
-            self.cycle += 1;
+            // self.cycle += 1;
             if self.pc & 0xFF00 != addr & 0xFF00 {
                 self.cycle += 1;
             }
@@ -526,16 +605,20 @@ impl Cpu {
         self.set_status_flag(STATUS_OVERFLOW_MASK, false);
     }
 
+    fn cmp_impl(&mut self, operand: &Operand) {
+        let (diff, underflow) = self.a.overflowing_sub(operand.val);
+        self.set_status_flag(STATUS_CARRY_MASK, !underflow);
+        self.update_zero_flag(diff);
+        self.update_negative_flag(diff);
+    }
+
     fn cmp(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
             self.cycle += 1;
         }
 
-        let (diff, underflow) = self.a.overflowing_sub(operand.val);
-        self.set_status_flag(STATUS_CARRY_MASK, !underflow);
-        self.update_zero_flag(diff);
-        self.update_negative_flag(diff);
+        self.cmp_impl(&operand);
     }
 
     fn cpx(&mut self, addressing_mode: AddressingMode) {
@@ -554,14 +637,26 @@ impl Cpu {
         self.update_negative_flag(diff);
     }
 
-    fn dec(&mut self, addressing_mode: AddressingMode) {
+    fn dcp(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
+
+        self.dec_impl(&mut operand);
+        self.cmp_impl(&mut operand);
+    }
+
+    fn dec_impl(&mut self, operand: &mut Operand) {
         let res = operand.val.wrapping_sub(1);
         self.update_zero_flag(res);
         self.update_negative_flag(res);
 
         operand.val = res;
         self.write_operand(operand);
+    }
+
+    fn dec(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+
+        self.dec_impl(&mut operand);
     }
 
     fn dex(&mut self, addressing_mode: AddressingMode) {
@@ -582,26 +677,35 @@ impl Cpu {
         ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
     }
 
-    fn eor(&mut self, addressing_mode: AddressingMode) {
-        let operand = self.get_operand(addressing_mode);
-        if operand.page_crossing {
-            // self.cycle += 1;
-        }
-
+    fn eor_impl(&mut self, operand: &Operand) {
         self.a ^= operand.val;
         let res = self.a;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
     }
 
-    fn inc(&mut self, addressing_mode: AddressingMode) {
-        let mut operand = self.get_operand(addressing_mode);
+    fn eor(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            // self.cycle += 1;
+        }
+
+        self.eor_impl(&operand);
+    }
+
+    fn inc_impl(&mut self, operand: &mut Operand) {
         let res = operand.val.wrapping_add(1);
         self.update_zero_flag(res);
         self.update_negative_flag(res);
 
         operand.val = res;
         self.write_operand(operand);
+    }
+
+    fn inc(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+
+        self.inc_impl(&mut operand);
     }
 
     fn inx(&mut self, addressing_mode: AddressingMode) {
@@ -616,6 +720,13 @@ impl Cpu {
         self.update_zero_flag(res);
         self.update_negative_flag(res);
         self.y = res;
+    }
+
+    fn isc(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+
+        self.inc_impl(&mut operand);
+        self.sbc_impl(&operand);
     }
 
     fn jmp(&mut self, addressing_mode: AddressingMode) {
@@ -636,8 +747,12 @@ impl Cpu {
             self.cycle += 1;
         }
 
+        self.lda_impl(&operand);
+        self.ldx_impl(&operand);
+    }
+
+    fn lda_impl(&mut self, operand: &Operand) {
         self.a = operand.val;
-        self.x = operand.val;
         self.update_zero_flag(operand.val);
         self.update_negative_flag(operand.val);
     }
@@ -648,7 +763,11 @@ impl Cpu {
             self.cycle += 1;
         }
 
-        self.a = operand.val;
+        self.lda_impl(&operand);
+    }
+
+    fn ldx_impl(&mut self, operand: &Operand) {
+        self.x = operand.val;
         self.update_zero_flag(operand.val);
         self.update_negative_flag(operand.val);
     }
@@ -659,9 +778,7 @@ impl Cpu {
             self.cycle += 1;
         }
 
-        self.x = operand.val;
-        self.update_zero_flag(operand.val);
-        self.update_negative_flag(operand.val);
+        self.ldx_impl(&operand);
     }
 
     fn ldy(&mut self, addressing_mode: AddressingMode) {
@@ -675,12 +792,7 @@ impl Cpu {
         self.update_negative_flag(operand.val);
     }
 
-    fn lsr(&mut self, addressing_mode: AddressingMode) {
-        let mut operand = self.get_operand(addressing_mode);
-        if operand.page_crossing {
-            self.cycle += 1;
-        }
-
+    fn lsr_impl(&mut self, operand: &mut Operand) {
         let res = operand.val >> 1;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
@@ -690,7 +802,23 @@ impl Cpu {
         self.write_operand(operand);
     }
 
+    fn lsr(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        self.lsr_impl(&mut operand);
+    }
+
     fn nop(&mut self, addressing_mode: AddressingMode) {}
+
+    fn ora_impl(&mut self, operand: &Operand) {
+        self.a |= operand.val;
+        let res = self.a;
+        self.update_negative_flag(res);
+        self.update_zero_flag(res);
+    }
 
     fn ora(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
@@ -698,10 +826,7 @@ impl Cpu {
             self.cycle += 1;
         }
 
-        self.a |= operand.val;
-        let res = self.a;
-        self.update_negative_flag(res);
-        self.update_zero_flag(res);
+        self.ora_impl(&operand);
     }
 
     fn pha(&mut self, addressing_mode: AddressingMode) {
@@ -726,9 +851,14 @@ impl Cpu {
         self.p = res;
     }
 
-    fn rol(&mut self, addressing_mode: AddressingMode) {
+    fn rla(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
 
+        self.rol_impl(&mut operand);
+        self.and_impl(&operand);
+    }
+
+    fn rol_impl(&mut self, operand: &mut Operand) {
         let mut res = operand.val << 1;
         res |= if self.get_status_flag(STATUS_CARRY_MASK) { 1 } else { 0 };
         self.update_negative_flag(res);
@@ -739,9 +869,13 @@ impl Cpu {
         self.write_operand(operand);
     }
 
-    fn ror(&mut self, addressing_mode: AddressingMode) {
+    fn rol(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
 
+        self.rol_impl(&mut operand);
+    }
+
+    fn ror_impl(&mut self, operand: &mut Operand) {
         let mut res = operand.val >> 1;
         res |= if self.get_status_flag(STATUS_CARRY_MASK) { 0x80 } else { 0 };
         self.update_negative_flag(res);
@@ -750,6 +884,12 @@ impl Cpu {
 
         operand.val = res;
         self.write_operand(operand);
+    }
+
+    fn ror(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+
+        self.ror_impl(&mut operand);
     }
 
     fn rti(&mut self, addressing_mode: AddressingMode) {
@@ -761,12 +901,14 @@ impl Cpu {
         self.pc = self.pop_word() + 1;
     }
 
-    fn sbc(&mut self, addressing_mode: AddressingMode) {
-        let operand = self.get_operand(addressing_mode);
-        if operand.page_crossing {
-            // self.cycle += 1;
-        }
+    fn rra(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
 
+        self.ror_impl(&mut operand);
+        self.adc_impl(&operand);
+    }
+
+    fn sbc_impl(&mut self, operand: &Operand) {
         let carry = if self.p & STATUS_CARRY_MASK == 0 { 1 } else { 0 };
         let (res, is_underflow_1) = self.a.overflowing_sub(operand.val);
         let (res, is_underflow_2) = res.overflowing_sub(carry);
@@ -776,6 +918,15 @@ impl Cpu {
         self.set_status_flag(STATUS_CARRY_MASK, !is_underflow_1 && !is_underflow_2);
         self.set_status_flag(STATUS_OVERFLOW_MASK, underflow);
         self.a = res;
+    }
+
+    fn sbc(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            // self.cycle += 1;
+        }
+
+        self.sbc_impl(&operand);
     }
 
     fn sec(&mut self, addressing_mode: AddressingMode) {
@@ -788,6 +939,13 @@ impl Cpu {
 
     fn sei(&mut self, addressing_mode: AddressingMode) {
         self.set_status_flag(STATUS_INTERRUPT_DISABLE_MASK, true);
+    }
+
+    fn slo(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+
+        self.asl_impl(&mut operand);
+        self.ora_impl(&operand);
     }
 
     fn sta(&mut self, addressing_mode: AddressingMode) {
@@ -803,6 +961,13 @@ impl Cpu {
     fn sty(&mut self, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         self.memory.borrow_mut().write_byte(addr, self.y);
+    }
+
+    fn sre(&mut self, addressing_mode: AddressingMode) {
+        let mut operand = self.get_operand(addressing_mode);
+
+        self.lsr_impl(&mut operand);
+        self.eor_impl(&operand);
     }
 
     fn tax(&mut self, addressing_mode: AddressingMode) {
@@ -920,7 +1085,7 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         // read 2-byte address without carry
         let hi = (cpu.memory.borrow().read_byte((addr + 1) & 0xFF) as u16) << 8;
         let lo = cpu.memory.borrow().read_byte(addr) as u16;
-        let addr = (hi | lo);
+        let addr = hi | lo;
 
         let ret = addr.wrapping_add(cpu.y as u16);
         let mut page_crossing = false;

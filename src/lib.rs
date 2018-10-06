@@ -46,7 +46,7 @@ mod tests {
         let mut buffer = fs::read("./tests/nestest.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
-        for i in 0..8000 {
+        for i in 0..8991 {
             nes.execute_cycle();
         }
     }

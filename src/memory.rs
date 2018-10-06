@@ -32,7 +32,7 @@ impl Memory {
             0x4000..=0x4017 => panic!("APU and IO registers not implemented."),
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFE => mapper.read_byte(addr),
-            _ => panic!(format!("Invalid memory address: {:#6x}.", addr)),
+            _ => panic!("Invalid memory address: {:#6x}.", addr),
         }
     }
 
@@ -53,7 +53,7 @@ impl Memory {
             0x4000..=0x4017 => panic!("APU and IO registers not implemented."),
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFE => mapper.write_byte(addr, val),
-            _ => panic!(format!("Invalid memory address: {:#6x}.", addr)),
+            _ => panic!("Invalid memory address: {:#6x}.", addr),
         }
     }
 }

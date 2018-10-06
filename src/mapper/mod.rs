@@ -6,7 +6,7 @@ use cartridge::Cartridge;
 pub fn from_cartridge(cartridge: Cartridge) -> impl Mapper {
     match cartridge.mapper() {
         0 => Nrom::new(cartridge),
-        _ => panic!(format!("Unsupported mapper: {}.", cartridge.mapper())),
+        _ => panic!("Unsupported mapper: {}.", cartridge.mapper()),
     }
 }
 
