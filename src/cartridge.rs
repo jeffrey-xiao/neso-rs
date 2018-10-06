@@ -26,14 +26,20 @@ impl Cartridge {
     }
 
     pub fn from_buffer(mut buffer: &[u8]) -> Self {
-        let header = (buffer[0] as u32) |
-            ((buffer[1] as u32) << 8) |
-            ((buffer[2] as u32) << 16) |
-            ((buffer[3] as u32) << 24);
-        assert_eq!(header, CARTRIDGE_HEADER, "Error reading cartridge: expected header[0..4] = 0x1A53454E.");
+        let header = (buffer[0] as u32)
+            | ((buffer[1] as u32) << 8)
+            | ((buffer[2] as u32) << 16)
+            | ((buffer[3] as u32) << 24);
+        assert_eq!(
+            header, CARTRIDGE_HEADER,
+            "Error reading cartridge: expected header[0..4] = 0x1A53454E."
+        );
 
         for val in buffer[11..=15].iter() {
-            assert_eq!(*val, 0, "Error reading cartridge: expected header[11..16] = 0x0.");
+            assert_eq!(
+                *val, 0,
+                "Error reading cartridge: expected header[11..16] = 0x0."
+            );
         }
 
         let prg_rom_len = buffer[4] as usize * 0x4000;
@@ -110,4 +116,3 @@ impl Cartridge {
         self.prg_ram[addr as usize] = val;
     }
 }
-

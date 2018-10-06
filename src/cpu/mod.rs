@@ -1,6 +1,6 @@
-use std::rc::Rc;
-use std::cell::RefCell;
 use memory::Memory;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 macro_rules! generate_instructions {
     (
@@ -58,7 +58,8 @@ impl Cpu {
             a: 0,
             x: 0,
             y: 0,
-            p: 0x24,
+            // p: 0x24,
+            p: 0x34,
             memory,
         }
     }
@@ -77,7 +78,6 @@ struct Operand {
     page_crossing: bool,
 }
 
-
 impl Cpu {
     // pc related instructions
     fn decode_byte(&mut self) -> u8 {
@@ -94,7 +94,9 @@ impl Cpu {
 
     // stack related instructions
     fn push_byte(&mut self, val: u8) {
-        self.memory.borrow_mut().write_byte(self.sp as u16 + STACK_START, val);
+        self.memory
+            .borrow_mut()
+            .write_byte(self.sp as u16 + STACK_START, val);
         self.sp -= 1;
     }
 
@@ -437,10 +439,12 @@ impl Cpu {
 
     fn get_operand(&mut self, addressing_mode: AddressingMode) -> Operand {
         match addressing_mode {
-            AddressingMode::Accumulator => Operand {
-                val: self.a,
-                addr: None,
-                page_crossing: false,
+            AddressingMode::Accumulator => {
+                Operand {
+                    val: self.a,
+                    addr: None,
+                    page_crossing: false,
+                }
             },
             _ => {
                 let (addr, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
@@ -449,7 +453,7 @@ impl Cpu {
                     addr: Some(addr),
                     page_crossing,
                 }
-            }
+            },
         }
     }
 
@@ -470,7 +474,11 @@ impl Cpu {
     }
 
     fn adc_impl(&mut self, operand: &Operand) {
-        let carry = if self.p & STATUS_CARRY_MASK == 0 { 0 } else { 1 };
+        let carry = if self.p & STATUS_CARRY_MASK == 0 {
+            0
+        } else {
+            1
+        };
         let (res, is_overflow_1) = self.a.overflowing_add(operand.val);
         let (res, is_overflow_2) = res.overflowing_add(carry);
         let overflow = !(operand.val ^ self.a) & (res ^ self.a) & 0x80 != 0;
@@ -553,8 +561,14 @@ impl Cpu {
 
     fn bit(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
-        self.set_status_flag(STATUS_NEGATIVE_MASK, operand.val & STATUS_NEGATIVE_MASK != 0);
-        self.set_status_flag(STATUS_OVERFLOW_MASK, operand.val & STATUS_OVERFLOW_MASK != 0);
+        self.set_status_flag(
+            STATUS_NEGATIVE_MASK,
+            operand.val & STATUS_NEGATIVE_MASK != 0,
+        );
+        self.set_status_flag(
+            STATUS_OVERFLOW_MASK,
+            operand.val & STATUS_OVERFLOW_MASK != 0,
+        );
 
         let res = operand.val & self.a;
         self.update_zero_flag(res);
@@ -576,7 +590,12 @@ impl Cpu {
     }
 
     fn brk(&mut self, addressing_mode: AddressingMode) {
-        // TODO(jeffreyxiao): figure out what this does
+        let val = self.pc;
+        self.push_word(val);
+        let val = self.p & 0x10;
+        self.push_byte(val);
+        self.set_status_flag(STATUS_INTERRUPT_DISABLE_MASK, true);
+        self.pc = self.read_word(0xFFFE);
     }
 
     fn bvc(&mut self, addressing_mode: AddressingMode) {
@@ -860,7 +879,11 @@ impl Cpu {
 
     fn rol_impl(&mut self, operand: &mut Operand) {
         let mut res = operand.val << 1;
-        res |= if self.get_status_flag(STATUS_CARRY_MASK) { 1 } else { 0 };
+        res |= if self.get_status_flag(STATUS_CARRY_MASK) {
+            1
+        } else {
+            0
+        };
         self.update_negative_flag(res);
         self.update_zero_flag(res);
         self.set_status_flag(STATUS_CARRY_MASK, operand.val & 0x80 != 0);
@@ -877,7 +900,11 @@ impl Cpu {
 
     fn ror_impl(&mut self, operand: &mut Operand) {
         let mut res = operand.val >> 1;
-        res |= if self.get_status_flag(STATUS_CARRY_MASK) { 0x80 } else { 0 };
+        res |= if self.get_status_flag(STATUS_CARRY_MASK) {
+            0x80
+        } else {
+            0
+        };
         self.update_negative_flag(res);
         self.update_zero_flag(res);
         self.set_status_flag(STATUS_CARRY_MASK, operand.val & 0x01 != 0);
@@ -909,7 +936,11 @@ impl Cpu {
     }
 
     fn sbc_impl(&mut self, operand: &Operand) {
-        let carry = if self.p & STATUS_CARRY_MASK == 0 { 1 } else { 0 };
+        let carry = if self.p & STATUS_CARRY_MASK == 0 {
+            1
+        } else {
+            0
+        };
         let (res, is_underflow_1) = self.a.overflowing_sub(operand.val);
         let (res, is_underflow_2) = res.overflowing_sub(carry);
         let underflow = (operand.val ^ self.a) & (res ^ self.a) & 0x80 != 0;
@@ -1018,7 +1049,6 @@ impl Cpu {
     }
 }
 
-
 #[derive(PartialEq)]
 enum AddressingMode {
     Absolute = 0,
@@ -1094,8 +1124,13 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         }
         (ret, page_crossing)
     },
-    |cpu: &mut Cpu| { ((cpu.pc as i16 + 1 + i16::from(cpu.decode_byte() as i8)) as u16, false) },
-    |cpu: &mut Cpu| { (cpu.decode_byte() as u16, false) },
-    |cpu: &mut Cpu| { (cpu.decode_byte().wrapping_add(cpu.x) as u16, false) },
-    |cpu: &mut Cpu| { (cpu.decode_byte().wrapping_add(cpu.y) as u16, false) },
+    |cpu: &mut Cpu| {
+        (
+            (cpu.pc as i16 + 1 + i16::from(cpu.decode_byte() as i8)) as u16,
+            false,
+        )
+    },
+    |cpu: &mut Cpu| (cpu.decode_byte() as u16, false),
+    |cpu: &mut Cpu| (cpu.decode_byte().wrapping_add(cpu.x) as u16, false),
+    |cpu: &mut Cpu| (cpu.decode_byte().wrapping_add(cpu.y) as u16, false),
 ];

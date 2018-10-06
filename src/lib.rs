@@ -2,16 +2,16 @@ extern crate cfg_if;
 extern crate js_sys;
 extern crate wasm_bindgen;
 
-mod cpu;
-mod utils;
 mod cartridge;
+mod cpu;
 mod mapper;
 mod memory;
+mod utils;
 
-use memory::Memory;
 use cpu::Cpu;
-use std::rc::Rc;
+use memory::Memory;
 use std::cell::RefCell;
+use std::rc::Rc;
 
 struct Nes {
     cpu: Cpu,
@@ -37,9 +37,9 @@ impl Nes {
 }
 
 mod tests {
+    use super::Nes;
     use std::fs;
     use std::io::Read;
-    use super::Nes;
 
     #[test]
     fn test_rom() {

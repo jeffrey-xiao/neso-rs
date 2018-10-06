@@ -1,5 +1,5 @@
-use mapper::Mapper;
 use cartridge::Cartridge;
+use mapper::Mapper;
 
 pub struct Nrom {
     cartridge: Cartridge,
@@ -7,9 +7,7 @@ pub struct Nrom {
 
 impl Nrom {
     pub fn new(cartridge: Cartridge) -> Self {
-        Nrom {
-            cartridge,
-        }
+        Nrom { cartridge }
     }
 }
 
