@@ -17,8 +17,8 @@ macro_rules! generate_instructions {
         match $opcode {
             $($(
                 $opcode_matcher => {
-                    println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}", $cpu.a, $cpu.x, $cpu.y, $cpu.p, $cpu.sp, $cpu.cycle * 3);
-                    $cpu.cycle += $cycles;
+                    println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}", $cpu.a, $cpu.x, $cpu.y, $cpu.p, $cpu.sp);
+                    $cpu.cycle = $cpu.cycle.wrapping_add($cycles);
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
             )*)*
@@ -64,9 +64,9 @@ impl Cpu {
     }
 
     pub fn execute_cycle(&mut self) {
-        print!("{:X} ", self.pc);
+        print!("{:04X} ", self.pc);
         let opcode = self.decode_byte();
-        print!("{:X} ", opcode);
+        print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
     }
 }
@@ -88,7 +88,7 @@ impl Cpu {
 
     fn decode_word(&mut self) -> u16 {
         let ret = self.memory.borrow().read_word(self.pc);
-        self.pc += 1;
+        self.pc += 2;
         ret
     }
 
@@ -115,6 +115,7 @@ impl Cpu {
         (self.pop_byte() as u16) | ((self.pop_byte() as u16) << 8)
     }
 
+    // status flag related instructions
     fn set_status_flag(&mut self, mask: u8, set: bool) {
         if set {
             self.p |= mask;
@@ -209,6 +210,22 @@ impl Cpu {
             ),
             dex: ((0xCA, Implied, 2)),
             dey: ((0x88, Implied, 2)),
+            dop: (
+                (0x04, ZeroPage, 3),  // unofficial
+                (0x14, ZeroPageX, 4), // unofficial
+                (0x34, ZeroPageX, 4), // unofficial
+                (0x44, ZeroPage, 3),  // unofficial
+                (0x54, ZeroPageX, 4), // unofficial
+                (0x64, ZeroPage, 3),  // unofficial
+                (0x74, ZeroPageX, 4), // unofficial
+                (0x80, Immediate, 2), // unofficial
+                (0x82, Immediate, 2), // unofficial
+                (0x89, Immediate, 2), // unofficial
+                (0xC2, Immediate, 2), // unofficial
+                (0xD4, ZeroPageX, 4), // unofficial
+                (0xE2, Immediate, 2), // unofficial
+                (0xF4, ZeroPageX, 4), // unofficial
+            ),
             eor: (
                 (0x49, Immediate, 2),
                 (0x45, ZeroPage, 3),
@@ -232,6 +249,14 @@ impl Cpu {
                 (0x6C, Indirect, 5),
             ),
             jsr: ((0x20, Absolute, 6)),
+            lax: (
+                (0xA7, ZeroPage, 3),
+                (0xB7, ZeroPageY, 4),
+                (0xAF, Absolute, 4),
+                (0xBF, AbsoluteY, 4),
+                (0xA3, IndirectX, 6),
+                (0xB3, IndirectY, 5),
+            ),
             lda: (
                 (0xA9, Immediate, 2),
                 (0xA5, ZeroPage, 3),
@@ -263,7 +288,15 @@ impl Cpu {
                 (0x4E, Absolute, 6),
                 (0x5E, AbsoluteX, 7),
             ),
-            nop: ((0xEA, Implied, 2)),
+            nop: (
+                (0x1A, Implied, 2), // unofficial
+                (0x3A, Implied, 2), // unofficial
+                (0x5A, Implied, 2), // unofficial
+                (0x7A, Implied, 2), // unofficial
+                (0xDA, Implied, 2), // unofficial
+                (0xEA, Implied, 2),
+                (0xFA, Implied, 2), // unofficial
+            ),
             ora: (
                 (0x09, Immediate, 2),
                 (0x05, ZeroPage, 3),
@@ -328,6 +361,15 @@ impl Cpu {
             ),
             tax: ((0xAA, Implied, 2)),
             tay: ((0xA8, Implied, 2)),
+            top: (
+                (0x0C, Absolute, 4),  // unofficial
+                (0x1C, AbsoluteX, 4), // unofficial
+                (0x3C, AbsoluteX, 4), // unofficial
+                (0x5C, AbsoluteX, 4), // unofficial
+                (0x7C, AbsoluteX, 4), // unofficial
+                (0xDC, AbsoluteX, 4), // unofficial
+                (0xFC, AbsoluteX, 4), // unofficial
+            ),
             tsx: ((0xBA, Implied, 2)),
             txa: ((0x8A, Implied, 2)),
             txs: ((0x9A, Implied, 2)),
@@ -345,7 +387,7 @@ impl Cpu {
             _ => {
                 let (addr, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
                 Operand {
-                    val: self.memory.borrow_mut().read_byte(addr),
+                    val: self.memory.borrow().read_byte(addr),
                     addr: Some(addr),
                     page_crossing,
                 }
@@ -395,10 +437,10 @@ impl Cpu {
             self.cycle += 1;
         }
 
-        let (res, overflow) = self.a.overflowing_shl(1);
+        let res = operand.val << 1;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
-        self.set_status_flag(STATUS_CARRY_MASK, overflow);
+        self.set_status_flag(STATUS_CARRY_MASK, operand.val & 0x80 != 0);
 
         operand.val = res;
         self.write_operand(operand);
@@ -411,16 +453,17 @@ impl Cpu {
             if self.pc & 0xFF00 != addr & 0xFF00 {
                 self.cycle += 1;
             }
+            self.pc = addr;
         }
     }
 
     fn bcc(&mut self, addressing_mode: AddressingMode) {
-        let cond = self.get_status_flag(STATUS_CARRY_MASK);
+        let cond = !self.get_status_flag(STATUS_CARRY_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
     fn bcs(&mut self, addressing_mode: AddressingMode) {
-        let cond = !self.get_status_flag(STATUS_CARRY_MASK);
+        let cond = self.get_status_flag(STATUS_CARRY_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
@@ -430,13 +473,12 @@ impl Cpu {
     }
 
     fn bit(&mut self, addressing_mode: AddressingMode) {
-        let mut operand = self.get_operand(addressing_mode);
+        let operand = self.get_operand(addressing_mode);
         self.set_status_flag(STATUS_NEGATIVE_MASK, operand.val & STATUS_NEGATIVE_MASK != 0);
         self.set_status_flag(STATUS_OVERFLOW_MASK, operand.val & STATUS_OVERFLOW_MASK != 0);
 
-        operand.val &= self.a;
-        self.update_zero_flag(operand.val);
-        self.write_operand(operand);
+        let res = operand.val & self.a;
+        self.update_zero_flag(res);
     }
 
     fn bmi(&mut self, addressing_mode: AddressingMode) {
@@ -491,7 +533,7 @@ impl Cpu {
         }
 
         let (diff, underflow) = self.a.overflowing_sub(operand.val);
-        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+        self.set_status_flag(STATUS_CARRY_MASK, !underflow);
         self.update_zero_flag(diff);
         self.update_negative_flag(diff);
     }
@@ -499,7 +541,7 @@ impl Cpu {
     fn cpx(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         let (diff, underflow) = self.x.overflowing_sub(operand.val);
-        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+        self.set_status_flag(STATUS_CARRY_MASK, !underflow);
         self.update_zero_flag(diff);
         self.update_negative_flag(diff);
     }
@@ -507,7 +549,7 @@ impl Cpu {
     fn cpy(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         let (diff, underflow) = self.y.overflowing_sub(operand.val);
-        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+        self.set_status_flag(STATUS_CARRY_MASK, !underflow);
         self.update_zero_flag(diff);
         self.update_negative_flag(diff);
     }
@@ -536,10 +578,14 @@ impl Cpu {
         self.y = res;
     }
 
+    fn dop(&mut self, addressing_mode: AddressingMode) {
+        ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+    }
+
     fn eor(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            // self.cycle += 1;
         }
 
         self.a ^= operand.val;
@@ -579,9 +625,21 @@ impl Cpu {
 
     fn jsr(&mut self, addressing_mode: AddressingMode) {
         let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        self.pc = addr;
         let ret = self.pc - 1;
+        self.pc = addr;
         self.push_word(ret);
+    }
+
+    fn lax(&mut self, addressing_mode: AddressingMode) {
+        let operand = self.get_operand(addressing_mode);
+        if operand.page_crossing {
+            self.cycle += 1;
+        }
+
+        self.a = operand.val;
+        self.x = operand.val;
+        self.update_zero_flag(operand.val);
+        self.update_negative_flag(operand.val);
     }
 
     fn lda(&mut self, addressing_mode: AddressingMode) {
@@ -623,10 +681,10 @@ impl Cpu {
             self.cycle += 1;
         }
 
-        let (res, underflow) = self.a.overflowing_shr(1);
+        let res = operand.val >> 1;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
-        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+        self.set_status_flag(STATUS_CARRY_MASK, operand.val & 0x01 != 0);
 
         operand.val = res;
         self.write_operand(operand);
@@ -652,7 +710,7 @@ impl Cpu {
     }
 
     fn php(&mut self, addressing_mode: AddressingMode) {
-        let res = self.p | 0x30;
+        let res = self.p | 0x10;
         self.push_byte(res);
     }
 
@@ -666,18 +724,16 @@ impl Cpu {
     fn plp(&mut self, addressing_mode: AddressingMode) {
         let res = (self.pop_byte() & !0x30) | (self.p & 0x30);
         self.p = res;
-        self.update_negative_flag(res);
-        self.update_zero_flag(res);
     }
 
     fn rol(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
-        let (mut res, overflow) = operand.val.overflowing_shl(1);
 
+        let mut res = operand.val << 1;
         res |= if self.get_status_flag(STATUS_CARRY_MASK) { 1 } else { 0 };
         self.update_negative_flag(res);
         self.update_zero_flag(res);
-        self.set_status_flag(STATUS_CARRY_MASK, overflow);
+        self.set_status_flag(STATUS_CARRY_MASK, operand.val & 0x80 != 0);
 
         operand.val = res;
         self.write_operand(operand);
@@ -685,12 +741,12 @@ impl Cpu {
 
     fn ror(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
-        let (mut res, underflow) = operand.val.overflowing_shr(1);
 
+        let mut res = operand.val >> 1;
         res |= if self.get_status_flag(STATUS_CARRY_MASK) { 0x80 } else { 0 };
         self.update_negative_flag(res);
         self.update_zero_flag(res);
-        self.set_status_flag(STATUS_CARRY_MASK, underflow);
+        self.set_status_flag(STATUS_CARRY_MASK, operand.val & 0x01 != 0);
 
         operand.val = res;
         self.write_operand(operand);
@@ -708,7 +764,7 @@ impl Cpu {
     fn sbc(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            // self.cycle += 1;
         }
 
         let carry = if self.p & STATUS_CARRY_MASK == 0 { 1 } else { 0 };
@@ -763,6 +819,13 @@ impl Cpu {
         self.y = res;
     }
 
+    fn top(&mut self, addressing_mode: AddressingMode) {
+        let (_, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        if page_crossing {
+            self.cycle += 1;
+        }
+    }
+
     fn tsx(&mut self, addressing_mode: AddressingMode) {
         let res = self.sp;
         self.update_negative_flag(res);
@@ -791,6 +854,7 @@ impl Cpu {
 }
 
 
+#[derive(PartialEq)]
 enum AddressingMode {
     Absolute = 0,
     AbsoluteX = 1,
@@ -820,7 +884,7 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     },
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
-        let ret = addr + cpu.y as u16;
+        let ret = addr.wrapping_add(cpu.y as u16);
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
             page_crossing = true;
@@ -845,21 +909,28 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         }
     },
     |cpu: &mut Cpu| {
-        let addr = (cpu.decode_byte() as u16).wrapping_add(cpu.x as u16);
-        (cpu.memory.borrow().read_word(addr), false)
+        let addr = (cpu.decode_byte()).wrapping_add(cpu.x) as u16;
+        // read 2-byte address without carry
+        let hi = (cpu.memory.borrow().read_byte((addr + 1) & 0xFF) as u16) << 8;
+        let lo = cpu.memory.borrow().read_byte(addr) as u16;
+        (hi | lo, false)
     },
     |cpu: &mut Cpu| {
         let addr = cpu.decode_byte() as u16;
-        let ret = cpu.memory.borrow().read_word(addr).wrapping_add(cpu.y as u16);
+        // read 2-byte address without carry
+        let hi = (cpu.memory.borrow().read_byte((addr + 1) & 0xFF) as u16) << 8;
+        let lo = cpu.memory.borrow().read_byte(addr) as u16;
+        let addr = (hi | lo);
+
+        let ret = addr.wrapping_add(cpu.y as u16);
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
             page_crossing = true;
         }
         (ret, page_crossing)
     },
-    |cpu: &mut Cpu| { ((cpu.decode_byte() as i32 + cpu.pc as i32) as u16, false) },
+    |cpu: &mut Cpu| { ((cpu.pc as i16 + 1 + i16::from(cpu.decode_byte() as i8)) as u16, false) },
     |cpu: &mut Cpu| { (cpu.decode_byte() as u16, false) },
     |cpu: &mut Cpu| { (cpu.decode_byte().wrapping_add(cpu.x) as u16, false) },
     |cpu: &mut Cpu| { (cpu.decode_byte().wrapping_add(cpu.y) as u16, false) },
 ];
-

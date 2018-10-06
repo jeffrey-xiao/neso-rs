@@ -20,6 +20,7 @@ impl Memory {
     }
 
     pub fn read_byte(&self, addr: u16) -> u8 {
+        // println!("READ AT {:x}", addr);
         let mapper = match self.mapper {
             Some(ref mapper) => mapper,
             None => panic!("No cartridge loaded."),
@@ -40,6 +41,7 @@ impl Memory {
     }
 
     pub fn write_byte(&mut self, addr: u16, val: u8) {
+        // println!("WRITE AT {:x} WITH {:x}", addr, val);
         let mapper = match self.mapper {
             Some(ref mut mapper) => mapper,
             None => panic!("No cartridge loaded."),
