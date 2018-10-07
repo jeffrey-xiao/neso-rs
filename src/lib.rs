@@ -5,34 +5,43 @@ extern crate wasm_bindgen;
 mod cartridge;
 mod cpu;
 mod mapper;
-mod memory;
+mod ppu;
 mod utils;
 
+use cartridge::Cartridge;
 use cpu::Cpu;
-use memory::Memory;
+use mapper::Mapper;
+use ppu::Ppu;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+// TODO: Leave better error messages for panics that should never happen.
 struct Nes {
-    cpu: Cpu,
-    memory: Rc<RefCell<Memory>>,
+    cpu: Rc<RefCell<Cpu>>,
+    ppu: Rc<RefCell<Ppu>>,
+    mapper: Option<Rc<RefCell<Box<Mapper>>>>,
 }
 
 impl Nes {
     pub fn new() -> Self {
-        let memory = Rc::new(RefCell::new(Memory::new()));
-        Nes {
-            cpu: Cpu::new(Rc::clone(&memory)),
-            memory,
-        }
+        let cpu = Rc::new(RefCell::new(Cpu::new()));
+        let ppu = Rc::new(RefCell::new(Ppu::new()));
+        let mapper = None;
+
+        Nes { cpu, ppu, mapper }
     }
 
     pub fn load_rom(&mut self, buffer: &[u8]) {
-        self.memory.borrow_mut().load_rom(buffer);
+        let cartridge = Cartridge::from_buffer(buffer);
+        let mapper = Rc::new(RefCell::new(mapper::from_cartridge(cartridge)));
+        self.cpu
+            .borrow_mut()
+            .attach_memory_map(cpu::MemoryMap::new(&self.cpu, &self.ppu, &mapper));
+        self.mapper = Some(mapper);
     }
 
     pub fn execute_cycle(&mut self) {
-        self.cpu.execute_cycle();
+        self.cpu.borrow_mut().execute_cycle();
     }
 }
 
