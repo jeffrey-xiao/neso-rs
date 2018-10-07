@@ -1,7 +1,6 @@
 mod memory;
 mod registers;
 
-use self::memory::Memory;
 pub use self::memory::MemoryMap;
 use self::registers::Registers;
 use std::cell::RefCell;
@@ -55,6 +54,14 @@ impl Cpu {
         self.memory_map = Some(memory_map);
     }
 
+    fn memory_map(&self) -> &MemoryMap {
+        self.memory_map.as_ref().unwrap()
+    }
+
+    fn memory_map_mut(&mut self) -> &mut MemoryMap {
+        self.memory_map.as_mut().unwrap()
+    }
+
     pub fn execute_cycle(&mut self) {
         // handle any interrupts
         for index in 0..self.interrupt_flags.len() {
@@ -84,49 +91,28 @@ impl Cpu {
             self.push_byte(val);
             self.registers
                 .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
-            self.registers.pc = self.read_word(INTERRUPT_HANDLERS[interrupt]);
+            self.registers.pc = self.memory_map().read_word(INTERRUPT_HANDLERS[interrupt]);
             self.interrupt_flags[interrupt] = false;
         }
     }
-}
 
-struct Operand {
-    val: u8,
-    addr: Option<u16>,
-    page_crossing: bool,
-}
-
-impl Cpu {
-    // pc related instructions
+    // pc related functions
     fn decode_byte(&mut self) -> u8 {
-        let ret = self.read_byte(self.registers.pc);
+        let ret = self.memory_map().read_byte(self.registers.pc);
         self.registers.pc += 1;
         ret
     }
 
     fn decode_word(&mut self) -> u16 {
-        let ret = self.read_word(self.registers.pc);
+        let ret = self.memory_map().read_word(self.registers.pc);
         self.registers.pc += 2;
         ret
     }
 
-    // memory map relative instructions
-    fn read_byte(&self, addr: u16) -> u8 {
-        self.memory_map.as_ref().unwrap().read_byte(addr)
-    }
-
-    fn read_word(&self, addr: u16) -> u16 {
-        self.memory_map.as_ref().unwrap().read_word(addr)
-    }
-
-    fn write_byte(&mut self, addr: u16, val: u8) {
-        self.memory_map.as_mut().unwrap().write_byte(addr, val)
-    }
-
-    // stack related instructions
+    // stack related functions
     fn push_byte(&mut self, val: u8) {
         let addr = self.registers.sp as u16 + STACK_START;
-        self.write_byte(addr, val);
+        self.memory_map_mut().write_byte(addr, val);
         self.registers.sp -= 1;
     }
 
@@ -137,7 +123,7 @@ impl Cpu {
 
     fn pop_byte(&mut self) -> u8 {
         self.registers.sp += 1;
-        self.read_byte(self.registers.sp as u16 + STACK_START)
+        self.memory_map().read_byte(self.registers.sp as u16 + STACK_START)
     }
 
     fn pop_word(&mut self) -> u16 {
@@ -458,7 +444,7 @@ impl Cpu {
             _ => {
                 let (addr, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
                 Operand {
-                    val: self.read_byte(addr),
+                    val: self.memory_map().read_byte(addr),
                     addr: Some(addr),
                     page_crossing,
                 }
@@ -468,7 +454,7 @@ impl Cpu {
 
     fn write_operand(&mut self, operand: &mut Operand) {
         match operand.addr {
-            Some(addr) => self.write_byte(addr, operand.val),
+            Some(addr) => self.memory_map_mut().write_byte(addr, operand.val),
             None => self.registers.a = operand.val,
         }
     }
@@ -479,7 +465,7 @@ impl Cpu {
         let res = self.registers.x & self.registers.a;
         // self.update_negative_flag(res);
         // self.update_zero_flag(res);
-        self.write_byte(addr, res);
+        self.memory_map_mut().write_byte(addr, res);
     }
 
     fn adc_impl(&mut self, operand: &Operand) {
@@ -981,19 +967,19 @@ impl Cpu {
     fn sta(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         let res = self.registers.a;
-        self.write_byte(addr, res);
+        self.memory_map_mut().write_byte(addr, res);
     }
 
     fn stx(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         let res = self.registers.x;
-        self.write_byte(addr, res);
+        self.memory_map_mut().write_byte(addr, res);
     }
 
     fn sty(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         let res = self.registers.y;
-        self.write_byte(addr, res);
+        self.memory_map_mut().write_byte(addr, res);
     }
 
     fn sre(&mut self, addressing_mode: AddressingMode) {
@@ -1046,6 +1032,12 @@ impl Cpu {
     }
 }
 
+struct Operand {
+    val: u8,
+    addr: Option<u16>,
+    page_crossing: bool,
+}
+
 #[derive(PartialEq)]
 pub enum AddressingMode {
     Absolute = 0,
@@ -1093,25 +1085,25 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
         if addr & 0xFF == 0xFF {
-            let hi = (cpu.read_byte(addr & 0xFF00) as u16) << 8;
-            let lo = cpu.read_byte(addr) as u16;
+            let hi = (cpu.memory_map().read_byte(addr & 0xFF00) as u16) << 8;
+            let lo = cpu.memory_map().read_byte(addr) as u16;
             (hi | lo, false)
         } else {
-            (cpu.read_word(addr), false)
+            (cpu.memory_map().read_word(addr), false)
         }
     },
     |cpu: &mut Cpu| {
         let addr = (cpu.decode_byte()).wrapping_add(cpu.registers.x) as u16;
         // read 2-byte address without carry
-        let hi = (cpu.read_byte((addr + 1) & 0xFF) as u16) << 8;
-        let lo = cpu.read_byte(addr) as u16;
+        let hi = (cpu.memory_map().read_byte((addr + 1) & 0xFF) as u16) << 8;
+        let lo = cpu.memory_map().read_byte(addr) as u16;
         (hi | lo, false)
     },
     |cpu: &mut Cpu| {
         let addr = cpu.decode_byte() as u16;
         // read 2-byte address without carry
-        let hi = (cpu.read_byte((addr + 1) & 0xFF) as u16) << 8;
-        let lo = cpu.read_byte(addr) as u16;
+        let hi = (cpu.memory_map().read_byte((addr + 1) & 0xFF) as u16) << 8;
+        let lo = cpu.memory_map().read_byte(addr) as u16;
         let addr = hi | lo;
 
         let ret = addr.wrapping_add(cpu.registers.y as u16);

@@ -1,3 +1,5 @@
+use ppu::MirroringMode;
+
 const CARTRIDGE_HEADER: u32 = 0x1A53454E;
 
 pub struct Cartridge {
@@ -114,5 +116,18 @@ impl Cartridge {
 
     pub fn write_prg_ram(&mut self, addr: u16, val: u8) {
         self.prg_ram[addr as usize] = val;
+    }
+
+    // flags
+    pub fn mirroring_mode(&self) -> MirroringMode {
+        if self.flags_6 & 1 << 3 != 0 {
+            return MirroringMode::None;
+        }
+
+        if self.flags_6 & 1 != 0 {
+            return MirroringMode::Vertical;
+        }
+
+        MirroringMode::Horizontal
     }
 }

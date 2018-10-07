@@ -36,7 +36,10 @@ impl Nes {
         let mapper = Rc::new(RefCell::new(mapper::from_cartridge(cartridge)));
         self.cpu
             .borrow_mut()
-            .attach_memory_map(cpu::MemoryMap::new(&self.cpu, &self.ppu, &mapper));
+            .attach_memory_map(cpu::MemoryMap::new(&self.ppu, &mapper));
+        self.ppu
+            .borrow_mut()
+            .attach_memory_map(ppu::MemoryMap::new(&mapper));
         self.mapper = Some(mapper);
     }
 
