@@ -39,11 +39,10 @@ impl Nes {
 mod tests {
     use super::Nes;
     use std::fs;
-    use std::io::Read;
 
     #[test]
     fn test_rom() {
-        let mut buffer = fs::read("./tests/nestest.nes").unwrap();
+        let buffer = fs::read("./tests/nestest.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
         for i in 0..8991 {

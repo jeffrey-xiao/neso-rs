@@ -17,8 +17,8 @@ macro_rules! generate_instructions {
         match $opcode {
             $($(
                 $opcode_matcher => {
-                    println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X}", $cpu.a, $cpu.x, $cpu.y, $cpu.p, $cpu.sp);
-                    $cpu.cycle = $cpu.cycle.wrapping_add($cycles);
+                    println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}", $cpu.a, $cpu.x, $cpu.y, $cpu.p, $cpu.sp, $cpu.cycle);
+                    $cpu.cycle = ($cpu.cycle + $cycles * 3) % 341;
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
             )*)*
@@ -38,13 +38,14 @@ const STATUS_NEGATIVE_MASK: u8 = 1 << 7;
 const STACK_START: u16 = 0x100;
 
 pub struct Cpu {
-    pub cycle: u8,
+    pub cycle: u32,
     pub pc: u16,
     pub sp: u8,
     pub a: u8,
     pub x: u8,
     pub y: u8,
     pub p: u8,
+    pub interrupt_flags: [bool; 3],
     pub memory: Rc<RefCell<Memory>>,
 }
 
@@ -58,17 +59,41 @@ impl Cpu {
             a: 0,
             x: 0,
             y: 0,
-            // p: 0x24,
-            p: 0x34,
+            p: 0x24,
+            // p: 0x34,
+            interrupt_flags: [false; 3],
             memory,
         }
     }
 
     pub fn execute_cycle(&mut self) {
+        // handle any interrupts
+        for index in 0..self.interrupt_flags.len() {
+            self.handle_interrupt(index);
+        }
+
         print!("{:04X} ", self.pc);
         let opcode = self.decode_byte();
         print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
+    }
+
+    pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
+        if !self.get_status_flag(STATUS_INTERRUPT_DISABLE_MASK) || interrupt == Interrupt::NMI {
+            self.interrupt_flags[interrupt as usize] = true;
+        }
+    }
+
+    pub fn handle_interrupt(&mut self, interrupt: usize) {
+        if self.interrupt_flags[interrupt] {
+            let val = self.pc;
+            self.push_word(val);
+            let val = self.p & 0x10;
+            self.push_byte(val);
+            self.set_status_flag(STATUS_INTERRUPT_DISABLE_MASK, true);
+            self.pc = self.memory.borrow().read_word(interrupt_handlers[interrupt]);
+            self.interrupt_flags[interrupt] = false;
+        }
     }
 }
 
@@ -219,7 +244,7 @@ impl Cpu {
             dec: (
                 (0xC6, ZeroPage, 5),
                 (0xD6, ZeroPageX, 6),
-                (0xCE, Absolute, 3),
+                (0xCE, Absolute, 6),
                 (0xDE, AbsoluteX, 7),
             ),
             dex: ((0xCA, Implied, 2)),
@@ -465,7 +490,7 @@ impl Cpu {
     }
 
     fn aax(&mut self, addressing_mode: AddressingMode) {
-        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
 
         let res = self.x & self.a;
         // self.update_negative_flag(res);
@@ -492,7 +517,7 @@ impl Cpu {
     fn adc(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.adc_impl(&operand);
@@ -508,7 +533,7 @@ impl Cpu {
     fn and(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.and_impl(&operand);
@@ -527,18 +552,18 @@ impl Cpu {
     fn asl(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.asl_impl(&mut operand);
     }
 
     fn branch_impl(&mut self, cond: bool, addressing_mode: AddressingMode) {
-        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         if cond {
-            // self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
             if self.pc & 0xFF00 != addr & 0xFF00 {
-                self.cycle += 1;
+                self.cycle = (self.cycle + 1 * 3) % 341;
             }
             self.pc = addr;
         }
@@ -589,13 +614,9 @@ impl Cpu {
         self.branch_impl(cond, addressing_mode);
     }
 
-    fn brk(&mut self, addressing_mode: AddressingMode) {
-        let val = self.pc;
-        self.push_word(val);
-        let val = self.p & 0x10;
-        self.push_byte(val);
-        self.set_status_flag(STATUS_INTERRUPT_DISABLE_MASK, true);
-        self.pc = self.read_word(0xFFFE);
+    fn brk(&mut self, _addressing_mode: AddressingMode) {
+        self.interrupt_flags[Interrupt::IRQ as usize] = true;
+        self.handle_interrupt(Interrupt::IRQ as usize);
     }
 
     fn bvc(&mut self, addressing_mode: AddressingMode) {
@@ -608,19 +629,19 @@ impl Cpu {
         self.branch_impl(cond, addressing_mode);
     }
 
-    fn clc(&mut self, addressing_mode: AddressingMode) {
+    fn clc(&mut self, _addressing_mode: AddressingMode) {
         self.set_status_flag(STATUS_CARRY_MASK, false);
     }
 
-    fn cld(&mut self, addressing_mode: AddressingMode) {
+    fn cld(&mut self, _addressing_mode: AddressingMode) {
         self.set_status_flag(STATUS_DECIMAL_MODE_MASK, false);
     }
 
-    fn cli(&mut self, addressing_mode: AddressingMode) {
+    fn cli(&mut self, _addressing_mode: AddressingMode) {
         self.set_status_flag(STATUS_INTERRUPT_DISABLE_MASK, false);
     }
 
-    fn clv(&mut self, addressing_mode: AddressingMode) {
+    fn clv(&mut self, _addressing_mode: AddressingMode) {
         self.set_status_flag(STATUS_OVERFLOW_MASK, false);
     }
 
@@ -634,7 +655,7 @@ impl Cpu {
     fn cmp(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.cmp_impl(&operand);
@@ -678,14 +699,14 @@ impl Cpu {
         self.dec_impl(&mut operand);
     }
 
-    fn dex(&mut self, addressing_mode: AddressingMode) {
+    fn dex(&mut self, _addressing_mode: AddressingMode) {
         let res = self.x.wrapping_sub(1);
         self.update_zero_flag(res);
         self.update_negative_flag(res);
         self.x = res;
     }
 
-    fn dey(&mut self, addressing_mode: AddressingMode) {
+    fn dey(&mut self, _addressing_mode: AddressingMode) {
         let res = self.y.wrapping_sub(1);
         self.update_zero_flag(res);
         self.update_negative_flag(res);
@@ -706,7 +727,7 @@ impl Cpu {
     fn eor(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            // self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.eor_impl(&operand);
@@ -727,14 +748,14 @@ impl Cpu {
         self.inc_impl(&mut operand);
     }
 
-    fn inx(&mut self, addressing_mode: AddressingMode) {
+    fn inx(&mut self, _addressing_mode: AddressingMode) {
         let res = self.x.wrapping_add(1);
         self.update_zero_flag(res);
         self.update_negative_flag(res);
         self.x = res;
     }
 
-    fn iny(&mut self, addressing_mode: AddressingMode) {
+    fn iny(&mut self, _addressing_mode: AddressingMode) {
         let res = self.y.wrapping_add(1);
         self.update_zero_flag(res);
         self.update_negative_flag(res);
@@ -749,12 +770,12 @@ impl Cpu {
     }
 
     fn jmp(&mut self, addressing_mode: AddressingMode) {
-        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         self.pc = addr;
     }
 
     fn jsr(&mut self, addressing_mode: AddressingMode) {
-        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         let ret = self.pc - 1;
         self.pc = addr;
         self.push_word(ret);
@@ -763,7 +784,7 @@ impl Cpu {
     fn lax(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.lda_impl(&operand);
@@ -779,7 +800,7 @@ impl Cpu {
     fn lda(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.lda_impl(&operand);
@@ -794,7 +815,7 @@ impl Cpu {
     fn ldx(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.ldx_impl(&operand);
@@ -803,7 +824,7 @@ impl Cpu {
     fn ldy(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.y = operand.val;
@@ -824,13 +845,13 @@ impl Cpu {
     fn lsr(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.lsr_impl(&mut operand);
     }
 
-    fn nop(&mut self, addressing_mode: AddressingMode) {}
+    fn nop(&mut self, _addressing_mode: AddressingMode) {}
 
     fn ora_impl(&mut self, operand: &Operand) {
         self.a |= operand.val;
@@ -842,30 +863,30 @@ impl Cpu {
     fn ora(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.ora_impl(&operand);
     }
 
-    fn pha(&mut self, addressing_mode: AddressingMode) {
+    fn pha(&mut self, _addressing_mode: AddressingMode) {
         let res = self.a;
         self.push_byte(res);
     }
 
-    fn php(&mut self, addressing_mode: AddressingMode) {
+    fn php(&mut self, _addressing_mode: AddressingMode) {
         let res = self.p | 0x10;
         self.push_byte(res);
     }
 
-    fn pla(&mut self, addressing_mode: AddressingMode) {
+    fn pla(&mut self, _addressing_mode: AddressingMode) {
         let res = self.pop_byte();
         self.a = res;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
     }
 
-    fn plp(&mut self, addressing_mode: AddressingMode) {
+    fn plp(&mut self, _addressing_mode: AddressingMode) {
         let res = (self.pop_byte() & !0x30) | (self.p & 0x30);
         self.p = res;
     }
@@ -919,12 +940,12 @@ impl Cpu {
         self.ror_impl(&mut operand);
     }
 
-    fn rti(&mut self, addressing_mode: AddressingMode) {
+    fn rti(&mut self, _addressing_mode: AddressingMode) {
         self.plp(AddressingMode::Implied);
         self.pc = self.pop_word();
     }
 
-    fn rts(&mut self, addressing_mode: AddressingMode) {
+    fn rts(&mut self, _addressing_mode: AddressingMode) {
         self.pc = self.pop_word() + 1;
     }
 
@@ -954,21 +975,21 @@ impl Cpu {
     fn sbc(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            // self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
         self.sbc_impl(&operand);
     }
 
-    fn sec(&mut self, addressing_mode: AddressingMode) {
+    fn sec(&mut self, _addressing_mode: AddressingMode) {
         self.set_status_flag(STATUS_CARRY_MASK, true);
     }
 
-    fn sed(&mut self, addressing_mode: AddressingMode) {
+    fn sed(&mut self, _addressing_mode: AddressingMode) {
         self.set_status_flag(STATUS_DECIMAL_MODE_MASK, true);
     }
 
-    fn sei(&mut self, addressing_mode: AddressingMode) {
+    fn sei(&mut self, _addressing_mode: AddressingMode) {
         self.set_status_flag(STATUS_INTERRUPT_DISABLE_MASK, true);
     }
 
@@ -980,17 +1001,17 @@ impl Cpu {
     }
 
     fn sta(&mut self, addressing_mode: AddressingMode) {
-        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         self.memory.borrow_mut().write_byte(addr, self.a);
     }
 
     fn stx(&mut self, addressing_mode: AddressingMode) {
-        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         self.memory.borrow_mut().write_byte(addr, self.x);
     }
 
     fn sty(&mut self, addressing_mode: AddressingMode) {
-        let (addr, _) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
+        let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         self.memory.borrow_mut().write_byte(addr, self.y);
     }
 
@@ -1001,14 +1022,14 @@ impl Cpu {
         self.eor_impl(&operand);
     }
 
-    fn tax(&mut self, addressing_mode: AddressingMode) {
+    fn tax(&mut self, _addressing_mode: AddressingMode) {
         let res = self.a;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
         self.x = res;
     }
 
-    fn tay(&mut self, addressing_mode: AddressingMode) {
+    fn tay(&mut self, _addressing_mode: AddressingMode) {
         let res = self.a;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
@@ -1018,30 +1039,30 @@ impl Cpu {
     fn top(&mut self, addressing_mode: AddressingMode) {
         let (_, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         if page_crossing {
-            self.cycle += 1;
+            self.cycle = (self.cycle + 1 * 3) % 341;
         }
     }
 
-    fn tsx(&mut self, addressing_mode: AddressingMode) {
+    fn tsx(&mut self, _addressing_mode: AddressingMode) {
         let res = self.sp;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
         self.x = res;
     }
 
-    fn txa(&mut self, addressing_mode: AddressingMode) {
+    fn txa(&mut self, _addressing_mode: AddressingMode) {
         let res = self.x;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
         self.a = res;
     }
 
-    fn txs(&mut self, addressing_mode: AddressingMode) {
+    fn txs(&mut self, _addressing_mode: AddressingMode) {
         let res = self.x;
         self.sp = res;
     }
 
-    fn tya(&mut self, addressing_mode: AddressingMode) {
+    fn tya(&mut self, _addressing_mode: AddressingMode) {
         let res = self.y;
         self.update_negative_flag(res);
         self.update_zero_flag(res);
@@ -1134,3 +1155,12 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     |cpu: &mut Cpu| (cpu.decode_byte().wrapping_add(cpu.x) as u16, false),
     |cpu: &mut Cpu| (cpu.decode_byte().wrapping_add(cpu.y) as u16, false),
 ];
+
+#[derive(PartialEq)]
+enum Interrupt {
+    NMI = 0,
+    IRQ = 1,
+    RESET = 2,
+}
+
+const interrupt_handlers: [u16; 3] = [0xFFFA, 0xFFFE, 0xFFFC];
