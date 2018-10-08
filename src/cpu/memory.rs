@@ -10,10 +10,7 @@ pub struct MemoryMap {
 }
 
 impl MemoryMap {
-    pub fn new(
-        ppu: &Rc<RefCell<Ppu>>,
-        mapper: &Rc<RefCell<Box<Mapper>>>,
-    ) -> Self {
+    pub fn new(ppu: &Rc<RefCell<Ppu>>, mapper: &Rc<RefCell<Box<Mapper>>>) -> Self {
         MemoryMap {
             ram: [0; 0x800],
             ppu: Rc::downgrade(ppu),
@@ -26,7 +23,9 @@ impl MemoryMap {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
             0x2000..=0x3FFF => {
                 let ppu = self.ppu.upgrade().unwrap();
-                let ret = ppu.borrow_mut().read_register(((addr - 0x2000) % 8) as usize);
+                let ret = ppu
+                    .borrow_mut()
+                    .read_register(((addr - 0x2000) % 8) as usize);
                 ret
             },
             // TODO: Implement APU and IO maps

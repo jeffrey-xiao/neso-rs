@@ -1,7 +1,7 @@
-use std::rc::{Rc, Weak};
-use std::cell::RefCell;
 use mapper::Mapper;
+use std::cell::RefCell;
 use std::mem;
+use std::rc::{Rc, Weak};
 
 pub enum MirroringMode {
     Horizontal = 0,
@@ -20,9 +20,7 @@ pub struct Ppu {
 
 impl Ppu {
     pub fn new() -> Ppu {
-        Ppu {
-            memory_map: None,
-        }
+        Ppu { memory_map: None }
     }
 
     pub fn attach_memory_map(&mut self, memory_map: MemoryMap) {
@@ -124,7 +122,7 @@ impl MemoryMap {
                 }
                 self.r.ppu_addr += self.r.vram_address_increment;
                 ret
-            }
+            },
             _ => panic!("Invalid ppu register index to read: {}.", index),
         }
     }
@@ -144,7 +142,7 @@ impl MemoryMap {
             4 => {
                 self.oam[self.r.oam_addr as usize] = val;
                 self.r.oam_addr += 1;
-            }
+            },
             // PPUSCROLL
             5 => {
                 if !self.r.address_latch {
@@ -153,7 +151,7 @@ impl MemoryMap {
                     self.r.scroll_y = val;
                 }
                 self.r.address_latch ^= true;
-            }
+            },
             // PPUADDR
             6 => {
                 if !self.r.address_latch {
@@ -162,13 +160,13 @@ impl MemoryMap {
                     self.r.ppu_addr |= (val as u16) << 8;
                 }
                 self.r.address_latch ^= true;
-            }
+            },
             // PPUDATA
             7 => {
                 let addr = self.r.ppu_addr;
                 self.write_byte(addr, val);
                 self.r.ppu_addr += self.r.vram_address_increment;
-            }
+            },
             _ => panic!("Invalid ppu register index to write: {}.", index),
         }
     }

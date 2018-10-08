@@ -83,9 +83,7 @@ impl Cpu {
     }
 
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
-        let is_disabled = self
-            .r
-            .get_status_flag(registers::INTERRUPT_DISABLE_MASK);
+        let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
             self.interrupt_flags[interrupt as usize] = true;
         }
@@ -488,8 +486,7 @@ impl Cpu {
         self.r.update_nz_flags(res);
         self.r
             .set_status_flag(registers::CARRY_MASK, is_overflow_1 | is_overflow_2);
-        self.r
-            .set_status_flag(registers::OVERFLOW_MASK, overflow);
+        self.r.set_status_flag(registers::OVERFLOW_MASK, overflow);
         self.r.a = res;
     }
 
@@ -612,8 +609,7 @@ impl Cpu {
     }
 
     fn cld(&mut self, _addressing_mode: AddressingMode) {
-        self.r
-            .set_status_flag(registers::DECIMAL_MODE_MASK, false);
+        self.r.set_status_flag(registers::DECIMAL_MODE_MASK, false);
     }
 
     fn cli(&mut self, _addressing_mode: AddressingMode) {
@@ -622,8 +618,7 @@ impl Cpu {
     }
 
     fn clv(&mut self, _addressing_mode: AddressingMode) {
-        self.r
-            .set_status_flag(registers::OVERFLOW_MASK, false);
+        self.r.set_status_flag(registers::OVERFLOW_MASK, false);
     }
 
     fn cmp_impl(&mut self, operand: &Operand) {
@@ -645,16 +640,14 @@ impl Cpu {
     fn cpx(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         let (diff, underflow) = self.r.x.overflowing_sub(operand.val);
-        self.r
-            .set_status_flag(registers::CARRY_MASK, !underflow);
+        self.r.set_status_flag(registers::CARRY_MASK, !underflow);
         self.r.update_nz_flags(diff);
     }
 
     fn cpy(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         let (diff, underflow) = self.r.y.overflowing_sub(operand.val);
-        self.r
-            .set_status_flag(registers::CARRY_MASK, !underflow);
+        self.r.set_status_flag(registers::CARRY_MASK, !underflow);
         self.r.update_nz_flags(diff);
     }
 
@@ -937,8 +930,7 @@ impl Cpu {
         self.r.update_nz_flags(res);
         self.r
             .set_status_flag(registers::CARRY_MASK, !is_underflow_1 && !is_underflow_2);
-        self.r
-            .set_status_flag(registers::OVERFLOW_MASK, underflow);
+        self.r.set_status_flag(registers::OVERFLOW_MASK, underflow);
         self.r.a = res;
     }
 
@@ -956,8 +948,7 @@ impl Cpu {
     }
 
     fn sed(&mut self, _addressing_mode: AddressingMode) {
-        self.r
-            .set_status_flag(registers::DECIMAL_MODE_MASK, true);
+        self.r.set_status_flag(registers::DECIMAL_MODE_MASK, true);
     }
 
     fn sei(&mut self, _addressing_mode: AddressingMode) {
@@ -1128,18 +1119,8 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         )
     },
     |cpu: &mut Cpu| (cpu.decode_byte() as u16, false),
-    |cpu: &mut Cpu| {
-        (
-            cpu.decode_byte().wrapping_add(cpu.r.x) as u16,
-            false,
-        )
-    },
-    |cpu: &mut Cpu| {
-        (
-            cpu.decode_byte().wrapping_add(cpu.r.y) as u16,
-            false,
-        )
-    },
+    |cpu: &mut Cpu| (cpu.decode_byte().wrapping_add(cpu.r.x) as u16, false),
+    |cpu: &mut Cpu| (cpu.decode_byte().wrapping_add(cpu.r.y) as u16, false),
 ];
 
 #[derive(PartialEq)]
