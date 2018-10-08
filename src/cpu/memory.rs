@@ -26,10 +26,12 @@ impl MemoryMap {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
             0x2000..=0x3FFF => {
                 let ppu = self.ppu.upgrade().unwrap();
-                let ret = ppu.borrow().read_register(((addr - 0x2000) % 8) as usize);
+                let ret = ppu.borrow_mut().read_register(((addr - 0x2000) % 8) as usize);
                 ret
             },
             // TODO: Implement APU and IO maps
+            0x4016 => 0,
+            0x4017 => 0,
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFE => {
                 let mapper = self.mapper.upgrade().unwrap();
@@ -61,6 +63,8 @@ impl MemoryMap {
                 }
                 // TODO increment cycles
             },
+            0x4016 => {},
+            0x4017 => {},
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFE => {
                 let mut mapper = self.mapper.upgrade().unwrap();

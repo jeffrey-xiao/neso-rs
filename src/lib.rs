@@ -3,7 +3,7 @@ extern crate js_sys;
 extern crate wasm_bindgen;
 
 mod cartridge;
-mod cpu;
+pub mod cpu;
 mod mapper;
 mod ppu;
 mod utils;
@@ -16,10 +16,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 
 // TODO: Leave better error messages for panics that should never happen.
-struct Nes {
-    cpu: Rc<RefCell<Cpu>>,
-    ppu: Rc<RefCell<Ppu>>,
-    mapper: Option<Rc<RefCell<Box<Mapper>>>>,
+pub struct Nes {
+    pub cpu: Rc<RefCell<Cpu>>,
+    pub ppu: Rc<RefCell<Ppu>>,
+    pub mapper: Option<Rc<RefCell<Box<Mapper>>>>,
 }
 
 impl Nes {
@@ -57,8 +57,34 @@ mod tests {
         let buffer = fs::read("./tests/dk.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
-        for i in 0..1 {
+        for i in 0..1000 {
             nes.execute_cycle();
+        }
+
+        for i in 0..10 {
+            let mut tile = [0; 64];
+
+            for index in 0..8 {
+                let byte = nes.ppu.borrow().memory_map().read_byte(index + i * 16);
+                for y in (0..8).rev() {
+                    tile[index as usize * 8 + y] |= if byte & 1 << y != 0 { 1 } else { 0 };
+                }
+            }
+
+            for index in 0..8 {
+                let byte = nes.ppu.borrow().memory_map().read_byte(index + 8 + i * 16);
+                for y in (0..8).rev() {
+                    tile[index as usize * 8 + y] |= if byte & 1 << y != 0 { 2 } else { 0 };
+                }
+            }
+
+            for row in 0..8 {
+                for col in 0..8 {
+                    print!("{}", tile[row * 8 + col]);
+                }
+                println!("");
+            }
+            println!("");
         }
     }
 }

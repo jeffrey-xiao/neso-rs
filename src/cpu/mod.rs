@@ -21,7 +21,7 @@ macro_rules! generate_instructions {
         match $opcode {
             $($(
                 $opcode_matcher => {
-                    println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}", $cpu.registers.a, $cpu.registers.x, $cpu.registers.y, $cpu.registers.p, $cpu.registers.sp, $cpu.cycle);
+                    // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, $cpu.cycle);
                     $cpu.cycle = ($cpu.cycle + $cycles * 3) % 341;
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
@@ -35,19 +35,27 @@ const STACK_START: u16 = 0x100;
 
 pub struct Cpu {
     pub cycle: u32,
-    pub interrupt_flags: [bool; 3],
-    pub registers: Registers,
+    pub interrupt_flags: [bool; 2],
+    pub r: Registers,
     pub memory_map: Option<MemoryMap>,
 }
 
 impl Cpu {
     pub fn new() -> Self {
-        Cpu {
+        let ret = Cpu {
             cycle: 0,
-            interrupt_flags: [false; 3],
-            registers: Registers::new(),
+            interrupt_flags: [false; 2],
+            r: Registers::new(),
             memory_map: None,
-        }
+        };
+        ret.reset();
+        ret
+    }
+
+    pub fn reset(&mut self) {
+        self.r.pc = self.memory_map().read_word(0xFFFC);
+        self.r.sp = 0xFD;
+        self.r.p = 0x24;
     }
 
     pub fn attach_memory_map(&mut self, memory_map: MemoryMap) {
@@ -63,21 +71,20 @@ impl Cpu {
     }
 
     pub fn execute_cycle(&mut self) {
-        println!("{}", self.memory_map().read_word(0xFFFC));
         // handle any interrupts
         for index in 0..self.interrupt_flags.len() {
             self.handle_interrupt(index);
         }
 
-        print!("{:04X} ", self.registers.pc);
+        // print!("{:04X} ", self.r.pc);
         let opcode = self.decode_byte();
-        print!("{:02X} ", opcode);
+        // print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
     }
 
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self
-            .registers
+            .r
             .get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
             self.interrupt_flags[interrupt as usize] = true;
@@ -86,35 +93,35 @@ impl Cpu {
 
     pub fn handle_interrupt(&mut self, interrupt: usize) {
         if self.interrupt_flags[interrupt] {
-            let val = self.registers.pc;
+            let val = self.r.pc;
             self.push_word(val);
-            let val = self.registers.p & 0x10;
+            let val = self.r.p & 0x10;
             self.push_byte(val);
-            self.registers
+            self.r
                 .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
-            self.registers.pc = self.memory_map().read_word(INTERRUPT_HANDLERS[interrupt]);
+            self.r.pc = self.memory_map().read_word(INTERRUPT_HANDLERS[interrupt]);
             self.interrupt_flags[interrupt] = false;
         }
     }
 
     // pc related functions
     fn decode_byte(&mut self) -> u8 {
-        let ret = self.memory_map().read_byte(self.registers.pc);
-        self.registers.pc += 1;
+        let ret = self.memory_map().read_byte(self.r.pc);
+        self.r.pc += 1;
         ret
     }
 
     fn decode_word(&mut self) -> u16 {
-        let ret = self.memory_map().read_word(self.registers.pc);
-        self.registers.pc += 2;
+        let ret = self.memory_map().read_word(self.r.pc);
+        self.r.pc += 2;
         ret
     }
 
     // stack related functions
     fn push_byte(&mut self, val: u8) {
-        let addr = self.registers.sp as u16 + STACK_START;
+        let addr = self.r.sp as u16 + STACK_START;
         self.memory_map_mut().write_byte(addr, val);
-        self.registers.sp -= 1;
+        self.r.sp -= 1;
     }
 
     fn push_word(&mut self, word: u16) {
@@ -123,8 +130,8 @@ impl Cpu {
     }
 
     fn pop_byte(&mut self) -> u8 {
-        self.registers.sp += 1;
-        self.memory_map().read_byte(self.registers.sp as u16 + STACK_START)
+        self.r.sp += 1;
+        self.memory_map().read_byte(self.r.sp as u16 + STACK_START)
     }
 
     fn pop_word(&mut self) -> u16 {
@@ -437,7 +444,7 @@ impl Cpu {
         match addressing_mode {
             AddressingMode::Accumulator => {
                 Operand {
-                    val: self.registers.a,
+                    val: self.r.a,
                     addr: None,
                     page_crossing: false,
                 }
@@ -456,34 +463,34 @@ impl Cpu {
     fn write_operand(&mut self, operand: &mut Operand) {
         match operand.addr {
             Some(addr) => self.memory_map_mut().write_byte(addr, operand.val),
-            None => self.registers.a = operand.val,
+            None => self.r.a = operand.val,
         }
     }
 
     fn aax(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
 
-        let res = self.registers.x & self.registers.a;
+        let res = self.r.x & self.r.a;
         // self.update_negative_flag(res);
         // self.update_zero_flag(res);
         self.memory_map_mut().write_byte(addr, res);
     }
 
     fn adc_impl(&mut self, operand: &Operand) {
-        let carry = if self.registers.p & registers::CARRY_MASK == 0 {
+        let carry = if self.r.p & registers::CARRY_MASK == 0 {
             0
         } else {
             1
         };
-        let (res, is_overflow_1) = self.registers.a.overflowing_add(operand.val);
+        let (res, is_overflow_1) = self.r.a.overflowing_add(operand.val);
         let (res, is_overflow_2) = res.overflowing_add(carry);
-        let overflow = !(operand.val ^ self.registers.a) & (res ^ self.registers.a) & 0x80 != 0;
-        self.registers.update_nz_flags(res);
-        self.registers
+        let overflow = !(operand.val ^ self.r.a) & (res ^ self.r.a) & 0x80 != 0;
+        self.r.update_nz_flags(res);
+        self.r
             .set_status_flag(registers::CARRY_MASK, is_overflow_1 | is_overflow_2);
-        self.registers
+        self.r
             .set_status_flag(registers::OVERFLOW_MASK, overflow);
-        self.registers.a = res;
+        self.r.a = res;
     }
 
     fn adc(&mut self, addressing_mode: AddressingMode) {
@@ -496,9 +503,9 @@ impl Cpu {
     }
 
     fn and_impl(&mut self, operand: &Operand) {
-        self.registers.a &= operand.val;
-        let res = self.registers.a;
-        self.registers.update_nz_flags(res);
+        self.r.a &= operand.val;
+        let res = self.r.a;
+        self.r.update_nz_flags(res);
     }
 
     fn and(&mut self, addressing_mode: AddressingMode) {
@@ -512,8 +519,8 @@ impl Cpu {
 
     fn asl_impl(&mut self, operand: &mut Operand) {
         let res = operand.val << 1;
-        self.registers.update_nz_flags(res);
-        self.registers
+        self.r.update_nz_flags(res);
+        self.r
             .set_status_flag(registers::CARRY_MASK, operand.val & 0x80 != 0);
 
         operand.val = res;
@@ -533,55 +540,55 @@ impl Cpu {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         if cond {
             self.cycle = (self.cycle + 1 * 3) % 341;
-            if self.registers.pc & 0xFF00 != addr & 0xFF00 {
+            if self.r.pc & 0xFF00 != addr & 0xFF00 {
                 self.cycle = (self.cycle + 1 * 3) % 341;
             }
-            self.registers.pc = addr;
+            self.r.pc = addr;
         }
     }
 
     fn bcc(&mut self, addressing_mode: AddressingMode) {
-        let cond = !self.registers.get_status_flag(registers::CARRY_MASK);
+        let cond = !self.r.get_status_flag(registers::CARRY_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
     fn bcs(&mut self, addressing_mode: AddressingMode) {
-        let cond = self.registers.get_status_flag(registers::CARRY_MASK);
+        let cond = self.r.get_status_flag(registers::CARRY_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
     fn beq(&mut self, addressing_mode: AddressingMode) {
-        let cond = self.registers.get_status_flag(registers::ZERO_MASK);
+        let cond = self.r.get_status_flag(registers::ZERO_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
     fn bit(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
-        self.registers.set_status_flag(
+        self.r.set_status_flag(
             registers::NEGATIVE_MASK,
             operand.val & registers::NEGATIVE_MASK != 0,
         );
-        self.registers.set_status_flag(
+        self.r.set_status_flag(
             registers::OVERFLOW_MASK,
             operand.val & registers::OVERFLOW_MASK != 0,
         );
 
-        let res = operand.val & self.registers.a;
-        self.registers.update_zero_flag(res);
+        let res = operand.val & self.r.a;
+        self.r.update_zero_flag(res);
     }
 
     fn bmi(&mut self, addressing_mode: AddressingMode) {
-        let cond = self.registers.get_status_flag(registers::NEGATIVE_MASK);
+        let cond = self.r.get_status_flag(registers::NEGATIVE_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
     fn bne(&mut self, addressing_mode: AddressingMode) {
-        let cond = !self.registers.get_status_flag(registers::ZERO_MASK);
+        let cond = !self.r.get_status_flag(registers::ZERO_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
     fn bpl(&mut self, addressing_mode: AddressingMode) {
-        let cond = !self.registers.get_status_flag(registers::NEGATIVE_MASK);
+        let cond = !self.r.get_status_flag(registers::NEGATIVE_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
@@ -591,39 +598,39 @@ impl Cpu {
     }
 
     fn bvc(&mut self, addressing_mode: AddressingMode) {
-        let cond = !self.registers.get_status_flag(registers::OVERFLOW_MASK);
+        let cond = !self.r.get_status_flag(registers::OVERFLOW_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
     fn bvs(&mut self, addressing_mode: AddressingMode) {
-        let cond = self.registers.get_status_flag(registers::OVERFLOW_MASK);
+        let cond = self.r.get_status_flag(registers::OVERFLOW_MASK);
         self.branch_impl(cond, addressing_mode);
     }
 
     fn clc(&mut self, _addressing_mode: AddressingMode) {
-        self.registers.set_status_flag(registers::CARRY_MASK, false);
+        self.r.set_status_flag(registers::CARRY_MASK, false);
     }
 
     fn cld(&mut self, _addressing_mode: AddressingMode) {
-        self.registers
+        self.r
             .set_status_flag(registers::DECIMAL_MODE_MASK, false);
     }
 
     fn cli(&mut self, _addressing_mode: AddressingMode) {
-        self.registers
+        self.r
             .set_status_flag(registers::INTERRUPT_DISABLE_MASK, false);
     }
 
     fn clv(&mut self, _addressing_mode: AddressingMode) {
-        self.registers
+        self.r
             .set_status_flag(registers::OVERFLOW_MASK, false);
     }
 
     fn cmp_impl(&mut self, operand: &Operand) {
-        let (diff, underflow) = self.registers.a.overflowing_sub(operand.val);
+        let (diff, underflow) = self.r.a.overflowing_sub(operand.val);
         self.registers
             .set_status_flag(registers::CARRY_MASK, !underflow);
-        self.registers.update_nz_flags(diff);
+        self.r.update_nz_flags(diff);
     }
 
     fn cmp(&mut self, addressing_mode: AddressingMode) {
@@ -637,18 +644,18 @@ impl Cpu {
 
     fn cpx(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
-        let (diff, underflow) = self.registers.x.overflowing_sub(operand.val);
-        self.registers
+        let (diff, underflow) = self.r.x.overflowing_sub(operand.val);
+        self.r
             .set_status_flag(registers::CARRY_MASK, !underflow);
-        self.registers.update_nz_flags(diff);
+        self.r.update_nz_flags(diff);
     }
 
     fn cpy(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
-        let (diff, underflow) = self.registers.y.overflowing_sub(operand.val);
-        self.registers
+        let (diff, underflow) = self.r.y.overflowing_sub(operand.val);
+        self.r
             .set_status_flag(registers::CARRY_MASK, !underflow);
-        self.registers.update_nz_flags(diff);
+        self.r.update_nz_flags(diff);
     }
 
     fn dcp(&mut self, addressing_mode: AddressingMode) {
@@ -660,7 +667,7 @@ impl Cpu {
 
     fn dec_impl(&mut self, operand: &mut Operand) {
         let res = operand.val.wrapping_sub(1);
-        self.registers.update_nz_flags(res);
+        self.r.update_nz_flags(res);
 
         operand.val = res;
         self.write_operand(operand);
@@ -673,15 +680,15 @@ impl Cpu {
     }
 
     fn dex(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.x.wrapping_sub(1);
-        self.registers.update_nz_flags(res);
-        self.registers.x = res;
+        let res = self.r.x.wrapping_sub(1);
+        self.r.update_nz_flags(res);
+        self.r.x = res;
     }
 
     fn dey(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.y.wrapping_sub(1);
-        self.registers.update_nz_flags(res);
-        self.registers.y = res;
+        let res = self.r.y.wrapping_sub(1);
+        self.r.update_nz_flags(res);
+        self.r.y = res;
     }
 
     fn dop(&mut self, addressing_mode: AddressingMode) {
@@ -689,9 +696,9 @@ impl Cpu {
     }
 
     fn eor_impl(&mut self, operand: &Operand) {
-        self.registers.a ^= operand.val;
-        let res = self.registers.a;
-        self.registers.update_nz_flags(res);
+        self.r.a ^= operand.val;
+        let res = self.r.a;
+        self.r.update_nz_flags(res);
     }
 
     fn eor(&mut self, addressing_mode: AddressingMode) {
@@ -705,7 +712,7 @@ impl Cpu {
 
     fn inc_impl(&mut self, operand: &mut Operand) {
         let res = operand.val.wrapping_add(1);
-        self.registers.update_nz_flags(res);
+        self.r.update_nz_flags(res);
 
         operand.val = res;
         self.write_operand(operand);
@@ -718,15 +725,15 @@ impl Cpu {
     }
 
     fn inx(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.x.wrapping_add(1);
-        self.registers.update_nz_flags(res);
-        self.registers.x = res;
+        let res = self.r.x.wrapping_add(1);
+        self.r.update_nz_flags(res);
+        self.r.x = res;
     }
 
     fn iny(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.y.wrapping_add(1);
-        self.registers.update_nz_flags(res);
-        self.registers.y = res;
+        let res = self.r.y.wrapping_add(1);
+        self.r.update_nz_flags(res);
+        self.r.y = res;
     }
 
     fn isc(&mut self, addressing_mode: AddressingMode) {
@@ -738,13 +745,13 @@ impl Cpu {
 
     fn jmp(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        self.registers.pc = addr;
+        self.r.pc = addr;
     }
 
     fn jsr(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        let ret = self.registers.pc - 1;
-        self.registers.pc = addr;
+        let ret = self.r.pc - 1;
+        self.r.pc = addr;
         self.push_word(ret);
     }
 
@@ -759,8 +766,8 @@ impl Cpu {
     }
 
     fn lda_impl(&mut self, operand: &Operand) {
-        self.registers.a = operand.val;
-        self.registers.update_nz_flags(operand.val);
+        self.r.a = operand.val;
+        self.r.update_nz_flags(operand.val);
     }
 
     fn lda(&mut self, addressing_mode: AddressingMode) {
@@ -773,8 +780,8 @@ impl Cpu {
     }
 
     fn ldx_impl(&mut self, operand: &Operand) {
-        self.registers.x = operand.val;
-        self.registers.update_nz_flags(operand.val);
+        self.r.x = operand.val;
+        self.r.update_nz_flags(operand.val);
     }
 
     fn ldx(&mut self, addressing_mode: AddressingMode) {
@@ -792,14 +799,14 @@ impl Cpu {
             self.cycle = (self.cycle + 1 * 3) % 341;
         }
 
-        self.registers.y = operand.val;
-        self.registers.update_nz_flags(operand.val);
+        self.r.y = operand.val;
+        self.r.update_nz_flags(operand.val);
     }
 
     fn lsr_impl(&mut self, operand: &mut Operand) {
         let res = operand.val >> 1;
-        self.registers.update_nz_flags(res);
-        self.registers
+        self.r.update_nz_flags(res);
+        self.r
             .set_status_flag(registers::CARRY_MASK, operand.val & 0x01 != 0);
 
         operand.val = res;
@@ -818,9 +825,9 @@ impl Cpu {
     fn nop(&mut self, _addressing_mode: AddressingMode) {}
 
     fn ora_impl(&mut self, operand: &Operand) {
-        self.registers.a |= operand.val;
-        let res = self.registers.a;
-        self.registers.update_nz_flags(res);
+        self.r.a |= operand.val;
+        let res = self.r.a;
+        self.r.update_nz_flags(res);
     }
 
     fn ora(&mut self, addressing_mode: AddressingMode) {
@@ -833,24 +840,24 @@ impl Cpu {
     }
 
     fn pha(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.a;
+        let res = self.r.a;
         self.push_byte(res);
     }
 
     fn php(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.p | 0x10;
+        let res = self.r.p | 0x10;
         self.push_byte(res);
     }
 
     fn pla(&mut self, _addressing_mode: AddressingMode) {
         let res = self.pop_byte();
-        self.registers.a = res;
-        self.registers.update_nz_flags(res);
+        self.r.a = res;
+        self.r.update_nz_flags(res);
     }
 
     fn plp(&mut self, _addressing_mode: AddressingMode) {
-        let res = (self.pop_byte() & !0x30) | (self.registers.p & 0x30);
-        self.registers.p = res;
+        let res = (self.pop_byte() & !0x30) | (self.r.p & 0x30);
+        self.r.p = res;
     }
 
     fn rla(&mut self, addressing_mode: AddressingMode) {
@@ -862,13 +869,13 @@ impl Cpu {
 
     fn rol_impl(&mut self, operand: &mut Operand) {
         let mut res = operand.val << 1;
-        res |= if self.registers.get_status_flag(registers::CARRY_MASK) {
+        res |= if self.r.get_status_flag(registers::CARRY_MASK) {
             1
         } else {
             0
         };
-        self.registers.update_nz_flags(res);
-        self.registers
+        self.r.update_nz_flags(res);
+        self.r
             .set_status_flag(registers::CARRY_MASK, operand.val & 0x80 != 0);
 
         operand.val = res;
@@ -883,13 +890,13 @@ impl Cpu {
 
     fn ror_impl(&mut self, operand: &mut Operand) {
         let mut res = operand.val >> 1;
-        res |= if self.registers.get_status_flag(registers::CARRY_MASK) {
+        res |= if self.r.get_status_flag(registers::CARRY_MASK) {
             0x80
         } else {
             0
         };
-        self.registers.update_nz_flags(res);
-        self.registers
+        self.r.update_nz_flags(res);
+        self.r
             .set_status_flag(registers::CARRY_MASK, operand.val & 0x01 != 0);
 
         operand.val = res;
@@ -904,11 +911,11 @@ impl Cpu {
 
     fn rti(&mut self, _addressing_mode: AddressingMode) {
         self.plp(AddressingMode::Implied);
-        self.registers.pc = self.pop_word();
+        self.r.pc = self.pop_word();
     }
 
     fn rts(&mut self, _addressing_mode: AddressingMode) {
-        self.registers.pc = self.pop_word() + 1;
+        self.r.pc = self.pop_word() + 1;
     }
 
     fn rra(&mut self, addressing_mode: AddressingMode) {
@@ -919,20 +926,20 @@ impl Cpu {
     }
 
     fn sbc_impl(&mut self, operand: &Operand) {
-        let carry = if self.registers.p & registers::CARRY_MASK == 0 {
+        let carry = if self.r.p & registers::CARRY_MASK == 0 {
             1
         } else {
             0
         };
-        let (res, is_underflow_1) = self.registers.a.overflowing_sub(operand.val);
+        let (res, is_underflow_1) = self.r.a.overflowing_sub(operand.val);
         let (res, is_underflow_2) = res.overflowing_sub(carry);
-        let underflow = (operand.val ^ self.registers.a) & (res ^ self.registers.a) & 0x80 != 0;
-        self.registers.update_nz_flags(res);
-        self.registers
+        let underflow = (operand.val ^ self.r.a) & (res ^ self.r.a) & 0x80 != 0;
+        self.r.update_nz_flags(res);
+        self.r
             .set_status_flag(registers::CARRY_MASK, !is_underflow_1 && !is_underflow_2);
-        self.registers
+        self.r
             .set_status_flag(registers::OVERFLOW_MASK, underflow);
-        self.registers.a = res;
+        self.r.a = res;
     }
 
     fn sbc(&mut self, addressing_mode: AddressingMode) {
@@ -945,16 +952,16 @@ impl Cpu {
     }
 
     fn sec(&mut self, _addressing_mode: AddressingMode) {
-        self.registers.set_status_flag(registers::CARRY_MASK, true);
+        self.r.set_status_flag(registers::CARRY_MASK, true);
     }
 
     fn sed(&mut self, _addressing_mode: AddressingMode) {
-        self.registers
+        self.r
             .set_status_flag(registers::DECIMAL_MODE_MASK, true);
     }
 
     fn sei(&mut self, _addressing_mode: AddressingMode) {
-        self.registers
+        self.r
             .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
     }
 
@@ -967,19 +974,19 @@ impl Cpu {
 
     fn sta(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        let res = self.registers.a;
+        let res = self.r.a;
         self.memory_map_mut().write_byte(addr, res);
     }
 
     fn stx(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        let res = self.registers.x;
+        let res = self.r.x;
         self.memory_map_mut().write_byte(addr, res);
     }
 
     fn sty(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
-        let res = self.registers.y;
+        let res = self.r.y;
         self.memory_map_mut().write_byte(addr, res);
     }
 
@@ -991,15 +998,15 @@ impl Cpu {
     }
 
     fn tax(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.a;
-        self.registers.update_nz_flags(res);
-        self.registers.x = res;
+        let res = self.r.a;
+        self.r.update_nz_flags(res);
+        self.r.x = res;
     }
 
     fn tay(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.a;
-        self.registers.update_nz_flags(res);
-        self.registers.y = res;
+        let res = self.r.a;
+        self.r.update_nz_flags(res);
+        self.r.y = res;
     }
 
     fn top(&mut self, addressing_mode: AddressingMode) {
@@ -1010,26 +1017,26 @@ impl Cpu {
     }
 
     fn tsx(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.sp;
-        self.registers.update_nz_flags(res);
-        self.registers.x = res;
+        let res = self.r.sp;
+        self.r.update_nz_flags(res);
+        self.r.x = res;
     }
 
     fn txa(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.x;
-        self.registers.update_nz_flags(res);
-        self.registers.a = res;
+        let res = self.r.x;
+        self.r.update_nz_flags(res);
+        self.r.a = res;
     }
 
     fn txs(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.x;
-        self.registers.sp = res;
+        let res = self.r.x;
+        self.r.sp = res;
     }
 
     fn tya(&mut self, _addressing_mode: AddressingMode) {
-        let res = self.registers.y;
-        self.registers.update_nz_flags(res);
-        self.registers.a = res;
+        let res = self.r.y;
+        self.r.update_nz_flags(res);
+        self.r.a = res;
     }
 }
 
@@ -1060,7 +1067,7 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     |cpu: &mut Cpu| (cpu.decode_word(), false),
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
-        let ret = addr + cpu.registers.x as u16;
+        let ret = addr + cpu.r.x as u16;
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
             page_crossing = true;
@@ -1069,7 +1076,7 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     },
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
-        let ret = addr.wrapping_add(cpu.registers.y as u16);
+        let ret = addr.wrapping_add(cpu.r.y as u16);
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
             page_crossing = true;
@@ -1078,8 +1085,8 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     },
     |_: &mut Cpu| panic!("No address associated with accumulator mode."),
     |cpu: &mut Cpu| {
-        let ret = cpu.registers.pc;
-        cpu.registers.pc += 1;
+        let ret = cpu.r.pc;
+        cpu.r.pc += 1;
         (ret, false)
     },
     |_: &mut Cpu| panic!("No address associated with implied mode."),
@@ -1094,7 +1101,7 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         }
     },
     |cpu: &mut Cpu| {
-        let addr = (cpu.decode_byte()).wrapping_add(cpu.registers.x) as u16;
+        let addr = (cpu.decode_byte()).wrapping_add(cpu.r.x) as u16;
         // read 2-byte address without carry
         let hi = (cpu.memory_map().read_byte((addr + 1) & 0xFF) as u16) << 8;
         let lo = cpu.memory_map().read_byte(addr) as u16;
@@ -1107,7 +1114,7 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
         let lo = cpu.memory_map().read_byte(addr) as u16;
         let addr = hi | lo;
 
-        let ret = addr.wrapping_add(cpu.registers.y as u16);
+        let ret = addr.wrapping_add(cpu.r.y as u16);
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
             page_crossing = true;
@@ -1116,20 +1123,20 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     },
     |cpu: &mut Cpu| {
         (
-            (cpu.registers.pc as i16 + 1 + i16::from(cpu.decode_byte() as i8)) as u16,
+            (cpu.r.pc as i16 + 1 + i16::from(cpu.decode_byte() as i8)) as u16,
             false,
         )
     },
     |cpu: &mut Cpu| (cpu.decode_byte() as u16, false),
     |cpu: &mut Cpu| {
         (
-            cpu.decode_byte().wrapping_add(cpu.registers.x) as u16,
+            cpu.decode_byte().wrapping_add(cpu.r.x) as u16,
             false,
         )
     },
     |cpu: &mut Cpu| {
         (
-            cpu.decode_byte().wrapping_add(cpu.registers.y) as u16,
+            cpu.decode_byte().wrapping_add(cpu.r.y) as u16,
             false,
         )
     },
@@ -1139,7 +1146,6 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
 pub enum Interrupt {
     NMI = 0,
     IRQ = 1,
-    RESET = 2,
 }
 
-const INTERRUPT_HANDLERS: [u16; 3] = [0xFFFA, 0xFFFE, 0xFFFC];
+const INTERRUPT_HANDLERS: [u16; 2] = [0xFFFA, 0xFFFE];

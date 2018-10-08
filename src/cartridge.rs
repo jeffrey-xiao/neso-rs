@@ -12,7 +12,7 @@ pub struct Cartridge {
     flags_10: u8,
 }
 
-// TODO(jeffreyxiao): Make proper errors
+// TODO Make proper errors
 impl Cartridge {
     // Create empty cartridge that allocates nothing.
     pub fn new() -> Self {
@@ -55,7 +55,7 @@ impl Cartridge {
 
         buffer = buffer.split_at(16).1;
 
-        if flags_6 & 1 << 2 != 0 {
+        if flags_6 & 0x04 != 0 {
             buffer = buffer.split_at(512).1;
         }
 
@@ -120,11 +120,11 @@ impl Cartridge {
 
     // flags
     pub fn mirroring_mode(&self) -> MirroringMode {
-        if self.flags_6 & 1 << 3 != 0 {
+        if self.flags_6 & 0x08 != 0 {
             return MirroringMode::None;
         }
 
-        if self.flags_6 & 1 != 0 {
+        if self.flags_6 & 0x01 != 0 {
             return MirroringMode::Vertical;
         }
 
