@@ -42,14 +42,12 @@ pub struct Cpu {
 
 impl Cpu {
     pub fn new() -> Self {
-        let ret = Cpu {
+        Cpu {
             cycle: 0,
             interrupt_flags: [false; 2],
             r: Registers::new(),
             memory_map: None,
-        };
-        ret.reset();
-        ret
+        }
     }
 
     pub fn reset(&mut self) {
@@ -60,6 +58,7 @@ impl Cpu {
 
     pub fn attach_memory_map(&mut self, memory_map: MemoryMap) {
         self.memory_map = Some(memory_map);
+        self.reset()
     }
 
     fn memory_map(&self) -> &MemoryMap {
@@ -623,8 +622,7 @@ impl Cpu {
 
     fn cmp_impl(&mut self, operand: &Operand) {
         let (diff, underflow) = self.r.a.overflowing_sub(operand.val);
-        self.registers
-            .set_status_flag(registers::CARRY_MASK, !underflow);
+        self.r.set_status_flag(registers::CARRY_MASK, !underflow);
         self.r.update_nz_flags(diff);
     }
 

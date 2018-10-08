@@ -4,9 +4,9 @@ pub use self::nrom::Nrom;
 use cartridge::Cartridge;
 
 pub fn from_cartridge(cartridge: Cartridge) -> Box<Mapper> {
-    match cartridge.mapper() {
+    match cartridge.mapper {
         0 => Box::new(Nrom::new(cartridge)),
-        _ => panic!("Unsupported mapper: {}.", cartridge.mapper()),
+        _ => panic!("Unsupported mapper: {}.", cartridge.mapper),
     }
 }
 

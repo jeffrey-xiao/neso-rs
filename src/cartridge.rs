@@ -6,27 +6,11 @@ pub struct Cartridge {
     prg_rom: Vec<u8>,
     chr_rom: Vec<u8>,
     prg_ram: Vec<u8>,
-    flags_6: u8,
-    flags_7: u8,
-    flags_9: u8,
-    flags_10: u8,
+    pub mapper: u8,
+    pub mirroring_mode: MirroringMode,
 }
 
-// TODO Make proper errors
 impl Cartridge {
-    // Create empty cartridge that allocates nothing.
-    pub fn new() -> Self {
-        Cartridge {
-            prg_rom: Vec::new(),
-            chr_rom: Vec::new(),
-            prg_ram: Vec::new(),
-            flags_6: 0,
-            flags_7: 0,
-            flags_9: 0,
-            flags_10: 0,
-        }
-    }
-
     pub fn from_buffer(mut buffer: &[u8]) -> Self {
         let header = (buffer[0] as u32)
             | ((buffer[1] as u32) << 8)
@@ -70,19 +54,25 @@ impl Cartridge {
             chr_rom = vec![0; 0x2000];
         }
 
+        let mapper = (flags_7 & 0xF0) | (flags_6 >> 4);
+
+        let mirroring_mode = {
+            if flags_6 & 0x08 != 0 {
+                MirroringMode::None
+            } else if flags_6 & 0x01 != 0 {
+                MirroringMode::Vertical
+            } else {
+                MirroringMode::Horizontal
+            }
+        };
+
         Cartridge {
             prg_rom,
             chr_rom,
             prg_ram: vec![0; prg_ram_len],
-            flags_6,
-            flags_7,
-            flags_9,
-            flags_10,
+            mapper,
+            mirroring_mode,
         }
-    }
-
-    pub fn mapper(&self) -> u8 {
-        (self.flags_7 & 0xF0) | (self.flags_6 >> 4)
     }
 
     pub fn prg_rom_len(&self) -> usize {
@@ -116,18 +106,5 @@ impl Cartridge {
 
     pub fn write_prg_ram(&mut self, addr: u16, val: u8) {
         self.prg_ram[addr as usize] = val;
-    }
-
-    // flags
-    pub fn mirroring_mode(&self) -> MirroringMode {
-        if self.flags_6 & 0x08 != 0 {
-            return MirroringMode::None;
-        }
-
-        if self.flags_6 & 0x01 != 0 {
-            return MirroringMode::Vertical;
-        }
-
-        MirroringMode::Horizontal
     }
 }
