@@ -28,11 +28,11 @@ impl Ppu {
         self.memory_map = Some(memory_map);
     }
 
-    fn memory_map(&self) -> &MemoryMap {
+    pub fn memory_map(&self) -> &MemoryMap {
         self.memory_map.as_ref().unwrap()
     }
 
-    fn memory_map_mut(&mut self) -> &mut MemoryMap {
+    pub fn memory_map_mut(&mut self) -> &mut MemoryMap {
         self.memory_map.as_mut().unwrap()
     }
 
@@ -47,9 +47,9 @@ impl Ppu {
 
 pub struct MemoryMap {
     pub registers: Registers,
-    oam: [u8; 0x100],
-    vram: [u8; 0x2000],
-    palette_ram: [u8; 0x20],
+    pub oam: [u8; 0x100],
+    pub vram: [u8; 0x2000],
+    pub palette_ram: [u8; 0x20],
     mapper: Weak<RefCell<Box<Mapper>>>,
 }
 
@@ -100,19 +100,33 @@ impl MemoryMap {
 
 pub struct Registers {
     data: [u8; 8],
+    last_written_byte: u8,
 }
 
 impl Registers {
     pub fn new() -> Registers {
-        Registers { data: [0; 8] }
+        Registers { data: [0; 8], last_written_byte: 0 }
     }
 
     pub fn read_register(&self, index: usize) -> u8 {
-        self.data[index]
+        match index {
+            0 => self.last_written_byte,
+            1 => self.last_written_byte,
+            2 => self.data[index],
+            3 => self.data[index],
+            4 => self.data[index],
+            5 => self.last_written_byte,
+            6 => self.last_written_byte,
+            7 => self.data[index],
+            _ => panic!("Invalid index to read."),
+        }
     }
 
     pub fn write_register(&mut self, index: usize, val: u8) {
-        self.data[index] = val
+        self.last_written_byte = val;
+        if index != 2 {
+            self.data[index] = val
+        }
     }
 }
 

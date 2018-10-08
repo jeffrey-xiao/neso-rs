@@ -63,6 +63,7 @@ impl Cpu {
     }
 
     pub fn execute_cycle(&mut self) {
+        println!("{}", self.memory_map().read_word(0xFFFC));
         // handle any interrupts
         for index in 0..self.interrupt_flags.len() {
             self.handle_interrupt(index);

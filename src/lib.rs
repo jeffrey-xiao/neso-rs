@@ -54,10 +54,10 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/nestest.nes").unwrap();
+        let buffer = fs::read("./tests/dk.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
-        for i in 0..8991 {
+        for i in 0..1 {
             nes.execute_cycle();
         }
     }
