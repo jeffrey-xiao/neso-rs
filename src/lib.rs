@@ -41,8 +41,11 @@ impl Nes {
         self.mapper = Some(mapper);
     }
 
-    pub fn execute_cycle(&mut self) {
-        self.cpu.borrow_mut().execute_cycle();
+    pub fn step(&mut self) {
+        let cpu_cycles = self.cpu.borrow_mut().step();
+        for i in 0..3 * cpu_cycles {
+            self.ppu.borrow_mut().step();
+        }
     }
 }
 
@@ -56,7 +59,7 @@ mod tests {
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
         for i in 0..8991 {
-            nes.execute_cycle();
+            nes.step();
         }
     }
 }

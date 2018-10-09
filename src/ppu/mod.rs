@@ -23,9 +23,9 @@ pub struct Ppu {
     pub oam: [u8; 0x100],
     pub vram: [u8; 0x2000],
     pub palette_ram: [u8; 0x20],
-    pub cycle: u32,
-    pub scanline: u32,
-    pub frame: u32,
+    pub cycle: u16,
+    pub scanline: u16,
+    pub frame: u64,
     pub bus: Option<Bus>,
 }
 
@@ -56,6 +56,7 @@ impl Ppu {
         self.bus = Some(bus);
     }
 
+    // memory map related functions
     // TODO: Handle error with no bus attached.
     fn bus(&self) -> &Bus {
         self.bus.as_ref().unwrap()
@@ -171,6 +172,18 @@ impl Ppu {
                 self.r.ppu_addr += self.r.vram_address_increment;
             },
             _ => panic!("Invalid ppu register index to write: {}.", index),
+        }
+    }
+
+    pub fn step(&mut self) {
+        self.cycle += 1;
+        if self.cycle == 341 {
+            self.cycle = 0;
+            self.scanline += 1;
+            if self.scanline == 262 {
+                self.scanline = 0;
+                self.frame += 1;
+            }
         }
     }
 }

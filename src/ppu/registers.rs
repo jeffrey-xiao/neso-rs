@@ -92,7 +92,7 @@ impl Registers {
         let mut ret = (self.last_written_byte & 0x1F)
             | if self.sprite_overflow { 0x20 } else { 0 }
             | if self.sprite_0_hit { 0x40 } else { 0 }
-            | if self.v_blank_started { 0x80 } else { 0x80 };
+            | if self.v_blank_started { 0x80 } else { 0 };
         self.v_blank_started = false;
         ret
     }

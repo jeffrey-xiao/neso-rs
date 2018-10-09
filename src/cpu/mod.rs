@@ -3,8 +3,6 @@ mod registers;
 
 pub use self::bus::Bus;
 use self::registers::Registers;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 macro_rules! generate_instructions {
     (
@@ -21,8 +19,8 @@ macro_rules! generate_instructions {
         match $opcode {
             $($(
                 $opcode_matcher => {
-                    // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, $cpu.cycle);
-                    $cpu.cycle = ($cpu.cycle + $cycles * 3) % 341;
+                    // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, ($cpu.cycle * 3) % 341);
+                    $cpu.cycle += $cycles;
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
             )*)*
@@ -34,7 +32,8 @@ macro_rules! generate_instructions {
 const STACK_START: u16 = 0x100;
 
 pub struct Cpu {
-    pub cycle: u32,
+    pub cycle: u64,
+    pub stall_cycle: u64,
     pub ram: [u8; 0x800],
     pub interrupt_flags: [bool; 2],
     pub r: Registers,
@@ -45,6 +44,7 @@ impl Cpu {
     pub fn new() -> Self {
         Cpu {
             cycle: 0,
+            stall_cycle: 0,
             ram: [0; 0x800],
             interrupt_flags: [false; 2],
             r: Registers::new(),
@@ -63,71 +63,13 @@ impl Cpu {
         self.reset()
     }
 
-    // TODO: Handle error with no bus attached.
-    fn bus(&self) -> &Bus {
-        self.bus.as_ref().unwrap()
-    }
-
-    pub fn read_byte(&self, addr: u16) -> u8 {
-        match addr {
-            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
-            0x2000..=0x3FFF => {
-                let ppu = self.bus().ppu();
-                let ret = ppu
-                    .borrow_mut()
-                    .read_register(((addr - 0x2000) % 8) as usize);
-                ret
-            },
-            // TODO: Implement APU and IO maps
-            0x4000..=0x4017 => 0,
-            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
-            0x4020..=0xFFFE => {
-                let mapper = self.bus().mapper();
-                let ret = mapper.borrow().read_byte(addr);
-                ret
-            },
-            _ => panic!("Invalid memory address: {:#6x}.", addr),
+    pub fn step(&mut self) -> u64 {
+        if self.stall_cycle > 0 {
+            self.stall_cycle -= 1;
+            return 1;
         }
-    }
 
-    pub fn read_word(&self, addr: u16) -> u16 {
-        ((self.read_byte(addr + 1) as u16) << 8) | self.read_byte(addr) as u16
-    }
-
-    pub fn write_byte(&mut self, addr: u16, val: u8) {
-        match addr {
-            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = val,
-            0x2000..=0x3FFF => {
-                let ppu = self.bus().ppu();
-                ppu.borrow_mut()
-                    .write_register(((addr - 0x2000) % 8) as usize, val);
-            },
-            // TODO: Implement APU and IO maps
-            0x4000..=0x4017 => {
-                if addr == 0x4014 {
-                    let cpu_addr = (val as u16) << 8;
-                    let ppu = self.bus().ppu.upgrade().unwrap();
-                    for offset in 0..0xFF {
-                        ppu.borrow_mut().oam[offset] = self.read_byte(cpu_addr);
-                    }
-
-                    if self.cycle % 2 == 1 {
-                        self.cycle += 514;
-                    } else {
-                        self.cycle += 513;
-                    }
-                }
-            },
-            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
-            0x4020..=0xFFFE => {
-                let mapper = self.bus().mapper();
-                mapper.borrow_mut().write_byte(addr, val);
-            },
-            _ => panic!("Invalid memory address: {:#6x}.", addr),
-        }
-    }
-
-    pub fn execute_cycle(&mut self) {
+        let start_cycle = self.cycle;
         // handle any interrupts
         for index in 0..self.interrupt_flags.len() {
             self.handle_interrupt(index);
@@ -137,6 +79,7 @@ impl Cpu {
         let opcode = self.decode_byte();
         // print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
+        self.cycle - start_cycle
     }
 
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
@@ -193,6 +136,74 @@ impl Cpu {
     fn pop_word(&mut self) -> u16 {
         (self.pop_byte() as u16) | ((self.pop_byte() as u16) << 8)
     }
+
+    // memory map related functions
+    // TODO: Handle error with no bus attached.
+    fn bus(&self) -> &Bus {
+        self.bus.as_ref().unwrap()
+    }
+
+    pub fn read_byte(&self, addr: u16) -> u8 {
+        match addr {
+            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
+            0x2000..=0x3FFF => {
+                let ppu = self.bus().ppu();
+                let ret = ppu
+                    .borrow_mut()
+                    .read_register(((addr - 0x2000) % 8) as usize);
+                ret
+            },
+            // TODO: Implement APU and IO maps
+            0x4000..=0x4017 => 0,
+            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
+            0x4020..=0xFFFE => {
+                let mapper = self.bus().mapper();
+                let ret = mapper.borrow().read_byte(addr);
+                ret
+            },
+            _ => panic!("Invalid memory address: {:#6x}.", addr),
+        }
+    }
+
+    pub fn read_word(&self, addr: u16) -> u16 {
+        ((self.read_byte(addr + 1) as u16) << 8) | self.read_byte(addr) as u16
+    }
+
+    pub fn write_byte(&mut self, addr: u16, val: u8) {
+        match addr {
+            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = val,
+            0x2000..=0x3FFF => {
+                let ppu = self.bus().ppu();
+                ppu.borrow_mut()
+                    .write_register(((addr - 0x2000) % 8) as usize, val);
+            },
+            // TODO: Implement APU and IO maps
+            0x4000..=0x4017 => {
+                if addr == 0x4014 {
+                    let cpu_addr = (val as u16) << 8;
+                    let ppu = self.bus().ppu.upgrade().unwrap();
+                    for offset in 0..0xFF {
+                        let ppu_addr = ppu.borrow().r.ppu_addr as usize;
+                        ppu.borrow_mut().oam[ppu_addr] = self.read_byte(cpu_addr + offset);
+                        ppu.borrow_mut().r.ppu_addr += 1;
+                    }
+
+                    if self.cycle % 2 == 1 {
+                        self.stall_cycle += 514;
+                    } else {
+                        self.stall_cycle += 513;
+                    }
+                }
+            },
+            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
+            0x4020..=0xFFFE => {
+                let mapper = self.bus().mapper();
+                mapper.borrow_mut().write_byte(addr, val);
+            },
+            _ => panic!("Invalid memory address: {:#6x}.", addr),
+        }
+    }
+
 
     fn execute_opcode(&mut self, opcode: u8) {
         generate_instructions!(self, opcode, {
@@ -551,7 +562,7 @@ impl Cpu {
     fn adc(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.adc_impl(&operand);
@@ -566,7 +577,7 @@ impl Cpu {
     fn and(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.and_impl(&operand);
@@ -585,7 +596,7 @@ impl Cpu {
     fn asl(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.asl_impl(&mut operand);
@@ -594,9 +605,9 @@ impl Cpu {
     fn branch_impl(&mut self, cond: bool, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         if cond {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
             if self.r.pc & 0xFF00 != addr & 0xFF00 {
-                self.cycle = (self.cycle + 1 * 3) % 341;
+                self.cycle += 1;
             }
             self.r.pc = addr;
         }
@@ -688,7 +699,7 @@ impl Cpu {
     fn cmp(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.cmp_impl(&operand);
@@ -754,7 +765,7 @@ impl Cpu {
     fn eor(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.eor_impl(&operand);
@@ -808,7 +819,7 @@ impl Cpu {
     fn lax(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.lda_impl(&operand);
@@ -823,7 +834,7 @@ impl Cpu {
     fn lda(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.lda_impl(&operand);
@@ -837,7 +848,7 @@ impl Cpu {
     fn ldx(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.ldx_impl(&operand);
@@ -846,7 +857,7 @@ impl Cpu {
     fn ldy(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.r.y = operand.val;
@@ -866,7 +877,7 @@ impl Cpu {
     fn lsr(&mut self, addressing_mode: AddressingMode) {
         let mut operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.lsr_impl(&mut operand);
@@ -883,7 +894,7 @@ impl Cpu {
     fn ora(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.ora_impl(&operand);
@@ -994,7 +1005,7 @@ impl Cpu {
     fn sbc(&mut self, addressing_mode: AddressingMode) {
         let operand = self.get_operand(addressing_mode);
         if operand.page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
 
         self.sbc_impl(&operand);
@@ -1060,7 +1071,7 @@ impl Cpu {
     fn top(&mut self, addressing_mode: AddressingMode) {
         let (_, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         if page_crossing {
-            self.cycle = (self.cycle + 1 * 3) % 341;
+            self.cycle += 1;
         }
     }
 

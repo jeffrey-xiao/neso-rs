@@ -14,14 +14,14 @@ pub fn main() {
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
     for i in 0..30000 {
-        nes.execute_cycle();
+        nes.step();
     }
     println!("DONE EXECUTING MAIN");
 
     nes.cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
 
     for i in 0..20000 {
-        nes.execute_cycle();
+        nes.step();
     }
 
     let sdl_context = sdl2::init().unwrap();
