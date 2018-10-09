@@ -53,10 +53,12 @@ impl MemoryMap {
                 mapper.borrow_mut().read_byte(addr);
             },
             0x2000..=0x3EFF => {
+                let mapper = self.mapper.upgrade().unwrap();
                 let addr = (addr - 0x2000) % 0x1000;
                 let index = (addr / 0x400) as usize;
                 let offset = (addr % 0x400) as usize;
-                self.vram[0x2000 + MIRRORING_MODE_TABLE[index] * 0x400 + offset] = val;
+                let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
+                self.vram[MIRRORING_MODE_TABLE[mirroring_mode + index] * 0x400 + offset] = val;
             },
             0x3F00..=0x3FFF => self.palette_ram[((addr - 0x3F00) % 0x20) as usize] = val,
             _ => panic!("Invalid memory address: {:#6x}.", addr),
@@ -64,6 +66,7 @@ impl MemoryMap {
     }
 
     pub fn read_register(&mut self, index: usize) -> u8 {
+        println!("READ PPU REGISTER {}", index);
         match index {
             // PPUCTRL
             0 => self.r.last_written_byte,
@@ -95,6 +98,7 @@ impl MemoryMap {
     }
 
     pub fn write_register(&mut self, index: usize, val: u8) {
+        println!("WRITE PPU REGISTER {} {:08b}", index, val);
         self.r.last_written_byte = val;
         match index {
             // PPUCTRL
@@ -122,9 +126,9 @@ impl MemoryMap {
             // PPUADDR
             6 => {
                 if !self.r.address_latch {
-                    self.r.ppu_addr = val as u16;
+                    self.r.ppu_addr = (val as u16) << 8;
                 } else {
-                    self.r.ppu_addr |= (val as u16) << 8;
+                    self.r.ppu_addr |= val as u16;
                 }
                 self.r.address_latch ^= true;
             },

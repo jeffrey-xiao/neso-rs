@@ -17,7 +17,8 @@ include = ["src/**/*", "Cargo.toml"]
 travis-ci = { repository = "jeffrey-xiao/nes-rs", branch = "master" }
 
 [lib]
-crate-type = ["cdylib"]
+name = "nes_wasm"
+path = "src/lib.rs"
 
 [features]
 default-features = ["console_error_panic_hook", "wee_alloc"]
@@ -28,8 +29,13 @@ console_error_panic_hook = { version = "0.1.1", optional = true }
 js-sys = "0.2"
 wasm-bindgen = "0.2"
 wee_alloc = { version = "0.4.1", optional = true }
+sdl2 = "0.31.0"
 
 [profile.release]
 debug = false
 lto = true
 opt-level = 'z'
+
+[[bin]]
+name = "asd"
+path = "src/main.rs"

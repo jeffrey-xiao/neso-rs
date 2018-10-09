@@ -2,6 +2,7 @@ mod nrom;
 
 pub use self::nrom::Nrom;
 use cartridge::Cartridge;
+use ppu::MirroringMode;
 
 pub fn from_cartridge(cartridge: Cartridge) -> Box<Mapper> {
     match cartridge.mapper {
@@ -13,4 +14,5 @@ pub fn from_cartridge(cartridge: Cartridge) -> Box<Mapper> {
 pub trait Mapper {
     fn read_byte(&self, addr: u16) -> u8;
     fn write_byte(&mut self, addr: u16, val: u8);
+    fn mirroring_mode(&self) -> MirroringMode;
 }

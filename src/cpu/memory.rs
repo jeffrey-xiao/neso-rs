@@ -29,8 +29,7 @@ impl MemoryMap {
                 ret
             },
             // TODO: Implement APU and IO maps
-            0x4016 => 0,
-            0x4017 => 0,
+            0x4000..=0x4017 => 0,
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFE => {
                 let mapper = self.mapper.upgrade().unwrap();
@@ -54,16 +53,16 @@ impl MemoryMap {
                     .write_register(((addr - 0x2000) % 8) as usize, val);
             },
             // TODO: Implement APU and IO maps
-            0x4014 => {
-                let cpu_addr = (val as u16) << 8;
-                let mut ppu = self.ppu.upgrade().unwrap();
-                for offset in 0..0xFF {
-                    ppu.borrow_mut().memory_map_mut().oam[offset] = self.read_byte(cpu_addr);
+            0x4000..=0x4017 => {
+                if addr == 0x4014 {
+                    let cpu_addr = (val as u16) << 8;
+                    let mut ppu = self.ppu.upgrade().unwrap();
+                    for offset in 0..0xFF {
+                        ppu.borrow_mut().memory_map_mut().oam[offset] = self.read_byte(cpu_addr);
+                    }
+                    // TODO increment cycles by 513 or 514
                 }
-                // TODO increment cycles
-            },
-            0x4016 => {},
-            0x4017 => {},
+            }
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFE => {
                 let mut mapper = self.mapper.upgrade().unwrap();

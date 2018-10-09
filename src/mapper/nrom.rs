@@ -1,8 +1,9 @@
 use cartridge::Cartridge;
 use mapper::Mapper;
+use ppu::MirroringMode;
 
 pub struct Nrom {
-    cartridge: Cartridge,
+    pub cartridge: Cartridge,
 }
 
 impl Nrom {
@@ -36,5 +37,9 @@ impl Mapper for Nrom {
             0x0000..=0x1FFF => self.cartridge.write_chr_rom(addr, val),
             _ => panic!("Invalid memory address to write."),
         }
+    }
+
+    fn mirroring_mode(&self) -> MirroringMode {
+        self.cartridge.mirroring_mode
     }
 }

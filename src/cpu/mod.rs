@@ -84,6 +84,7 @@ impl Cpu {
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
+            println!("TRIGGERED INTERRUPT");
             self.interrupt_flags[interrupt as usize] = true;
         }
     }

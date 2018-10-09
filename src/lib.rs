@@ -54,37 +54,37 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/dk.nes").unwrap();
+        let buffer = fs::read("./tests/nestest.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
-        for i in 0..1000 {
+        for i in 0..8991 {
             nes.execute_cycle();
         }
 
-        for i in 0..10 {
-            let mut tile = [0; 64];
+        // for i in 0..10 {
+        //     let mut tile = [0; 64];
 
-            for index in 0..8 {
-                let byte = nes.ppu.borrow().memory_map().read_byte(index + i * 16);
-                for y in (0..8).rev() {
-                    tile[index as usize * 8 + y] |= if byte & 1 << y != 0 { 1 } else { 0 };
-                }
-            }
+        //     for index in 0..8 {
+        //         let byte = nes.ppu.borrow().memory_map().read_byte(index + i * 16);
+        //         for y in (0..8).rev() {
+        //             tile[index as usize * 8 + y] |= if byte & 1 << y != 0 { 1 } else { 0 };
+        //         }
+        //     }
 
-            for index in 0..8 {
-                let byte = nes.ppu.borrow().memory_map().read_byte(index + 8 + i * 16);
-                for y in (0..8).rev() {
-                    tile[index as usize * 8 + y] |= if byte & 1 << y != 0 { 2 } else { 0 };
-                }
-            }
+        //     for index in 0..8 {
+        //         let byte = nes.ppu.borrow().memory_map().read_byte(index + 8 + i * 16);
+        //         for y in (0..8).rev() {
+        //             tile[index as usize * 8 + y] |= if byte & 1 << y != 0 { 2 } else { 0 };
+        //         }
+        //     }
 
-            for row in 0..8 {
-                for col in 0..8 {
-                    print!("{}", tile[row * 8 + col]);
-                }
-                println!("");
-            }
-            println!("");
-        }
+        //     for row in 0..8 {
+        //         for col in 0..8 {
+        //             print!("{}", tile[row * 8 + col]);
+        //         }
+        //         println!("");
+        //     }
+        //     println!("");
+        // }
     }
 }
