@@ -1,7 +1,7 @@
-mod memory;
+mod bus;
 mod registers;
 
-pub use self::memory::MemoryMap;
+pub use self::bus::Bus;
 use self::registers::Registers;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -35,38 +35,96 @@ const STACK_START: u16 = 0x100;
 
 pub struct Cpu {
     pub cycle: u32,
+    pub ram: [u8; 0x800],
     pub interrupt_flags: [bool; 2],
     pub r: Registers,
-    pub memory_map: Option<MemoryMap>,
+    pub bus: Option<Bus>,
 }
 
 impl Cpu {
     pub fn new() -> Self {
         Cpu {
             cycle: 0,
+            ram: [0; 0x800],
             interrupt_flags: [false; 2],
             r: Registers::new(),
-            memory_map: None,
+            bus: None,
         }
     }
 
     pub fn reset(&mut self) {
-        self.r.pc = self.memory_map().read_word(0xFFFC);
+        self.r.pc = self.read_word(0xFFFC);
         self.r.sp = 0xFD;
         self.r.p = 0x24;
     }
 
-    pub fn attach_memory_map(&mut self, memory_map: MemoryMap) {
-        self.memory_map = Some(memory_map);
+    pub fn attach_bus(&mut self, bus: Bus) {
+        self.bus = Some(bus);
         self.reset()
     }
 
-    fn memory_map(&self) -> &MemoryMap {
-        self.memory_map.as_ref().unwrap()
+    // TODO: Handle error with no bus attached.
+    fn bus(&self) -> &Bus {
+        self.bus.as_ref().unwrap()
     }
 
-    fn memory_map_mut(&mut self) -> &mut MemoryMap {
-        self.memory_map.as_mut().unwrap()
+    pub fn read_byte(&self, addr: u16) -> u8 {
+        match addr {
+            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
+            0x2000..=0x3FFF => {
+                let ppu = self.bus().ppu();
+                let ret = ppu
+                    .borrow_mut()
+                    .read_register(((addr - 0x2000) % 8) as usize);
+                ret
+            },
+            // TODO: Implement APU and IO maps
+            0x4000..=0x4017 => 0,
+            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
+            0x4020..=0xFFFE => {
+                let mapper = self.bus().mapper();
+                let ret = mapper.borrow().read_byte(addr);
+                ret
+            },
+            _ => panic!("Invalid memory address: {:#6x}.", addr),
+        }
+    }
+
+    pub fn read_word(&self, addr: u16) -> u16 {
+        ((self.read_byte(addr + 1) as u16) << 8) | self.read_byte(addr) as u16
+    }
+
+    pub fn write_byte(&mut self, addr: u16, val: u8) {
+        match addr {
+            0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = val,
+            0x2000..=0x3FFF => {
+                let ppu = self.bus().ppu();
+                ppu.borrow_mut()
+                    .write_register(((addr - 0x2000) % 8) as usize, val);
+            },
+            // TODO: Implement APU and IO maps
+            0x4000..=0x4017 => {
+                if addr == 0x4014 {
+                    let cpu_addr = (val as u16) << 8;
+                    let ppu = self.bus().ppu.upgrade().unwrap();
+                    for offset in 0..0xFF {
+                        ppu.borrow_mut().oam[offset] = self.read_byte(cpu_addr);
+                    }
+
+                    if self.cycle % 2 == 1 {
+                        self.cycle += 514;
+                    } else {
+                        self.cycle += 513;
+                    }
+                }
+            },
+            0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
+            0x4020..=0xFFFE => {
+                let mapper = self.bus().mapper();
+                mapper.borrow_mut().write_byte(addr, val);
+            },
+            _ => panic!("Invalid memory address: {:#6x}.", addr),
+        }
     }
 
     pub fn execute_cycle(&mut self) {
@@ -97,20 +155,20 @@ impl Cpu {
             self.push_byte(val);
             self.r
                 .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
-            self.r.pc = self.memory_map().read_word(INTERRUPT_HANDLERS[interrupt]);
+            self.r.pc = self.read_word(INTERRUPT_HANDLERS[interrupt]);
             self.interrupt_flags[interrupt] = false;
         }
     }
 
     // pc related functions
     fn decode_byte(&mut self) -> u8 {
-        let ret = self.memory_map().read_byte(self.r.pc);
+        let ret = self.read_byte(self.r.pc);
         self.r.pc += 1;
         ret
     }
 
     fn decode_word(&mut self) -> u16 {
-        let ret = self.memory_map().read_word(self.r.pc);
+        let ret = self.read_word(self.r.pc);
         self.r.pc += 2;
         ret
     }
@@ -118,7 +176,7 @@ impl Cpu {
     // stack related functions
     fn push_byte(&mut self, val: u8) {
         let addr = self.r.sp as u16 + STACK_START;
-        self.memory_map_mut().write_byte(addr, val);
+        self.write_byte(addr, val);
         self.r.sp -= 1;
     }
 
@@ -129,7 +187,7 @@ impl Cpu {
 
     fn pop_byte(&mut self) -> u8 {
         self.r.sp += 1;
-        self.memory_map().read_byte(self.r.sp as u16 + STACK_START)
+        self.read_byte(self.r.sp as u16 + STACK_START)
     }
 
     fn pop_word(&mut self) -> u16 {
@@ -450,7 +508,7 @@ impl Cpu {
             _ => {
                 let (addr, page_crossing) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
                 Operand {
-                    val: self.memory_map().read_byte(addr),
+                    val: self.read_byte(addr),
                     addr: Some(addr),
                     page_crossing,
                 }
@@ -460,7 +518,7 @@ impl Cpu {
 
     fn write_operand(&mut self, operand: &mut Operand) {
         match operand.addr {
-            Some(addr) => self.memory_map_mut().write_byte(addr, operand.val),
+            Some(addr) => self.write_byte(addr, operand.val),
             None => self.r.a = operand.val,
         }
     }
@@ -471,7 +529,7 @@ impl Cpu {
         let res = self.r.x & self.r.a;
         // self.update_negative_flag(res);
         // self.update_zero_flag(res);
-        self.memory_map_mut().write_byte(addr, res);
+        self.write_byte(addr, res);
     }
 
     fn adc_impl(&mut self, operand: &Operand) {
@@ -965,19 +1023,19 @@ impl Cpu {
     fn sta(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         let res = self.r.a;
-        self.memory_map_mut().write_byte(addr, res);
+        self.write_byte(addr, res);
     }
 
     fn stx(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         let res = self.r.x;
-        self.memory_map_mut().write_byte(addr, res);
+        self.write_byte(addr, res);
     }
 
     fn sty(&mut self, addressing_mode: AddressingMode) {
         let (addr, _page_break) = ADDRESSING_MODE_TABLE[addressing_mode as usize](self);
         let res = self.r.y;
-        self.memory_map_mut().write_byte(addr, res);
+        self.write_byte(addr, res);
     }
 
     fn sre(&mut self, addressing_mode: AddressingMode) {
@@ -1083,25 +1141,25 @@ const ADDRESSING_MODE_TABLE: [fn(&mut Cpu) -> (u16, bool); 13] = [
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
         if addr & 0xFF == 0xFF {
-            let hi = (cpu.memory_map().read_byte(addr & 0xFF00) as u16) << 8;
-            let lo = cpu.memory_map().read_byte(addr) as u16;
+            let hi = (cpu.read_byte(addr & 0xFF00) as u16) << 8;
+            let lo = cpu.read_byte(addr) as u16;
             (hi | lo, false)
         } else {
-            (cpu.memory_map().read_word(addr), false)
+            (cpu.read_word(addr), false)
         }
     },
     |cpu: &mut Cpu| {
         let addr = (cpu.decode_byte()).wrapping_add(cpu.r.x) as u16;
         // read 2-byte address without carry
-        let hi = (cpu.memory_map().read_byte((addr + 1) & 0xFF) as u16) << 8;
-        let lo = cpu.memory_map().read_byte(addr) as u16;
+        let hi = (cpu.read_byte((addr + 1) & 0xFF) as u16) << 8;
+        let lo = cpu.read_byte(addr) as u16;
         (hi | lo, false)
     },
     |cpu: &mut Cpu| {
         let addr = cpu.decode_byte() as u16;
         // read 2-byte address without carry
-        let hi = (cpu.memory_map().read_byte((addr + 1) & 0xFF) as u16) << 8;
-        let lo = cpu.memory_map().read_byte(addr) as u16;
+        let hi = (cpu.read_byte((addr + 1) & 0xFF) as u16) << 8;
+        let lo = cpu.read_byte(addr) as u16;
         let addr = hi | lo;
 
         let ret = addr.wrapping_add(cpu.r.y as u16);

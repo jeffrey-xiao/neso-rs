@@ -36,10 +36,8 @@ impl Nes {
         let mapper = Rc::new(RefCell::new(mapper::from_cartridge(cartridge)));
         self.cpu
             .borrow_mut()
-            .attach_memory_map(cpu::MemoryMap::new(&self.ppu, &mapper));
-        self.ppu
-            .borrow_mut()
-            .attach_memory_map(ppu::MemoryMap::new(&mapper));
+            .attach_bus(cpu::Bus::new(&self.ppu, &mapper));
+        self.ppu.borrow_mut().attach_bus(ppu::Bus::new(&mapper));
         self.mapper = Some(mapper);
     }
 
@@ -60,31 +58,5 @@ mod tests {
         for i in 0..8991 {
             nes.execute_cycle();
         }
-
-        // for i in 0..10 {
-        //     let mut tile = [0; 64];
-
-        //     for index in 0..8 {
-        //         let byte = nes.ppu.borrow().memory_map().read_byte(index + i * 16);
-        //         for y in (0..8).rev() {
-        //             tile[index as usize * 8 + y] |= if byte & 1 << y != 0 { 1 } else { 0 };
-        //         }
-        //     }
-
-        //     for index in 0..8 {
-        //         let byte = nes.ppu.borrow().memory_map().read_byte(index + 8 + i * 16);
-        //         for y in (0..8).rev() {
-        //             tile[index as usize * 8 + y] |= if byte & 1 << y != 0 { 2 } else { 0 };
-        //         }
-        //     }
-
-        //     for row in 0..8 {
-        //         for col in 0..8 {
-        //             print!("{}", tile[row * 8 + col]);
-        //         }
-        //         println!("");
-        //     }
-        //     println!("");
-        // }
     }
 }

@@ -45,14 +45,14 @@ pub fn main() {
         let mut tile = [0; 64];
 
         for index in 0..8 {
-            let byte = nes.ppu.borrow().memory_map().read_byte(index + i * 16);
+            let byte = nes.ppu.borrow().read_byte(index + i * 16);
             for y in 0..8 {
                 tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 1 } else { 0 };
             }
         }
 
         for index in 0..8 {
-            let byte = nes.ppu.borrow().memory_map().read_byte(index + 8 + i * 16);
+            let byte = nes.ppu.borrow().read_byte(index + 8 + i * 16);
             for y in 0..8 {
                 tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 2 } else { 0 };
             }
@@ -63,7 +63,7 @@ pub fn main() {
 
     let offset = 0x2000;
     for i in offset..offset + 960 {
-        let index = nes.ppu.borrow().memory_map().read_byte(i);
+        let index = nes.ppu.borrow().read_byte(i);
 
         let mut texture = texture_creator
             .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
