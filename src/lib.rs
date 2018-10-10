@@ -2,12 +2,14 @@ extern crate cfg_if;
 extern crate js_sys;
 extern crate wasm_bindgen;
 
+mod bus;
 mod cartridge;
 pub mod cpu;
 mod mapper;
 mod ppu;
 mod utils;
 
+use bus::Bus;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use mapper::Mapper;
@@ -36,16 +38,18 @@ impl Nes {
         let mapper = Rc::new(RefCell::new(mapper::from_cartridge(cartridge)));
         self.cpu
             .borrow_mut()
-            .attach_bus(cpu::Bus::new(&self.ppu, &mapper));
-        self.ppu.borrow_mut().attach_bus(ppu::Bus::new(&mapper));
+            .attach_bus(Bus::new(&self.cpu, &self.ppu, &mapper));
+        self.ppu
+            .borrow_mut()
+            .attach_bus(Bus::new(&self.cpu, &self.ppu, &mapper));
         self.mapper = Some(mapper);
     }
 
     pub fn step(&mut self) {
         let cpu_cycles = self.cpu.borrow_mut().step();
-        for i in 0..3 * cpu_cycles {
-            self.ppu.borrow_mut().step();
-        }
+        // for i in 0..3 * cpu_cycles {
+        //     self.ppu.borrow_mut().step();
+        // }
     }
 }
 

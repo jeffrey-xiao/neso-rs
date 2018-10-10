@@ -1,8 +1,7 @@
-mod bus;
 mod registers;
 
-pub use self::bus::Bus;
 use self::registers::Registers;
+use bus::Bus;
 use std::mem;
 
 #[derive(Clone, Copy)]

@@ -1,8 +1,7 @@
-mod bus;
 mod registers;
 
-pub use self::bus::Bus;
 use self::registers::Registers;
+use bus::Bus;
 
 macro_rules! generate_instructions {
     (
@@ -183,9 +182,9 @@ impl Cpu {
                     let cpu_addr = (val as u16) << 8;
                     let ppu = self.bus().ppu.upgrade().unwrap();
                     for offset in 0..0xFF {
-                        let ppu_addr = ppu.borrow().r.ppu_addr as usize;
-                        ppu.borrow_mut().oam[ppu_addr] = self.read_byte(cpu_addr + offset);
-                        ppu.borrow_mut().r.ppu_addr += 1;
+                        let oam_addr = ppu.borrow().r.oam_addr as usize;
+                        ppu.borrow_mut().oam[oam_addr] = self.read_byte(cpu_addr + offset);
+                        ppu.borrow_mut().r.oam_addr += 1;
                     }
 
                     if self.cycle % 2 == 1 {
@@ -203,7 +202,6 @@ impl Cpu {
             _ => panic!("Invalid memory address: {:#6x}.", addr),
         }
     }
-
 
     fn execute_opcode(&mut self, opcode: u8) {
         generate_instructions!(self, opcode, {
