@@ -62,10 +62,10 @@ impl Cpu {
         self.reset()
     }
 
-    pub fn step(&mut self) -> u64 {
+    pub fn step(&mut self) {
         if self.stall_cycle > 0 {
             self.stall_cycle -= 1;
-            return 1;
+            return;
         }
 
         let start_cycle = self.cycle;
@@ -78,7 +78,7 @@ impl Cpu {
         let opcode = self.decode_byte();
         // print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
-        self.cycle - start_cycle
+        self.stall_cycle = self.cycle - start_cycle - 1;
     }
 
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {

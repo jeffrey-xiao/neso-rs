@@ -46,10 +46,8 @@ impl Nes {
     }
 
     pub fn step(&mut self) {
-        let cpu_cycles = self.cpu.borrow_mut().step();
-        // for i in 0..3 * cpu_cycles {
-        //     self.ppu.borrow_mut().step();
-        // }
+        self.ppu.borrow_mut().step();
+        self.cpu.borrow_mut().step();
     }
 }
 

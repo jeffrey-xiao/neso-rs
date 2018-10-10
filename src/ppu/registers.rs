@@ -1,4 +1,14 @@
 pub struct Registers {
+    pub high_tile_byte: u8,
+    pub low_tile_byte: u8,
+    pub nametable_byte: u8,
+    pub palette: u8,
+
+    pub v: u16, // 15 bits
+    pub t: u16, // 15 bits
+    pub x: u8,  //  3 bits
+    pub w: u8,  //  1 bit
+
     // PPUCTRL
     pub nametable_address: u16,
     pub vram_address_increment: u16,
@@ -30,14 +40,10 @@ pub struct Registers {
     pub scroll_x: u8,
     pub scroll_y: u8,
 
-    // PPUADDR
-    pub ppu_addr: u16,
-
     // PPUDATA
     pub buffer: u8,
 
     pub last_written_byte: u8,
-    pub address_latch: bool,
 }
 
 const NAMETABLE_ADDRESSES: [u16; 4] = [0x2000, 0x2400, 0x2800, 0x2C00];
@@ -45,6 +51,16 @@ impl Registers {
     // TODO: check if there are defaults
     pub fn new() -> Registers {
         Registers {
+            high_tile_byte: 0,
+            low_tile_byte: 0,
+            nametable_byte: 0,
+            palette: 0,
+
+            v: 0,
+            t: 0,
+            x: 0,
+            w: 0,
+
             // PPUCTRL
             nametable_address: 0,
             vram_address_increment: 0,
@@ -76,24 +92,20 @@ impl Registers {
             scroll_x: 0,
             scroll_y: 0,
 
-            // PPUADDR
-            ppu_addr: 0,
-
             // PPUDATA
             buffer: 0,
 
             last_written_byte: 0,
-            address_latch: false,
         }
     }
 
     pub fn read_ppu_status(&mut self) -> u8 {
-        self.address_latch = false;
         let mut ret = (self.last_written_byte & 0x1F)
             | if self.sprite_overflow { 0x20 } else { 0 }
             | if self.sprite_0_hit { 0x40 } else { 0 }
             | if self.v_blank_started { 0x80 } else { 0 };
         self.v_blank_started = false;
+        self.w = 0;
         ret
     }
 
@@ -105,6 +117,7 @@ impl Registers {
         self.sprite_size = if val & 0x20 != 0 { (8, 16) } else { (8, 8) };
         self.is_master = val & 0x40 != 0;
         self.nmi_enabled = val & 0x80 != 0;
+        self.t = (self.t & !0x0C00) | ((val as u16 & 0x03) << 10);
     }
 
     pub fn write_ppu_mask(&mut self, val: u8) {
