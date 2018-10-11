@@ -46,8 +46,15 @@ impl Nes {
     }
 
     pub fn step(&mut self) {
-        self.ppu.borrow_mut().step();
         self.cpu.borrow_mut().step();
+        self.ppu.borrow_mut().step();
+    }
+
+    pub fn step_frame(&mut self) {
+        let frame = self.ppu.borrow().frame;
+        while self.ppu.borrow().frame == frame {
+            self.step();
+        }
     }
 }
 
@@ -57,11 +64,12 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/nestest.nes").unwrap();
+        let buffer = fs::read("./tests/dk.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
-        for i in 0..8991 {
-            nes.step();
-        }
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
     }
 }

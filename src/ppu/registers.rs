@@ -3,6 +3,7 @@ pub struct Registers {
     pub low_tile_byte: u8,
     pub nametable_byte: u8,
     pub palette: u8,
+    pub tile: u64, // 16 4 bits of data describing a pixel
 
     pub v: u16, // 15 bits
     pub t: u16, // 15 bits
@@ -55,6 +56,7 @@ impl Registers {
             low_tile_byte: 0,
             nametable_byte: 0,
             palette: 0,
+            tile: 0,
 
             v: 0,
             t: 0,
@@ -99,8 +101,43 @@ impl Registers {
         }
     }
 
+    pub fn increment_scroll_x(&mut self) {
+        if (self.v & 0x001F) == 31 {
+            self.v &= !0x001F;
+            self.v ^= 0x0400;
+        } else {
+            self.v += 1;
+        }
+    }
+
+    pub fn increment_scroll_y(&mut self) {
+        if (self.v & 0x7000) != 0x7000 {
+            self.v += 0x1000;
+        } else {
+            self.v &= !0x7000;
+            let mut y = (self.v & 0x03E0) >> 5;
+            if y == 29 {
+                y = 0;
+                self.v ^= 0x0800;
+            } else if y == 31 {
+                y = 0;
+            } else {
+                y += 1;
+            }
+            self.v = (self.v & !0x03E0) | (y << 5);
+        }
+    }
+
+    pub fn copy_scroll_x(&mut self) {
+        self.v = (self.v & 0xFBE0) | (self.t & 0x041F)
+    }
+
+    pub fn copy_scroll_y(&mut self) {
+        self.v = (self.v & 0x841F) | (self.t & 0x7BE0)
+    }
+
     pub fn read_ppu_status(&mut self) -> u8 {
-        let mut ret = (self.last_written_byte & 0x1F)
+        let ret = (self.last_written_byte & 0x1F)
             | if self.sprite_overflow { 0x20 } else { 0 }
             | if self.sprite_0_hit { 0x40 } else { 0 }
             | if self.v_blank_started { 0x80 } else { 0 };

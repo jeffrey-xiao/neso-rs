@@ -36,6 +36,7 @@ impl Cartridge {
         let flags_7 = buffer[7];
         let flags_9 = buffer[9];
         let flags_10 = buffer[10];
+        println!("HERE {:x}", buffer[16]);
 
         buffer = buffer.split_at(16).1;
 

@@ -18,7 +18,8 @@ macro_rules! generate_instructions {
         match $opcode {
             $($(
                 $opcode_matcher => {
-                    // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, ($cpu.cycle * 3) % 341);
+                    let ppu = $cpu.bus().ppu();
+                    println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{} FR:{}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, ($cpu.cycle * 3) % 341, ppu.borrow().scanline, ppu.borrow().frame);
                     $cpu.cycle += $cycles;
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
@@ -71,35 +72,36 @@ impl Cpu {
         let start_cycle = self.cycle;
         // handle any interrupts
         for index in 0..self.interrupt_flags.len() {
-            self.handle_interrupt(index);
+            if self.interrupt_flags[index] {
+                self.handle_interrupt(index);
+                return;
+            }
         }
 
-        // print!("{:04X} ", self.r.pc);
+        print!("{:04X} ", self.r.pc);
         let opcode = self.decode_byte();
-        // print!("{:02X} ", opcode);
+        print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
-        self.stall_cycle = self.cycle - start_cycle - 1;
+        self.stall_cycle = (self.cycle - start_cycle) * 3 - 1;
     }
 
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
-            println!("TRIGGERED INTERRUPT");
+            // println!("TRIGGERED INTERRUPT");
             self.interrupt_flags[interrupt as usize] = true;
         }
     }
 
     pub fn handle_interrupt(&mut self, interrupt: usize) {
-        if self.interrupt_flags[interrupt] {
-            let val = self.r.pc;
-            self.push_word(val);
-            let val = self.r.p & 0x10;
-            self.push_byte(val);
-            self.r
-                .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
-            self.r.pc = self.read_word(INTERRUPT_HANDLERS[interrupt]);
-            self.interrupt_flags[interrupt] = false;
-        }
+        let val = self.r.pc;
+        self.push_word(val);
+        let val = self.r.p & 0x10;
+        self.push_byte(val);
+        self.r
+            .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
+        self.r.pc = self.read_word(INTERRUPT_HANDLERS[interrupt]);
+        self.interrupt_flags[interrupt] = false;
     }
 
     // pc related functions
@@ -179,6 +181,7 @@ impl Cpu {
             // TODO: Implement APU and IO maps
             0x4000..=0x4017 => {
                 if addr == 0x4014 {
+                    // println!("OAMDMA");
                     let cpu_addr = (val as u16) << 8;
                     let ppu = self.bus().ppu.upgrade().unwrap();
                     for offset in 0..0xFF {
@@ -971,6 +974,7 @@ impl Cpu {
     fn rti(&mut self, _addressing_mode: AddressingMode) {
         self.plp(AddressingMode::Implied);
         self.r.pc = self.pop_word();
+        // println!("RETURNING FROM INTERRUPT");
     }
 
     fn rts(&mut self, _addressing_mode: AddressingMode) {

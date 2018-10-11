@@ -13,16 +13,6 @@ pub fn main() {
     let buffer = fs::read("./tests/dk.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
-    for i in 0..30000 {
-        nes.step();
-    }
-    println!("DONE EXECUTING MAIN");
-
-    nes.cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
-
-    for i in 0..20000 {
-        nes.step();
-    }
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -37,6 +27,24 @@ pub fn main() {
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
 
+
+    let mut event_pump = sdl_context.event_pump().unwrap();
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
+
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
+                _ => {},
+            }
+        }
     canvas.clear();
 
     let mut pattern_table = Vec::with_capacity(512);
@@ -61,7 +69,7 @@ pub fn main() {
         pattern_table.push(tile);
     }
 
-    let offset = 0x2000;
+    let offset = 0x2400;
     for i in offset..offset + 960 {
         let index = nes.ppu.borrow().read_byte(i);
 
@@ -103,19 +111,6 @@ pub fn main() {
     }
 
     canvas.present();
-
-    let mut event_pump = sdl_context.event_pump().unwrap();
-
-    'running: loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'running,
-                _ => {},
-            }
-        }
     }
+
 }
