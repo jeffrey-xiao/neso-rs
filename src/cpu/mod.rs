@@ -18,8 +18,8 @@ macro_rules! generate_instructions {
         match $opcode {
             $($(
                 $opcode_matcher => {
-                    let ppu = $cpu.bus().ppu();
-                    println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{} FR:{}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, ($cpu.cycle * 3) % 341, ppu.borrow().scanline, ppu.borrow().frame);
+                    // let ppu = $cpu.bus().ppu();
+                    // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{} FR:{}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, ($cpu.cycle * 3) % 341, ppu.borrow().scanline, ppu.borrow().frame);
                     $cpu.cycle += $cycles;
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
@@ -78,9 +78,9 @@ impl Cpu {
             }
         }
 
-        print!("{:04X} ", self.r.pc);
+        // print!("{:04X} ", self.r.pc);
         let opcode = self.decode_byte();
-        print!("{:02X} ", opcode);
+        // print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
         self.stall_cycle = (self.cycle - start_cycle) * 3 - 1;
     }

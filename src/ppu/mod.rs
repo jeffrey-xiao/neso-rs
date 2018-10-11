@@ -136,13 +136,13 @@ impl Ppu {
             6 => self.r.last_written_byte,
             // PPUDATA
             7 => {
-                let mut ret = self.read_byte(self.r.v & 0x3FFF);
-                if (self.r.v & 0x3FFF) % 0x4000 < 0x3F00 {
+                let mut ret = self.read_byte(self.r.bus_address);
+                if self.r.bus_address < 0x3F00 {
                     mem::swap(&mut ret, &mut self.r.buffer);
                 } else {
-                    self.read_byte(self.r.v & 0x3FFF - 0x1000);
+                    self.read_byte(self.r.bus_address - 0x1000);
                 }
-                self.r.v += self.r.vram_address_increment;
+                self.r.bus_address += self.r.vram_address_increment;
                 ret
             },
             _ => panic!("Invalid ppu register index to read: {}.", index),
@@ -150,7 +150,7 @@ impl Ppu {
     }
 
     pub fn write_register(&mut self, index: usize, val: u8) {
-        print!("WRITE PPU REGISTER {} {:08b}; ", index, val);
+        // print!("WRITE PPU REGISTER {} {:08b}; ", index, val);
         self.r.last_written_byte = val;
         match index {
             // PPUCTRL
@@ -168,6 +168,7 @@ impl Ppu {
             },
             // PPUSCROLL
             5 => {
+                println!("PPUSCROLL WRITE");
                 if self.r.w == 0 {
                     self.r.t = (self.r.t & !0x001F) | (val as u16 >> 3);
                     self.r.x = val & 0x07;
@@ -181,21 +182,23 @@ impl Ppu {
             },
             // PPUADDR
             6 => {
+                println!("PPUADDR WRITE");
                 if self.r.w == 0 {
                     self.r.t = (self.r.t & !0x7F00) | ((val as u16 & 0x3F) << 8);
                     self.r.w = 1;
                 } else {
                     self.r.t = (self.r.t & !0x00FF) | val as u16;
                     self.r.v = self.r.t;
+                    self.r.bus_address = self.r.t & 0x3FFF;
                     self.r.w = 0;
                 }
             },
             // PPUDATA
             7 => {
-                let addr = self.r.v & 0x3FFF;
+                let addr = self.r.bus_address;
                 // println!("WRITE TO ADDR {:x}", addr);
                 self.write_byte(addr, val);
-                self.r.v += self.r.vram_address_increment;
+                self.r.bus_address += self.r.vram_address_increment;
             },
             _ => panic!("Invalid ppu register index to write: {}.", index),
         }
@@ -247,6 +250,7 @@ impl Ppu {
         }
 
         self.image[self.image_index] = PALETTE[self.read_byte(0x3F00 + background_pixel) as usize];
+        // print!("{} {:x} --- ", self.image_index, self.image[self.image_index]);
         self.image_index += 1;
     }
 
@@ -272,12 +276,10 @@ impl Ppu {
             }
 
             if self.scanline == -1 && 280 <= self.cycle && self.cycle <= 304 {
-                assert!(!self.r.v_blank_started);
                 self.r.copy_scroll_y();
             }
 
             if self.cycle == 257 {
-                assert!(!self.r.v_blank_started);
                 self.r.copy_scroll_x();
             }
 
@@ -290,14 +292,17 @@ impl Ppu {
                     7 => self.fetch_tile_byte(true),
                     0 => {
                         self.load_tile();
-                        if !self.r.v_blank_started {
                         if self.cycle == 256 {
-                            assert!(!self.r.v_blank_started);
+                        let fine = self.r.v >> 12;
+                        let coarse = ((self.r.v >> 5) & 0b11111) << 3;
+                        println!("{}, {}: {} {}, {}", self.scanline, self.cycle, fine | coarse, self.r.v & 0b11111, self.r.v);
                             self.r.increment_scroll_y();
+                        let fine = self.r.v >> 12;
+                        let coarse = ((self.r.v >> 5) & 0b11111) << 3;
+                        println!("{}, {}: {} {}, {}", self.scanline, self.cycle, fine | coarse, self.r.v & 0b11111, self.r.v);
                         } else {
                             assert!(!self.r.v_blank_started);
                             self.r.increment_scroll_x();
-                        }
                         }
                     }
                     _ => {},

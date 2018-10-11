@@ -3,6 +3,8 @@ extern crate sdl2;
 
 use nes_wasm::cpu::Interrupt;
 use nes_wasm::Nes;
+use std::thread;
+use std::time::Duration;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
@@ -28,25 +30,7 @@ pub fn main() {
     let texture_creator = canvas.texture_creator();
 
 
-    let mut event_pump = sdl_context.event_pump().unwrap();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-
-    'running: loop {
-        for event in event_pump.poll_iter() {
-            match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
-                    keycode: Some(Keycode::Escape),
-                    ..
-                } => break 'running,
-                _ => {},
-            }
-        }
-    canvas.clear();
-
+    /*
     let mut pattern_table = Vec::with_capacity(512);
 
     for i in 0..512 {
@@ -69,9 +53,28 @@ pub fn main() {
         pattern_table.push(tile);
     }
 
-    let offset = 0x2400;
-    for i in offset..offset + 960 {
-        let index = nes.ppu.borrow().read_byte(i);
+    */
+
+    canvas.present();
+    nes.step_frame();
+    nes.step_frame();
+    nes.step_frame();
+    nes.step_frame();
+    nes.step_frame();
+
+    let mut event_pump = sdl_context.event_pump().unwrap();
+
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit { .. }
+                | Event::KeyDown {
+                    keycode: Some(Keycode::Escape),
+                    ..
+                } => break 'running,
+                _ => {},
+            }
+        }
 
         let mut texture = texture_creator
             .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
@@ -79,38 +82,36 @@ pub fn main() {
 
         texture
             .with_lock(None, |buffer: &mut [u8], pitch: usize| {
-                for y in 0..8 {
-                    for x in 0..8 {
+                for y in 0..240 {
+                    for x in 0..256 {
                         let offset = y * pitch + x * 3;
-                        let val = match pattern_table[index as usize + 256][y * 8 + x] {
-                            0 => 255,
-                            1 => 200,
-                            2 => 150,
-                            3 => 100,
-                            _ => panic!("ERROR"),
-                        };
-                        buffer[offset] = val;
-                        buffer[offset + 1] = val;
-                        buffer[offset + 2] = val;
+                        buffer[offset] = (nes.ppu.borrow().image[y * 256 + x] >> 4) as u8;
+                        buffer[offset + 1] = ((nes.ppu.borrow().image[y * 256 + x] >> 2) & 0xFF) as u8;
+                        buffer[offset + 2] = (nes.ppu.borrow().image[y * 256 + x] & 0xFF) as u8;
                     }
                 }
             })
             .unwrap();
+
+        canvas.clear();
         canvas
             .copy(
                 &texture,
                 None,
                 Some(Rect::new(
-                    (i - offset) as i32 % 32 * 8 * 2,
-                    (i - offset) as i32 / 32 * 8 * 2,
-                    256 * 2,
-                    256 * 2,
+                    0,
+                    0,
+                    240,
+                    256,
                 )),
             )
             .unwrap();
+        canvas.present();
+        let offset = 0x2000;
+        // for i in offset..offset + 960 {
+        //     let index = nes.ppu.borrow().read_byte(i);
+        //     print!("{} ", index);
+        // }
+        thread::sleep(Duration::from_millis(1));
     }
-
-    canvas.present();
-    }
-
 }

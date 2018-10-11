@@ -42,6 +42,7 @@ pub struct Registers {
     pub scroll_y: u8,
 
     // PPUDATA
+    pub bus_address: u16,
     pub buffer: u8,
 
     pub last_written_byte: u8,
@@ -95,6 +96,7 @@ impl Registers {
             scroll_y: 0,
 
             // PPUDATA
+            bus_address: 0,
             buffer: 0,
 
             last_written_byte: 0,
@@ -116,6 +118,7 @@ impl Registers {
         } else {
             self.v &= !0x7000;
             let mut y = (self.v & 0x03E0) >> 5;
+            println!("{}", y);
             if y == 29 {
                 y = 0;
                 self.v ^= 0x0800;
@@ -124,6 +127,7 @@ impl Registers {
             } else {
                 y += 1;
             }
+            println!("{}", y);
             self.v = (self.v & !0x03E0) | (y << 5);
         }
     }
