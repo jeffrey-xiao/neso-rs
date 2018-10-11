@@ -212,7 +212,7 @@ impl Ppu {
         let coarse_y = self.r.v >> 7;
         let addr = 0x23C0 | (self.r.v & 0x0C00) | (coarse_x & 0x07) | ((coarse_y & 0x07) << 3);
         let attribute_table_byte = self.read_byte(addr);
-        let offset = coarse_x & 0x02 + ((coarse_y & 0x02) << 1);
+        let offset = (self.r.v & 0x02) | ((self.r.v & 0x40) >> 4);
         self.r.palette = (attribute_table_byte >> offset) & 0x03;
     }
 

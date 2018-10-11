@@ -63,12 +63,15 @@ pub fn main() {
             })
             .unwrap();
         nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
 
         canvas.clear();
         canvas
             .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
             .unwrap();
         canvas.present();
-        thread::sleep(Duration::from_millis(1));
     }
 }
