@@ -118,7 +118,6 @@ impl Registers {
         } else {
             self.v &= !0x7000;
             let mut y = (self.v & 0x03E0) >> 5;
-            println!("{}", y);
             if y == 29 {
                 y = 0;
                 self.v ^= 0x0800;
@@ -127,7 +126,6 @@ impl Registers {
             } else {
                 y += 1;
             }
-            println!("{}", y);
             self.v = (self.v & !0x03E0) | (y << 5);
         }
     }

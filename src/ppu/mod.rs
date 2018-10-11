@@ -1,8 +1,8 @@
 mod registers;
 
 use self::registers::Registers;
-use cpu::Interrupt;
 use bus::Bus;
+use cpu::Interrupt;
 use std::mem;
 
 const SCREEN_WIDTH: usize = 256;
@@ -10,14 +10,14 @@ const SCREEN_HEIGHT: usize = 240;
 
 // http://www.thealmightyguru.com/Games/Hacking/Wiki/index.php/NES_Palette
 const PALETTE: [u32; 64] = [
-    0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400,
-    0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000,
-    0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10,
-    0xAC7C00, 0x00B800, 0x00A800, 0x00A844, 0x008888, 0x000000, 0x000000, 0x000000,
-    0xF8F8F8, 0x3CBCFC, 0x6888FC, 0x9878F8, 0xF878F8, 0xF85898, 0xF87858, 0xFCA044,
-    0xF8B800, 0xB8F818, 0x58D854, 0x58F898, 0x00E8D8, 0x787878, 0x000000, 0x000000,
-    0xFCFCFC, 0xA4E4FC, 0xB8B8F8, 0xD8B8F8, 0xF8B8F8, 0xF8A4C0, 0xF0D0B0, 0xFCE0A8,
-    0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000,
+    0x7C7C7C, 0x0000FC, 0x0000BC, 0x4428BC, 0x940084, 0xA80020, 0xA81000, 0x881400, //
+    0x503000, 0x007800, 0x006800, 0x005800, 0x004058, 0x000000, 0x000000, 0x000000, //
+    0xBCBCBC, 0x0078F8, 0x0058F8, 0x6844FC, 0xD800CC, 0xE40058, 0xF83800, 0xE45C10, //
+    0xAC7C00, 0x00B800, 0x00A800, 0x00A844, 0x008888, 0x000000, 0x000000, 0x000000, //
+    0xF8F8F8, 0x3CBCFC, 0x6888FC, 0x9878F8, 0xF878F8, 0xF85898, 0xF87858, 0xFCA044, //
+    0xF8B800, 0xB8F818, 0x58D854, 0x58F898, 0x00E8D8, 0x787878, 0x000000, 0x000000, //
+    0xFCFCFC, 0xA4E4FC, 0xB8B8F8, 0xD8B8F8, 0xF8B8F8, 0xF8A4C0, 0xF0D0B0, 0xFCE0A8, //
+    0xF8D878, 0xD8F878, 0xB8F8B8, 0xB8F8D8, 0x00FCFC, 0xF8D8F8, 0x000000, 0x000000, //
 ];
 
 #[derive(Clone, Copy)]
@@ -193,8 +193,8 @@ impl Ppu {
             },
             // PPUDATA
             7 => {
-                let addr = self.r.bus_address;
                 // println!("WRITE TO ADDR {:x}", addr);
+                let addr = self.r.bus_address;
                 self.write_byte(addr, val);
                 self.r.bus_address += self.r.vram_address_increment;
             },
@@ -208,15 +208,12 @@ impl Ppu {
     }
 
     fn fetch_attribute_table_byte(&mut self) {
-        // let coarse_x = self.r.v >> 2;
-        // let coarse_y = self.r.v >> 7;
-        // let addr = 0x23C0 | (self.r.v & 0x0C00) | (coarse_x & 0x07) | ((coarse_y & 0x07) << 3);
-        // let attribute_table_byte = self.read_byte(addr);
-        // let offset = coarse_x & 0x02 + ((coarse_y & 0x02) << 1);
-        // self.r.palette = (attribute_table_byte >> offset) & 0x03;
-        let addr = 0x23C0 | (self.r.v & 0x0C00) | ((self.r.v >> 4) & 0x38) | ((self.r.v >> 2) & 0x07);
-        let shift = ((self.r.v >> 4) & 4) | (self.r.v & 2);
-        self.r.palette = ((self.read_byte(addr) >> shift) & 3);
+        let coarse_x = self.r.v >> 2;
+        let coarse_y = self.r.v >> 7;
+        let addr = 0x23C0 | (self.r.v & 0x0C00) | (coarse_x & 0x07) | ((coarse_y & 0x07) << 3);
+        let attribute_table_byte = self.read_byte(addr);
+        let offset = coarse_x & 0x02 + ((coarse_y & 0x02) << 1);
+        self.r.palette = (attribute_table_byte >> offset) & 0x03;
     }
 
     fn fetch_tile_byte(&mut self, high: bool) {
@@ -233,8 +230,8 @@ impl Ppu {
     fn load_tile(&mut self) {
         let mut curr_tile = 0;
         for _ in 0..8 {
-            let color = ((self.r.high_tile_byte >> 6) & 0x02)
-                | ((self.r.low_tile_byte >> 7) & 0x01);
+            let color =
+                ((self.r.high_tile_byte >> 6) & 0x02) | ((self.r.low_tile_byte >> 7) & 0x01);
             self.r.high_tile_byte <<= 1;
             self.r.low_tile_byte <<= 1;
             curr_tile <<= 4;
@@ -297,11 +294,10 @@ impl Ppu {
                         } else {
                             self.r.increment_scroll_x();
                         }
-                    }
+                    },
                     _ => {},
                 }
             }
-
         }
 
         if self.scanline == 241 && self.cycle == 1 {

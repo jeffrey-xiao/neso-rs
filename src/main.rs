@@ -3,13 +3,13 @@ extern crate sdl2;
 
 use nes_wasm::cpu::Interrupt;
 use nes_wasm::Nes;
-use std::thread;
-use std::time::Duration;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use std::fs;
+use std::thread;
+use std::time::Duration;
 
 pub fn main() {
     let buffer = fs::read("./tests/dk.nes").unwrap();
@@ -29,41 +29,7 @@ pub fn main() {
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
 
-
-    /*
-    let mut pattern_table = Vec::with_capacity(512);
-
-    for i in 0..512 {
-        let mut tile = [0; 64];
-
-        for index in 0..8 {
-            let byte = nes.ppu.borrow().read_byte(index + i * 16);
-            for y in 0..8 {
-                tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 1 } else { 0 };
-            }
-        }
-
-        for index in 0..8 {
-            let byte = nes.ppu.borrow().read_byte(index + 8 + i * 16);
-            for y in 0..8 {
-                tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 2 } else { 0 };
-            }
-        }
-
-        pattern_table.push(tile);
-    }
-
-    */
-
     canvas.present();
-    nes.step_frame();
-    nes.step_frame();
-    nes.step_frame();
-    nes.step_frame();
-    nes.step_frame();
-    for i in 0x3f00..0x3f0f {
-        println!(" HERE {}", nes.ppu.borrow_mut().read_byte(i));
-    }
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -89,32 +55,20 @@ pub fn main() {
                     for x in 0..256 {
                         let offset = y * pitch + x * 3;
                         buffer[offset] = (nes.ppu.borrow().image[y * 256 + x] >> 16) as u8;
-                        buffer[offset + 1] = ((nes.ppu.borrow().image[y * 256 + x] >> 8) & 0xFF) as u8;
+                        buffer[offset + 1] =
+                            ((nes.ppu.borrow().image[y * 256 + x] >> 8) & 0xFF) as u8;
                         buffer[offset + 2] = (nes.ppu.borrow().image[y * 256 + x] & 0xFF) as u8;
                     }
                 }
             })
             .unwrap();
+        nes.step_frame();
 
         canvas.clear();
         canvas
-            .copy(
-                &texture,
-                None,
-                Some(Rect::new(
-                    0,
-                    0,
-                    240 * 2,
-                    256 * 2,
-                )),
-            )
+            .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
             .unwrap();
         canvas.present();
-        let offset = 0x2000;
-        // for i in offset..offset + 960 {
-        //     let index = nes.ppu.borrow().read_byte(i);
-        //     print!("{} ", index);
-        // }
         thread::sleep(Duration::from_millis(1));
     }
 }
