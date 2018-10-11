@@ -61,6 +61,9 @@ pub fn main() {
     nes.step_frame();
     nes.step_frame();
     nes.step_frame();
+    for i in 0x3f00..0x3f0f {
+        println!(" HERE {}", nes.ppu.borrow_mut().read_byte(i));
+    }
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
@@ -85,8 +88,8 @@ pub fn main() {
                 for y in 0..240 {
                     for x in 0..256 {
                         let offset = y * pitch + x * 3;
-                        buffer[offset] = (nes.ppu.borrow().image[y * 256 + x] >> 4) as u8;
-                        buffer[offset + 1] = ((nes.ppu.borrow().image[y * 256 + x] >> 2) & 0xFF) as u8;
+                        buffer[offset] = (nes.ppu.borrow().image[y * 256 + x] >> 16) as u8;
+                        buffer[offset + 1] = ((nes.ppu.borrow().image[y * 256 + x] >> 8) & 0xFF) as u8;
                         buffer[offset + 2] = (nes.ppu.borrow().image[y * 256 + x] & 0xFF) as u8;
                     }
                 }
@@ -101,8 +104,8 @@ pub fn main() {
                 Some(Rect::new(
                     0,
                     0,
-                    240,
-                    256,
+                    240 * 2,
+                    256 * 2,
                 )),
             )
             .unwrap();

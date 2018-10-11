@@ -71,5 +71,8 @@ mod tests {
         nes.step_frame();
         nes.step_frame();
         nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
     }
 }

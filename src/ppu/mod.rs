@@ -168,7 +168,6 @@ impl Ppu {
             },
             // PPUSCROLL
             5 => {
-                println!("PPUSCROLL WRITE");
                 if self.r.w == 0 {
                     self.r.t = (self.r.t & !0x001F) | (val as u16 >> 3);
                     self.r.x = val & 0x07;
@@ -182,7 +181,6 @@ impl Ppu {
             },
             // PPUADDR
             6 => {
-                println!("PPUADDR WRITE");
                 if self.r.w == 0 {
                     self.r.t = (self.r.t & !0x7F00) | ((val as u16 & 0x3F) << 8);
                     self.r.w = 1;
@@ -210,12 +208,15 @@ impl Ppu {
     }
 
     fn fetch_attribute_table_byte(&mut self) {
-        let coarse_x = self.r.v >> 2;
-        let coarse_y = self.r.v >> 7;
-        let addr = 0x23C0 | (self.r.v & 0x0C00) | (coarse_x & 0x07) | ((coarse_y & 0x07) << 3);
-        let attribute_table_byte = self.read_byte(addr);
-        let offset = coarse_x & 0x02 + ((coarse_y & 0x02) << 1);
-        self.r.palette = (attribute_table_byte >> offset) & 0x03;
+        // let coarse_x = self.r.v >> 2;
+        // let coarse_y = self.r.v >> 7;
+        // let addr = 0x23C0 | (self.r.v & 0x0C00) | (coarse_x & 0x07) | ((coarse_y & 0x07) << 3);
+        // let attribute_table_byte = self.read_byte(addr);
+        // let offset = coarse_x & 0x02 + ((coarse_y & 0x02) << 1);
+        // self.r.palette = (attribute_table_byte >> offset) & 0x03;
+        let addr = 0x23C0 | (self.r.v & 0x0C00) | ((self.r.v >> 4) & 0x38) | ((self.r.v >> 2) & 0x07);
+        let shift = ((self.r.v >> 4) & 4) | (self.r.v & 2);
+        self.r.palette = ((self.read_byte(addr) >> shift) & 3);
     }
 
     fn fetch_tile_byte(&mut self, high: bool) {
@@ -250,7 +251,6 @@ impl Ppu {
         }
 
         self.image[self.image_index] = PALETTE[self.read_byte(0x3F00 + background_pixel) as usize];
-        // print!("{} {:x} --- ", self.image_index, self.image[self.image_index]);
         self.image_index += 1;
     }
 
@@ -293,15 +293,8 @@ impl Ppu {
                     0 => {
                         self.load_tile();
                         if self.cycle == 256 {
-                        let fine = self.r.v >> 12;
-                        let coarse = ((self.r.v >> 5) & 0b11111) << 3;
-                        println!("{}, {}: {} {}, {}", self.scanline, self.cycle, fine | coarse, self.r.v & 0b11111, self.r.v);
                             self.r.increment_scroll_y();
-                        let fine = self.r.v >> 12;
-                        let coarse = ((self.r.v >> 5) & 0b11111) << 3;
-                        println!("{}, {}: {} {}, {}", self.scanline, self.cycle, fine | coarse, self.r.v & 0b11111, self.r.v);
                         } else {
-                            assert!(!self.r.v_blank_started);
                             self.r.increment_scroll_x();
                         }
                     }
