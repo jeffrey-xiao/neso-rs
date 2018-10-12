@@ -19,7 +19,7 @@ macro_rules! generate_instructions {
             $($(
                 $opcode_matcher => {
                     // let ppu = $cpu.bus().ppu();
-                    // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{} FR:{}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, ($cpu.cycle * 3) % 341, ppu.borrow().scanline, ppu.borrow().frame);
+                    // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", $cpu.r.a, $cpu.r.x, $cpu.r.y, $cpu.r.p, $cpu.r.sp, ($cpu.cycle * 3) % 341, ppu.borrow().scanline);
                     $cpu.cycle += $cycles;
                     $cpu.$instruction_fn(AddressingMode::$addressing_mode);
                 }
@@ -184,7 +184,7 @@ impl Cpu {
                     // println!("OAMDMA");
                     let cpu_addr = (val as u16) << 8;
                     let ppu = self.bus().ppu.upgrade().unwrap();
-                    for offset in 0..0xFF {
+                    for offset in 0..=0xFF {
                         let oam_addr = ppu.borrow().r.oam_addr as usize;
                         ppu.borrow_mut().primary_oam[oam_addr] = self.read_byte(cpu_addr + offset);
                         ppu.borrow_mut().r.oam_addr += 1;

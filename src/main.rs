@@ -17,11 +17,6 @@ pub fn main() {
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
-    for i in 0..500 {
-        println!("{}", i);
-        nes.step_frame();
-    }
-
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -59,7 +54,7 @@ pub fn main() {
             .with_lock(None, |buffer: &mut [u8], pitch: usize| {
                 unsafe {
                     let ppu = nes.ppu.borrow();
-                    println!("{}", ppu.frame);
+                    // println!("{}", ppu.frame);
                     ptr::copy_nonoverlapping(ppu.image.as_ptr(), buffer.as_mut_ptr(), 256 * 240 * 3);
                 }
             })

@@ -239,9 +239,9 @@ impl Ppu {
                 break;
             }
 
-            // if !(sprite_x <= x && x < sprite_x + 8) {
-            //     continue;
-            // }
+            if !(sprite_x <= x && x < sprite_x + 8) || (x < 8 && !self.r.show_left_sprites) {
+                continue;
+            }
 
             if !(1 <= sprite_y && sprite_y <= 239) {
                 continue;
@@ -285,7 +285,7 @@ impl Ppu {
 
     fn draw_pixel(&mut self) {
         let background_pixel = self.compute_background_pixel() as u16;
-        let sprite_pixel = self.compute_sprite_pixel() as u16;
+         let sprite_pixel = self.compute_sprite_pixel() as u16;
 
         let color;
         if sprite_pixel & 0x03 != 0 {
@@ -355,22 +355,21 @@ impl Ppu {
             }
 
             // sprite pipeline
-            // TODO: make fetches cycle accurate
+            // TODO: make fetches cycle accurate, add sprite data
             // if sprite_clear_cycle && self.cycle & 0x01 != 0 {
             //     self.secondary_oam[self.cycle as usize / 2] = 0xFF;
             // }
-
-            if self.cycle == 65 {
+            
+            if self.cycle == 257 {
                 for i in 0..0x20 {
                     self.secondary_oam[i] = 0;
                 }
-
                 let mut secondary_oam_index = 0;
                 for i in 0..64 {
                     let y = self.primary_oam[i * 4] as i16;
-                    let lo = self.scanline - self.r.sprite_size.1 as i16;
-                    let hi = self.scanline - 1;
-                    if !(lo <= y && y <= hi) {
+                    let lo = y;
+                    let hi = y + self.r.sprite_size.1 as i16 - 1;
+                    if !(lo <= self.scanline + 1 && self.scanline + 1 <= hi) {
                         continue;
                     }
 
@@ -384,11 +383,18 @@ impl Ppu {
                         self.r.sprite_overflow = true;
                     }
                 }
+
+                if secondary_oam_index > 0 {
+                    for i in 0..64 {
+                        println!("{} {}", self.primary_oam[i * 4 + 0], self.primary_oam[i * 4 + 3]);
+                    }
+                    println!();
+                }
             }
         }
 
         if self.scanline == 241 && self.cycle == 1 {
-            println!("V BLANK ON");
+            // println!("V BLANK ON");
             self.r.v_blank_started = true;
             if self.r.nmi_enabled {
                 let cpu = self.bus().cpu();
@@ -398,7 +404,7 @@ impl Ppu {
 
         if self.scanline == -1 && self.cycle == 1 {
             self.r.v_blank_started = false;
-            println!("V BLANK OFF");
+            // println!("V BLANK OFF");
         }
     }
 }

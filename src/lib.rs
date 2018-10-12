@@ -64,7 +64,7 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/dk.nes").unwrap();
+        let buffer = fs::read("./tests/branch_Basics.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
         nes.step_frame();
