@@ -2,6 +2,7 @@ extern crate nes_wasm;
 extern crate sdl2;
 
 use nes_wasm::cpu::Interrupt;
+use std::ptr;
 use nes_wasm::Nes;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -15,6 +16,11 @@ pub fn main() {
     let buffer = fs::read("./tests/dk.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
+
+    for i in 0..500 {
+        println!("{}", i);
+        nes.step_frame();
+    }
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -51,21 +57,13 @@ pub fn main() {
 
         texture
             .with_lock(None, |buffer: &mut [u8], pitch: usize| {
-                for y in 0..240 {
-                    for x in 0..256 {
-                        let offset = y * pitch + x * 3;
-                        buffer[offset] = (nes.ppu.borrow().image[y * 256 + x] >> 16) as u8;
-                        buffer[offset + 1] =
-                            ((nes.ppu.borrow().image[y * 256 + x] >> 8) & 0xFF) as u8;
-                        buffer[offset + 2] = (nes.ppu.borrow().image[y * 256 + x] & 0xFF) as u8;
-                    }
+                unsafe {
+                    let ppu = nes.ppu.borrow();
+                    println!("{}", ppu.frame);
+                    ptr::copy_nonoverlapping(ppu.image.as_ptr(), buffer.as_mut_ptr(), 256 * 240 * 3);
                 }
             })
             .unwrap();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
         nes.step_frame();
 
         canvas.clear();

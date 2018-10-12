@@ -36,7 +36,7 @@ const MIRRORING_MODE_TABLE: [usize; 12] = [
 pub struct Ppu {
     pub r: Registers,
     pub image_index: usize,
-    pub image: [u32; SCREEN_WIDTH * SCREEN_HEIGHT],
+    pub image: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
     pub primary_oam: [u8; 0x100],
     pub secondary_oam: [u8; 0x20],
     pub vram: [u8; 0x2000],
@@ -52,7 +52,7 @@ impl Ppu {
         Ppu {
             r: Registers::new(),
             image_index: 0,
-            image: [0; SCREEN_WIDTH * SCREEN_HEIGHT],
+            image: [0; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
             primary_oam: [0; 0x100],
             secondary_oam: [0; 0x20],
             vram: [0; 0x2000],
@@ -169,30 +169,9 @@ impl Ppu {
                 self.r.oam_addr += 1;
             },
             // PPUSCROLL
-            5 => {
-                if self.r.w == 0 {
-                    self.r.t = (self.r.t & !0x001F) | (val as u16 >> 3);
-                    self.r.x = val & 0x07;
-                    self.r.w = 1;
-                } else {
-                    self.r.t = (self.r.t & !0x73E0)
-                        | ((val as u16 & 0x07) << 12)
-                        | ((val as u16 & 0xF8) << 2);
-                    self.r.w = 0;
-                }
-            },
+            5 => self.r.write_ppu_scroll(val),
             // PPUADDR
-            6 => {
-                if self.r.w == 0 {
-                    self.r.t = (self.r.t & !0x7F00) | ((val as u16 & 0x3F) << 8);
-                    self.r.w = 1;
-                } else {
-                    self.r.t = (self.r.t & !0x00FF) | val as u16;
-                    self.r.v = self.r.t;
-                    self.r.bus_address = self.r.t & 0x3FFF;
-                    self.r.w = 0;
-                }
-            },
+            6 => self.r.write_ppu_addr(val),
             // PPUDATA
             7 => {
                 // println!("WRITE TO ADDR {:x}", addr);
@@ -260,16 +239,16 @@ impl Ppu {
                 break;
             }
 
-            if !(sprite_x <= x && x < sprite_x + 8) {
-                continue;
-            }
+            // if !(sprite_x <= x && x < sprite_x + 8) {
+            //     continue;
+            // }
 
             if !(1 <= sprite_y && sprite_y <= 239) {
                 continue;
             }
 
             let mut py = y - sprite_y;
-            let mut px = x - sprite_x;
+            let mut px = 7 - (x - sprite_x);
             let mut nametable_address = self.r.sprite_pattern_table_address;
 
             if attributes & 0x40 != 0 {
@@ -308,16 +287,19 @@ impl Ppu {
         let background_pixel = self.compute_background_pixel() as u16;
         let sprite_pixel = self.compute_sprite_pixel() as u16;
 
+        let color;
         if sprite_pixel & 0x03 != 0 {
-            self.image[self.image_index] = PALETTE[self.read_byte(0x3F00 + sprite_pixel) as usize];
-            self.image_index += 1;
+            color = PALETTE[self.read_byte(0x3F10 + sprite_pixel) as usize];
         } else if background_pixel & 0x03 != 0 {
-            self.image[self.image_index] = PALETTE[self.read_byte(0x3F00 + background_pixel) as usize];
-            self.image_index += 1;
+            color = PALETTE[self.read_byte(0x3F00 + background_pixel) as usize];
         } else {
-            self.image[self.image_index] = PALETTE[self.read_byte(0x3F00) as usize];
-            self.image_index += 1;
+            color = PALETTE[self.read_byte(0x3F00) as usize];
         }
+
+        self.image[self.image_index] = ((color >> 16) & 0xFF) as u8;
+        self.image[self.image_index + 1] = ((color >> 8) & 0xFF) as u8;
+        self.image[self.image_index + 2] = ((color >> 0) & 0xFF) as u8;
+        self.image_index += 3;
     }
 
     pub fn step(&mut self) {
@@ -373,12 +355,16 @@ impl Ppu {
             }
 
             // sprite pipeline
-            if sprite_clear_cycle && self.cycle & 0x01 != 0 {
-                self.secondary_oam[self.cycle as usize / 2] = 0xFF;
-            }
-
             // TODO: make fetches cycle accurate
+            // if sprite_clear_cycle && self.cycle & 0x01 != 0 {
+            //     self.secondary_oam[self.cycle as usize / 2] = 0xFF;
+            // }
+
             if self.cycle == 65 {
+                for i in 0..0x20 {
+                    self.secondary_oam[i] = 0;
+                }
+
                 let mut secondary_oam_index = 0;
                 for i in 0..64 {
                     let y = self.primary_oam[i * 4] as i16;

@@ -169,4 +169,29 @@ impl Registers {
         self.emphasize_green = val & 0x40 != 0;
         self.emphasize_blue = val & 0x80 != 0;
     }
+
+    pub fn write_ppu_scroll(&mut self, val: u8) {
+        if self.w == 0 {
+            self.t = (self.t & !0x001F) | (val as u16 >> 3);
+            self.x = val & 0x07;
+            self.w = 1;
+        } else {
+            self.t = (self.t & !0x73E0)
+                | ((val as u16 & 0x07) << 12)
+                | ((val as u16 & 0xF8) << 2);
+            self.w = 0;
+        }
+    }
+
+    pub fn write_ppu_addr(&mut self, val: u8) {
+        if self.w == 0 {
+            self.t = (self.t & !0x7F00) | ((val as u16 & 0x3F) << 8);
+            self.w = 1;
+        } else {
+            self.t = (self.t & !0x00FF) | val as u16;
+            self.v = self.t;
+            self.bus_address = self.t & 0x3FFF;
+            self.w = 0;
+        }
+    }
 }
