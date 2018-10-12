@@ -186,7 +186,7 @@ impl Cpu {
                     let ppu = self.bus().ppu.upgrade().unwrap();
                     for offset in 0..0xFF {
                         let oam_addr = ppu.borrow().r.oam_addr as usize;
-                        ppu.borrow_mut().oam[oam_addr] = self.read_byte(cpu_addr + offset);
+                        ppu.borrow_mut().primary_oam[oam_addr] = self.read_byte(cpu_addr + offset);
                         ppu.borrow_mut().r.oam_addr += 1;
                     }
 

@@ -37,7 +37,8 @@ pub struct Ppu {
     pub r: Registers,
     pub image_index: usize,
     pub image: [u32; SCREEN_WIDTH * SCREEN_HEIGHT],
-    pub oam: [u8; 0x100],
+    pub primary_oam: [u8; 0x100],
+    pub secondary_oam: [u8; 0x20],
     pub vram: [u8; 0x2000],
     pub palette_ram: [u8; 0x20],
     pub cycle: u16,    // [0, 340]
@@ -52,7 +53,8 @@ impl Ppu {
             r: Registers::new(),
             image_index: 0,
             image: [0; SCREEN_WIDTH * SCREEN_HEIGHT],
-            oam: [0; 0x100],
+            primary_oam: [0; 0x100],
+            secondary_oam: [0; 0x20],
             vram: [0; 0x2000],
             palette_ram: [0; 0x20],
             bus: None,
@@ -129,7 +131,7 @@ impl Ppu {
             // OAMADDR
             3 => self.r.last_written_byte,
             // OAMDATA
-            4 => self.oam[self.r.oam_addr as usize],
+            4 => self.primary_oam[self.r.oam_addr as usize],
             // PPUSCROLL
             5 => self.r.last_written_byte,
             // PPUADDR
@@ -163,7 +165,7 @@ impl Ppu {
             3 => self.r.oam_addr = val,
             // OAMDATA
             4 => {
-                self.oam[self.r.oam_addr as usize] = val;
+                self.primary_oam[self.r.oam_addr as usize] = val;
                 self.r.oam_addr += 1;
             },
             // PPUSCROLL
@@ -240,15 +242,82 @@ impl Ppu {
         self.r.tile |= curr_tile;
     }
 
-    // TODO(jeffreyxiao): Draw sprites
-    fn draw_pixel(&mut self) {
-        let mut background_pixel = ((self.r.tile >> 32 >> ((7 - self.r.x) * 4)) & 0x0F) as u16;
-        if background_pixel & 0x03 == 0 {
-            background_pixel = 0;
-        }
+    fn compute_background_pixel(&self) -> u8 {
+        ((self.r.tile >> 32 >> ((7 - self.r.x) * 4)) & 0x0F) as u8
+    }
 
-        self.image[self.image_index] = PALETTE[self.read_byte(0x3F00 + background_pixel) as usize];
-        self.image_index += 1;
+    // TODO: implement priority
+    fn compute_sprite_pixel(&self) -> u8 {
+        let y = self.scanline as u8;
+        let x = (self.cycle - 1) as u8;
+        for i in 0..8 {
+            let sprite_y = self.secondary_oam[i * 4];
+            let sprite_x = self.secondary_oam[i * 4 + 3];
+            let mut tile_index = self.secondary_oam[i * 4 + 1];
+            let attributes = self.secondary_oam[i * 4 + 2];
+
+            if sprite_y & tile_index & attributes & sprite_x == 0xFF {
+                break;
+            }
+
+            if !(sprite_x <= x && x < sprite_x + 8) {
+                continue;
+            }
+
+            if !(1 <= sprite_y && sprite_y <= 239) {
+                continue;
+            }
+
+            let mut py = y - sprite_y;
+            let mut px = x - sprite_x;
+            let mut nametable_address = self.r.sprite_pattern_table_address;
+
+            if attributes & 0x40 != 0 {
+                px = self.r.sprite_size.0 - 1 - px;
+            }
+
+            if attributes & 0x80 != 0 {
+                py = self.r.sprite_size.1 - 1 - py;
+            }
+
+            if self.r.sprite_size.1 == 16 {
+                nametable_address = (attributes as u16 & 0x01) * 0x1000;
+                tile_index &= 0xFE;
+                if py >= 8 {
+                    py -= 8;
+                    tile_index += 1;
+                }
+            }
+
+            let addr = nametable_address + tile_index as u16 * 16 + py as u16;
+            let low_tile_bit = (self.read_byte(addr) >> px) & 0x01;
+            let high_tile_bit = (self.read_byte(addr + 8) >> px) & 0x01;
+            let palette = (attributes & 0x03) as u8;
+            let color = low_tile_bit | (high_tile_bit << 1);
+
+            if color == 0 {
+                continue;
+            }
+
+            return (palette << 2) | color;
+        }
+        0
+    }
+
+    fn draw_pixel(&mut self) {
+        let background_pixel = self.compute_background_pixel() as u16;
+        let sprite_pixel = self.compute_sprite_pixel() as u16;
+
+        if sprite_pixel & 0x03 != 0 {
+            self.image[self.image_index] = PALETTE[self.read_byte(0x3F00 + sprite_pixel) as usize];
+            self.image_index += 1;
+        } else if background_pixel & 0x03 != 0 {
+            self.image[self.image_index] = PALETTE[self.read_byte(0x3F00 + background_pixel) as usize];
+            self.image_index += 1;
+        } else {
+            self.image[self.image_index] = PALETTE[self.read_byte(0x3F00) as usize];
+            self.image_index += 1;
+        }
     }
 
     pub fn step(&mut self) {
@@ -266,6 +335,9 @@ impl Ppu {
         let visible_scanline = 0 <= self.scanline && self.scanline <= 239;
         let visible_cycle = 1 <= self.cycle && self.cycle <= 256;
         let prefetch_cycle = 321 <= self.cycle && self.cycle <= 336;
+        let sprite_clear_cycle = 1 <= self.cycle && self.cycle <= 64;
+        let sprite_evaluation_cycle = 65 <= self.cycle && self.cycle <= 256;
+        let sprite_fetch_cycle = 257 <= self.cycle && self.cycle <= 320;
 
         if visible_scanline || self.scanline == -1 {
             if visible_scanline && visible_cycle {
@@ -280,6 +352,7 @@ impl Ppu {
                 self.r.copy_scroll_x();
             }
 
+            // background pipeline
             if visible_cycle || prefetch_cycle {
                 self.r.tile <<= 4;
                 match self.cycle & 0x07 {
@@ -296,6 +369,34 @@ impl Ppu {
                         }
                     },
                     _ => {},
+                }
+            }
+
+            // sprite pipeline
+            if sprite_clear_cycle && self.cycle & 0x01 != 0 {
+                self.secondary_oam[self.cycle as usize / 2] = 0xFF;
+            }
+
+            // TODO: make fetches cycle accurate
+            if self.cycle == 65 {
+                let mut secondary_oam_index = 0;
+                for i in 0..64 {
+                    let y = self.primary_oam[i * 4] as i16;
+                    let lo = self.scanline - self.r.sprite_size.1 as i16;
+                    let hi = self.scanline - 1;
+                    if !(lo <= y && y <= hi) {
+                        continue;
+                    }
+
+                    if secondary_oam_index < 0x20 {
+                        self.secondary_oam[secondary_oam_index] = self.primary_oam[i * 4];
+                        self.secondary_oam[secondary_oam_index + 1] = self.primary_oam[i * 4 + 1];
+                        self.secondary_oam[secondary_oam_index + 2] = self.primary_oam[i * 4 + 2];
+                        self.secondary_oam[secondary_oam_index + 3] = self.primary_oam[i * 4 + 3];
+                        secondary_oam_index += 4;
+                    } else {
+                        self.r.sprite_overflow = true;
+                    }
                 }
             }
         }

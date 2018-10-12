@@ -15,7 +15,7 @@ pub struct Registers {
     pub vram_address_increment: u16,
     pub sprite_pattern_table_address: u16,
     pub background_pattern_table_address: u16,
-    pub sprite_size: (u16, u16),
+    pub sprite_size: (u8, u8),
     pub is_master: bool,
     pub nmi_enabled: bool,
 
