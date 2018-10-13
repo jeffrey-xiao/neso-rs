@@ -222,6 +222,12 @@ impl Ppu {
     }
 
     fn compute_background_pixel(&self) -> u8 {
+        let x = (self.cycle - 1) as u8;
+
+        if (x < 8 && !self.r.show_left_background) || !self.r.show_background {
+            return 0;
+        }
+
         ((self.r.tile >> 32 >> ((7 - self.r.x) * 4)) & 0x0F) as u8
     }
 
@@ -229,6 +235,11 @@ impl Ppu {
     fn compute_sprite_pixel(&self) -> u8 {
         let y = self.scanline as u8;
         let x = (self.cycle - 1) as u8;
+
+        if (x < 8 && !self.r.show_left_sprites) || !self.r.show_sprites {
+            return 0;
+        }
+
         for i in 0..8 {
             let sprite_y = self.secondary_oam[i * 4];
             let sprite_x = self.secondary_oam[i * 4 + 3];
@@ -239,7 +250,7 @@ impl Ppu {
                 break;
             }
 
-            if !(sprite_x <= x && x < sprite_x + 8) || (x < 8 && !self.r.show_left_sprites) {
+            if !(sprite_x <= x && x < sprite_x + 8) {
                 continue;
             }
 
@@ -280,6 +291,7 @@ impl Ppu {
 
             return (palette << 2) | color;
         }
+
         0
     }
 
