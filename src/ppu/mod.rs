@@ -383,13 +383,6 @@ impl Ppu {
                         self.r.sprite_overflow = true;
                     }
                 }
-
-                if secondary_oam_index > 0 {
-                    for i in 0..64 {
-                        println!("{} {}", self.primary_oam[i * 4 + 0], self.primary_oam[i * 4 + 3]);
-                    }
-                    println!();
-                }
             }
         }
 

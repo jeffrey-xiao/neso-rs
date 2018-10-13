@@ -4,6 +4,7 @@ extern crate wasm_bindgen;
 
 mod bus;
 mod cartridge;
+mod controller;
 pub mod cpu;
 mod mapper;
 mod ppu;

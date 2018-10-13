@@ -2,6 +2,7 @@ mod registers;
 
 use self::registers::Registers;
 use bus::Bus;
+use controller::Controller;
 
 macro_rules! generate_instructions {
     (
@@ -34,6 +35,7 @@ const STACK_START: u16 = 0x100;
 pub struct Cpu {
     pub cycle: u64,
     pub stall_cycle: u64,
+    pub controller: Controller,
     pub ram: [u8; 0x800],
     pub interrupt_flags: [bool; 2],
     pub r: Registers,
@@ -45,6 +47,7 @@ impl Cpu {
         Cpu {
             cycle: 0,
             stall_cycle: 0,
+            controller: Controller::new(),
             ram: [0; 0x800],
             interrupt_flags: [false; 2],
             r: Registers::new(),
@@ -106,13 +109,15 @@ impl Cpu {
 
     // pc related functions
     fn decode_byte(&mut self) -> u8 {
-        let ret = self.read_byte(self.r.pc);
+        let pc = self.r.pc;
+        let ret = self.read_byte(pc);
         self.r.pc += 1;
         ret
     }
 
     fn decode_word(&mut self) -> u16 {
-        let ret = self.read_word(self.r.pc);
+        let pc = self.r.pc;
+        let ret = self.read_word(pc);
         self.r.pc += 2;
         ret
     }
@@ -131,7 +136,8 @@ impl Cpu {
 
     fn pop_byte(&mut self) -> u8 {
         self.r.sp += 1;
-        self.read_byte(self.r.sp as u16 + STACK_START)
+        let addr = self.r.sp as u16 + STACK_START;
+        self.read_byte(addr)
     }
 
     fn pop_word(&mut self) -> u16 {
@@ -144,7 +150,7 @@ impl Cpu {
         self.bus.as_ref().unwrap()
     }
 
-    pub fn read_byte(&self, addr: u16) -> u8 {
+    pub fn read_byte(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
             0x2000..=0x3FFF => {
@@ -155,7 +161,15 @@ impl Cpu {
                 ret
             },
             // TODO: Implement APU and IO maps
-            0x4000..=0x4017 => 0,
+            0x4000..=0x4017 => {
+                if addr == 0x4016 {
+                    let ret = self.controller.read_value();
+                    println!("READ CONTROLLER {}", ret);
+                    ret
+                } else {
+                    0
+                }
+            },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFE => {
                 let mapper = self.bus().mapper();
@@ -166,7 +180,7 @@ impl Cpu {
         }
     }
 
-    pub fn read_word(&self, addr: u16) -> u16 {
+    pub fn read_word(&mut self, addr: u16) -> u16 {
         ((self.read_byte(addr + 1) as u16) << 8) | self.read_byte(addr) as u16
     }
 
@@ -184,10 +198,11 @@ impl Cpu {
                     // println!("OAMDMA");
                     let cpu_addr = (val as u16) << 8;
                     let ppu = self.bus().ppu.upgrade().unwrap();
-                    for offset in 0..=0xFF {
-                        let oam_addr = ppu.borrow().r.oam_addr as usize;
-                        ppu.borrow_mut().primary_oam[oam_addr] = self.read_byte(cpu_addr + offset);
-                        ppu.borrow_mut().r.oam_addr += 1;
+                    for offset in 0..0xFF {
+                        let oam_addr = ppu.borrow().r.oam_addr;
+                        let cpu_addr = cpu_addr + offset;
+                        ppu.borrow_mut().primary_oam[oam_addr as usize] = self.read_byte(cpu_addr);
+                        ppu.borrow_mut().r.oam_addr = oam_addr.wrapping_add(1);
                     }
 
                     if self.cycle % 2 == 1 {
@@ -195,6 +210,9 @@ impl Cpu {
                     } else {
                         self.stall_cycle += 513;
                     }
+                } else if addr == 0x4016 {
+                    println!("WRITING STROBE {}", val & 0x01 != 0);
+                    self.controller.write_strobe(val & 0x01 != 0);
                 }
             },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
