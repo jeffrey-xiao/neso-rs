@@ -29,7 +29,6 @@ impl Controller {
         if self.strobe {
             self.index = 0;
         }
-        println!("index is {}", self.index);
         ret
     }
 

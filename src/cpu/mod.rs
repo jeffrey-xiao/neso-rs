@@ -163,9 +163,7 @@ impl Cpu {
             // TODO: Implement APU and IO maps
             0x4000..=0x4017 => {
                 if addr == 0x4016 {
-                    let ret = self.controller.read_value();
-                    println!("READ CONTROLLER {}", ret);
-                    ret
+                    self.controller.read_value()
                 } else {
                     0
                 }
@@ -198,7 +196,7 @@ impl Cpu {
                     // println!("OAMDMA");
                     let cpu_addr = (val as u16) << 8;
                     let ppu = self.bus().ppu.upgrade().unwrap();
-                    for offset in 0..0xFF {
+                    for offset in 0..=0xFF {
                         let oam_addr = ppu.borrow().r.oam_addr;
                         let cpu_addr = cpu_addr + offset;
                         ppu.borrow_mut().primary_oam[oam_addr as usize] = self.read_byte(cpu_addr);
@@ -211,7 +209,6 @@ impl Cpu {
                         self.stall_cycle += 513;
                     }
                 } else if addr == 0x4016 {
-                    println!("WRITING STROBE {}", val & 0x01 != 0);
                     self.controller.write_strobe(val & 0x01 != 0);
                 }
             },

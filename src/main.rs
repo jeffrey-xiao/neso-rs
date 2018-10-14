@@ -1,6 +1,7 @@
 extern crate nes_wasm;
 extern crate sdl2;
 
+use std::time::{Duration, Instant};
 use nes_wasm::cpu::Interrupt;
 use std::ptr;
 use nes_wasm::Nes;
@@ -10,10 +11,12 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use std::fs;
 use std::thread;
-use std::time::Duration;
+
 
 pub fn main() {
-    let buffer = fs::read("./tests/dk.nes").unwrap();
+    let mus_per_frame = (2.0f64 / 60.0 * 1e6).round() as u64;
+
+    let buffer = fs::read("./tests/balloon_fight.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -35,6 +38,7 @@ pub fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     'running: loop {
+        let start = Instant::now();
         for event in event_pump.poll_iter() {
             match event {
                 Event::Quit { .. }
@@ -62,6 +66,7 @@ pub fn main() {
             }
         }
 
+
         let mut texture = texture_creator
             .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
             .unwrap();
@@ -82,5 +87,7 @@ pub fn main() {
             .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
             .unwrap();
         canvas.present();
+
+        thread::sleep(Duration::from_micros(mus_per_frame) - start.elapsed());
     }
 }

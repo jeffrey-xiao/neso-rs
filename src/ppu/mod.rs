@@ -257,7 +257,7 @@ impl Ppu {
             if !(1 <= sprite_y && sprite_y <= 239) {
                 continue;
             }
-
+            
             let mut py = y - sprite_y;
             let mut px = 7 - (x - sprite_x);
             let mut nametable_address = self.r.sprite_pattern_table_address;
@@ -297,7 +297,7 @@ impl Ppu {
 
     fn draw_pixel(&mut self) {
         let background_pixel = self.compute_background_pixel() as u16;
-         let sprite_pixel = self.compute_sprite_pixel() as u16;
+        let sprite_pixel = self.compute_sprite_pixel() as u16;
 
         let color;
         if sprite_pixel & 0x03 != 0 {
