@@ -18,7 +18,6 @@ pub struct Registers {
 impl Registers {
     pub fn new() -> Registers {
         Registers {
-            // pc: 0xC000,
             pc: 0,
             sp: 0xFD,
             a: 0,

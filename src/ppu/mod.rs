@@ -257,7 +257,7 @@ impl Ppu {
             if !(1 <= sprite_y && sprite_y <= 239) {
                 continue;
             }
-            
+
             let mut py = y - sprite_y;
             let mut px = 7 - (x - sprite_x);
             let mut nametable_address = self.r.sprite_pattern_table_address;
@@ -371,7 +371,7 @@ impl Ppu {
             // if sprite_clear_cycle && self.cycle & 0x01 != 0 {
             //     self.secondary_oam[self.cycle as usize / 2] = 0xFF;
             // }
-            
+
             if self.cycle == 257 {
                 for i in 0..0x20 {
                     self.secondary_oam[i] = 0;

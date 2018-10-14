@@ -65,15 +65,11 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/branch_Basics.nes").unwrap();
+        let buffer = fs::read("./tests/nestest.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
+        for i in 0..16 {
+            nes.step_frame();
+        }
     }
 }
