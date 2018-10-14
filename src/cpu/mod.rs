@@ -57,9 +57,9 @@ impl Cpu {
             }
         }
 
-        print!("{:04X} ", self.r.pc);
+        // print!("{:04X} ", self.r.pc);
         let opcode = self.decode_byte();
-        print!("{:02X} ", opcode);
+        // print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
         self.stall_cycle = (self.cycle - start_cycle) * 3 - 1;
     }
@@ -67,7 +67,7 @@ impl Cpu {
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
-            // println!("TRIGGERED INTERRUPT");
+            println!("TRIGGERED INTERRUPT");
             self.interrupt_flags[interrupt as usize] = true;
         }
     }
@@ -127,6 +127,7 @@ impl Cpu {
     }
 
     pub fn read_byte(&mut self, addr: u16) -> u8 {
+        // println!("reading from {:04x}", addr);
         match addr {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
             0x2000..=0x3FFF => {
@@ -159,7 +160,7 @@ impl Cpu {
     }
 
     pub fn write_byte(&mut self, addr: u16, val: u8) {
-        println!("writing to {:04x} val: {:02x}", addr, val);
+        // println!("writing to {:04x} val: {:02x}", addr, val);
         match addr {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = val,
             0x2000..=0x3FFF => {
@@ -200,7 +201,7 @@ impl Cpu {
 
     fn execute_opcode(&mut self, opcode: u8) {
         let ppu = self.bus().ppu();
-        println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
+        // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
         let addressing_mode = opcodes::ADDRESSING_MODE_TABLE[opcode as usize];
         opcodes::INSTRUCTION_TABLE[opcode as usize](self, addressing_mode);
         self.cycle += opcodes::CYCLE_TABLE[opcode as usize] as u64;
@@ -217,7 +218,7 @@ impl Cpu {
             },
             _ => {
                 let (addr, page_crossing) = addressing_modes::FUNCTION_TABLE[addressing_mode](self);
-                println!("ADDR IS {:x}", addr);
+                // println!("ADDR IS {:x}", addr);
                 opcodes::Operand {
                     val: self.read_byte(addr),
                     addr: Some(addr),

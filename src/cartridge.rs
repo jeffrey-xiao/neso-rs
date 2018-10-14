@@ -30,7 +30,11 @@ impl Cartridge {
 
         let prg_rom_len = buffer[4] as usize * 0x4000;
         let chr_rom_len = buffer[5] as usize * 0x2000;
-        let prg_ram_len = buffer[8] as usize * 0x2000;
+        let mut prg_ram_len = buffer[8] as usize * 0x2000;
+
+        if prg_ram_len == 0 {
+            prg_ram_len = 0x4000;
+        }
 
         let flags_6 = buffer[6];
         let flags_7 = buffer[7];

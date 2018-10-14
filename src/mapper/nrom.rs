@@ -36,6 +36,10 @@ impl Mapper for Nrom {
         println!("ADDR {:x}", addr);
         match addr {
             0x0000..=0x1FFF => self.cartridge.write_chr_rom(addr, val),
+            0x6000..=0x7FFF => {
+                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len() as u16;
+                self.cartridge.write_prg_ram(addr, val);
+            },
             _ => panic!("Invalid memory address to write."),
         }
     }

@@ -65,11 +65,26 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/nestest.nes").unwrap();
+        let buffer = fs::read("./tests/all_instrs.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
-        for i in 0..16 {
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
+        nes.step_frame();
+
+        let mut b = nes.cpu.borrow_mut().read_byte(0x6000);
+        while b == 0x80 {
             nes.step_frame();
         }
+
+        let mut addr = 0x6000;
+        b = nes.cpu.borrow_mut().read_byte(addr);
+        while b != '\0' as u8 {
+            println!("{:?}", b);
+            addr += 1;
+            b = nes.cpu.borrow_mut().read_byte(addr);
+        }
+        println!("{:?}", b);
     }
 }

@@ -83,7 +83,7 @@ impl Ppu {
         self.bus.as_ref().unwrap()
     }
 
-    pub fn read_byte(&self, addr: u16) -> u8 {
+    pub fn read_byte(&self, mut addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => {
                 let mapper = self.bus().mapper();
@@ -95,12 +95,17 @@ impl Ppu {
                 let offset = ((addr - 0x2000) % 0x400) as usize;
                 self.vram[MIRRORING_MODE_TABLE[index] * 0x400 + offset]
             },
-            0x3F00..=0x3FFF => self.palette_ram[((addr - 0x3F00) % 0x20) as usize],
+            0x3F00..=0x3FFF => {
+                if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F0C {
+                    addr -= 0x10;
+                }
+                self.palette_ram[((addr - 0x3F00) % 0x20) as usize]
+            },
             _ => panic!("Invalid memory address: {:#6x}.", addr),
         }
     }
 
-    pub fn write_byte(&mut self, addr: u16, val: u8) {
+    pub fn write_byte(&mut self, mut addr: u16, val: u8) {
         match addr {
             0x0000..=0x1FFF => {
                 let mapper = self.bus().mapper();
@@ -114,7 +119,13 @@ impl Ppu {
                 let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
                 self.vram[MIRRORING_MODE_TABLE[mirroring_mode + index] * 0x400 + offset] = val;
             },
-            0x3F00..=0x3FFF => self.palette_ram[((addr - 0x3F00) % 0x20) as usize] = val,
+
+            0x3F00..=0x3FFF => {
+                if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F0C {
+                    addr -= 0x10;
+                }
+                self.palette_ram[((addr - 0x3F00) % 0x20) as usize] = val
+            },
             _ => panic!("Invalid memory address: {:#6x}.", addr),
         }
     }
@@ -399,16 +410,20 @@ impl Ppu {
         }
 
         if self.scanline == 241 && self.cycle == 1 {
-            // println!("V BLANK ON");
             self.r.v_blank_started = true;
+            // println!("V BLANK ON");
             if self.r.nmi_enabled {
                 let cpu = self.bus().cpu();
                 cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
+            } else {
+                println!("NMI_ENABLED is false so no interrupt");
             }
         }
 
         if self.scanline == -1 && self.cycle == 1 {
             self.r.v_blank_started = false;
+            self.r.sprite_0_hit = false;
+            self.r.sprite_overflow = false;
             // println!("V BLANK OFF");
         }
     }

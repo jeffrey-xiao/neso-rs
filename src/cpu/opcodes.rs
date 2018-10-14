@@ -506,7 +506,7 @@ fn ror(cpu: &mut Cpu, addressing_mode: usize) {
 fn rti(cpu: &mut Cpu, _addressing_mode: usize) {
     plp(cpu, addressing_modes::IMPLIED);
     cpu.r.pc = cpu.pop_word();
-    // println!("RETURNING FROM INTERRUPT");
+    println!("RETURNING FROM INTERRUPT");
 }
 
 fn rts(cpu: &mut Cpu, _addressing_mode: usize) {
