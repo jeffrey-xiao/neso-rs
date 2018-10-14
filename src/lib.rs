@@ -65,7 +65,7 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/all_instrs.nes").unwrap();
+        let buffer = fs::read("./tests/cpu_interrupts.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
         nes.step_frame();

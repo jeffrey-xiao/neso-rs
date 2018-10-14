@@ -14,9 +14,9 @@ use std::thread;
 
 
 pub fn main() {
-    let mus_per_frame = (1.0f64 / 60.0 * 1e6).round() as u64;
+    let mus_per_frame = (2.0f64 / 60.0 * 1e6).round() as u64;
 
-    let buffer = fs::read("./tests/ice_climber.nes").unwrap();
+    let buffer = fs::read("./tests/balloon_fight.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -88,6 +88,6 @@ pub fn main() {
             .unwrap();
         canvas.present();
 
-        // thread::sleep(Duration::from_micros(mus_per_frame) - start.elapsed());
+        thread::sleep(Duration::from_micros(mus_per_frame) - start.elapsed());
     }
 }

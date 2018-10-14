@@ -42,7 +42,7 @@ pub struct Ppu {
     pub vram: [u8; 0x2000],
     pub palette_ram: [u8; 0x20],
     pub cycle: u16,    // [0, 340]
-    pub scanline: i16, // [-1, 261]
+    pub scanline: i16, // [-1, 260]
     pub frame: u64,
     pub bus: Option<Bus>,
 }
@@ -232,23 +232,22 @@ impl Ppu {
         self.r.tile |= curr_tile;
     }
 
-    fn compute_background_pixel(&self) -> u8 {
+    fn compute_background_pixel(&self) -> u16 {
         let x = (self.cycle - 1) as u8;
 
         if (x < 8 && !self.r.show_left_background) || !self.r.show_background {
             return 0;
         }
 
-        ((self.r.tile >> 32 >> ((7 - self.r.x) * 4)) & 0x0F) as u8
+        ((self.r.tile >> 32 >> ((7 - self.r.x) * 4)) & 0x0F) as u16
     }
 
-    // TODO: implement priority
-    fn compute_sprite_pixel(&self) -> u8 {
+    fn compute_sprite_pixel(&self) -> (u16, bool) {
         let y = self.scanline as u8;
         let x = (self.cycle - 1) as u8;
 
         if (x < 8 && !self.r.show_left_sprites) || !self.r.show_sprites {
-            return 0;
+            return (0, false);
         }
 
         for i in 0..8 {
@@ -300,25 +299,28 @@ impl Ppu {
                 continue;
             }
 
-            return (palette << 2) | color;
+            return (((palette << 2) | color) as u16, (attributes & 0x20) != 0);
         }
 
-        0
+        (0, false)
     }
 
     fn draw_pixel(&mut self) {
-        let background_pixel = self.compute_background_pixel() as u16;
-        let sprite_pixel = self.compute_sprite_pixel() as u16;
+        let background_pixel = self.compute_background_pixel();
+        let (sprite_pixel, sprite_priority) = self.compute_sprite_pixel();
 
-        let color;
-        if sprite_pixel & 0x03 != 0 {
-            color = PALETTE[self.read_byte(0x3F10 + sprite_pixel) as usize];
-        } else if background_pixel & 0x03 != 0 {
-            color = PALETTE[self.read_byte(0x3F00 + background_pixel) as usize];
-        } else {
-            color = PALETTE[self.read_byte(0x3F00) as usize];
-        }
+        let background_on = background_pixel & 0x03 != 0;
+        let sprite_on = sprite_pixel & 0x03 != 0;
 
+        let addr = match (background_on, sprite_on) {
+            (false, false) => 0x3F00,
+            (false, true) => 0x3F10 + sprite_pixel,
+            (true, false) => 0x3F00 + background_pixel,
+            (true, true) if !sprite_priority => 0x3F10 + sprite_pixel,
+            (true, true) => 0x3F00 + background_pixel,
+        };
+
+        let color = PALETTE[self.read_byte(addr) as usize];
         self.image[self.image_index] = ((color >> 16) & 0xFF) as u8;
         self.image[self.image_index + 1] = ((color >> 8) & 0xFF) as u8;
         self.image[self.image_index + 2] = ((color >> 0) & 0xFF) as u8;
