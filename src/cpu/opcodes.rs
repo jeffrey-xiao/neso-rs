@@ -227,13 +227,8 @@ fn bpl(cpu: &mut Cpu, addressing_mode: usize) {
 }
 
 fn brk(cpu: &mut Cpu, _addressing_mode: usize) {
-let val = cpu.r.pc + 1;
-cpu.push_word(val);
-let val = cpu.r.p | 0x10;
-cpu.push_byte(val);
-cpu.r
-    .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
-cpu.r.pc = cpu.read_word(0xFFFE);
+    cpu.r.pc += 1;
+    cpu.handle_interrupt(Interrupt::IRQ as usize);
 }
 
 fn bvc(cpu: &mut Cpu, addressing_mode: usize) {

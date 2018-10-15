@@ -174,12 +174,12 @@ impl Ppu {
             2 => return,
             // OAMADDR
             3 => {
-                println!("SET {:x}", val);
+                // println!("SET {:x}", val);
                 self.r.oam_addr = val;
             },
             // OAMDATA
             4 => {
-                println!("READ {:x}", self.r.oam_addr);
+                // println!("READ {:x}", self.r.oam_addr);
                 self.primary_oam[self.r.oam_addr as usize] = val;
                 self.r.oam_addr = self.r.oam_addr.wrapping_add(1);
             },

@@ -19,7 +19,7 @@ pub const FUNCTION_TABLE: [fn(&mut Cpu) -> (u16, bool); 14] = [
     |cpu: &mut Cpu| (cpu.decode_word(), false),
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
-        let ret = addr + cpu.r.x as u16;
+        let ret = addr.wrapping_add(cpu.r.x as u16);
         let mut page_crossing = false;
         if addr & 0xFF00 != ret & 0xFF00 {
             page_crossing = true;
@@ -44,13 +44,13 @@ pub const FUNCTION_TABLE: [fn(&mut Cpu) -> (u16, bool); 14] = [
     |_: &mut Cpu| panic!("No address associated with implied mode."),
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
-        println!("INDIRECT ADDR {}", addr);
+        // println!("INDIRECT ADDR {}", addr);
         if addr & 0xFF == 0xFF {
             let hi = (cpu.read_byte(addr & 0xFF00) as u16) << 8;
             let lo = cpu.read_byte(addr) as u16;
             (hi | lo, false)
         } else {
-            println!("INDIRECTION IS {:x}", cpu.read_word(addr));
+            // println!("INDIRECTION IS {:x}", cpu.read_word(addr));
             (cpu.read_word(addr), false)
         }
     },
