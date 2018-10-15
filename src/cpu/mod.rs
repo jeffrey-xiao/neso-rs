@@ -196,7 +196,7 @@ impl Cpu {
                 }
             },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
-            0x4020..=0xFFFE => {
+            0x4020..=0xFFFF => {
                 let mapper = self.bus().mapper();
                 mapper.borrow_mut().write_byte(addr, val);
             },
@@ -206,7 +206,7 @@ impl Cpu {
 
     fn execute_opcode(&mut self, opcode: u8) {
         let ppu = self.bus().ppu();
-        println!("{:x}", opcode);
+        // println!("{:x}", opcode);
         // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
         let addressing_mode = opcodes::ADDRESSING_MODE_TABLE[opcode as usize];
         opcodes::INSTRUCTION_TABLE[opcode as usize](self, addressing_mode);

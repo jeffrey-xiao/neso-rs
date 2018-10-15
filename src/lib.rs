@@ -65,11 +65,11 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/cpu/15-brk.nes").unwrap();
+        let buffer = fs::read("./tests/cpu/16-special.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
         let mut b = nes.cpu.borrow_mut().read_byte(0x6004);
-        for i in 0..300 {
+        for i in 0..150 {
             nes.step_frame();
             println!("Frame: {}", i);
         }
@@ -83,6 +83,6 @@ mod tests {
             addr += 1;
             b = nes.cpu.borrow_mut().read_byte(addr);
         }
-        println!("{}", String::from_utf8_lossy(&output));
+        println!("'{}'", String::from_utf8_lossy(&output));
     }
 }

@@ -16,7 +16,7 @@ use std::thread;
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/cpu/01-basics.nes").unwrap();
+    let buffer = fs::read("./tests/ice_climber.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 

@@ -19,7 +19,7 @@ pub const INSTRUCTION_TABLE: [fn(&mut Cpu, usize) -> (); 256] = [
     bcc, sta, inv, inv, sty, sta, stx, aax, tya, sta, txs, inv, inv, sta, inv, inv, // 90
     ldy, lda, ldx, lax, ldy, lda, ldx, lax, tay, lda, tax, lax, ldy, lda, ldx, lax, // A0
     bcs, lda, inv, lax, ldy, lda, ldx, lax, clv, lda, tsx, inv, ldy, lda, ldx, lax, // B0
-    cpy, cmp, dop, dcp, cpy, cmp, dec, dcp, iny, cmp, dex, axs, cpy, cmp, dec, dcp, // C0
+    cpy, cmp, dop, dcp, cpy, cmp, dec, dcp, iny, cmp, dex, inv, cpy, cmp, dec, dcp, // C0
     bne, cmp, inv, dcp, dop, cmp, dec, dcp, cld, cmp, nop, dcp, top, cmp, dec, dcp, // D0
     cpx, sbc, dop, isc, cpx, sbc, inc, isc, inx, sbc, nop, sbc, cpx, sbc, inc, isc, // E0
     beq, sbc, inv, isc, dop, sbc, inc, isc, sed, sbc, nop, isc, top, sbc, inc, isc, // F0
@@ -38,7 +38,7 @@ pub const CYCLE_TABLE: [u8; 256] = [
     2, 6, 0, 0, 4, 4, 4, 4, 2, 5, 2, 0, 0, 5, 0, 0, // 90
     2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4, // A0
     2, 5, 0, 5, 4, 4, 4, 4, 2, 4, 2, 0, 4, 4, 4, 4, // B0
-    2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, // C0
+    2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 0, 4, 4, 6, 6, // C0
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // D0
     2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, // E0
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // F0
@@ -57,7 +57,7 @@ pub const ADDRESSING_MODE_TABLE: [usize; 256] = [
     10, 09, 00, 00, 12, 12, 13, 13, 06, 03, 06, 00, 00, 02, 00, 00, // 90
     05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 05, 01, 01, 01, 01, // A0
     10, 09, 00, 09, 12, 12, 13, 13, 06, 03, 06, 00, 02, 02, 03, 03, // B0
-    05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 05, 01, 01, 01, 01, // C0
+    05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 00, 01, 01, 01, 01, // C0
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // D0
     05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 05, 01, 01, 01, 01, // E0
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // F0
@@ -170,7 +170,6 @@ fn asr(cpu: &mut Cpu, addressing_mode: usize) {
     lsr(cpu, addressing_modes::ACCUMULATOR);
 }
 
-fn axs(cpu: &mut Cpu, addressing_mode: usize) {}
 fn branch_impl(cpu: &mut Cpu, cond: bool, addressing_mode: usize) {
     let (addr, _page_break) = addressing_modes::FUNCTION_TABLE[addressing_mode](cpu);
     if cond {
@@ -228,8 +227,13 @@ fn bpl(cpu: &mut Cpu, addressing_mode: usize) {
 }
 
 fn brk(cpu: &mut Cpu, _addressing_mode: usize) {
-    cpu.interrupt_flags[Interrupt::IRQ as usize] = true;
-    cpu.handle_interrupt(Interrupt::IRQ as usize);
+let val = cpu.r.pc + 1;
+cpu.push_word(val);
+let val = cpu.r.p | 0x10;
+cpu.push_byte(val);
+cpu.r
+    .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
+cpu.r.pc = cpu.read_word(0xFFFE);
 }
 
 fn bvc(cpu: &mut Cpu, addressing_mode: usize) {
