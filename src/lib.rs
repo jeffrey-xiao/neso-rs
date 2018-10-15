@@ -65,26 +65,24 @@ mod tests {
 
     #[test]
     fn test_rom() {
-        let buffer = fs::read("./tests/cpu_interrupts.nes").unwrap();
+        let buffer = fs::read("./tests/cpu/15-brk.nes").unwrap();
         let mut nes = Nes::new();
         nes.load_rom(&buffer);
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-        nes.step_frame();
-
-        let mut b = nes.cpu.borrow_mut().read_byte(0x6000);
-        while b == 0x80 {
+        let mut b = nes.cpu.borrow_mut().read_byte(0x6004);
+        for i in 0..300 {
             nes.step_frame();
+            println!("Frame: {}", i);
         }
 
-        let mut addr = 0x6000;
-        b = nes.cpu.borrow_mut().read_byte(addr);
+
+        let mut addr = 0x6004;
+        let mut b = nes.cpu.borrow_mut().read_byte(addr);
+        let mut output = Vec::new();
         while b != '\0' as u8 {
-            println!("{:?}", b);
+            output.push(b);
             addr += 1;
             b = nes.cpu.borrow_mut().read_byte(addr);
         }
-        println!("{:?}", b);
+        println!("{}", String::from_utf8_lossy(&output));
     }
 }

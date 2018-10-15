@@ -7,57 +7,57 @@ pub struct Operand {
 }
 
 pub const INSTRUCTION_TABLE: [fn(&mut Cpu, usize) -> (); 256] = [
-    brk, ora, inv, slo, dop, ora, asl, slo, php, ora, asl, inv, top, ora, asl, slo, // 00
+    brk, ora, inv, slo, dop, ora, asl, slo, php, ora, asl, anc, top, ora, asl, slo, // 00
     bpl, ora, inv, slo, dop, ora, asl, slo, clc, ora, nop, slo, top, ora, asl, slo, // 10
-    jsr, and, inv, rla, bit, and, rol, rla, plp, and, rol, inv, bit, and, rol, rla, // 20
+    jsr, and, inv, rla, bit, and, rol, rla, plp, and, rol, anc, bit, and, rol, rla, // 20
     bmi, and, inv, rla, dop, and, rol, rla, sec, and, nop, rla, top, and, rol, rla, // 30
-    rti, eor, inv, sre, dop, eor, lsr, sre, pha, eor, lsr, inv, jmp, eor, lsr, sre, // 40
+    rti, eor, inv, sre, dop, eor, lsr, sre, pha, eor, lsr, asr, jmp, eor, lsr, sre, // 40
     bvc, eor, inv, sre, dop, eor, lsr, sre, cli, eor, nop, sre, top, eor, lsr, sre, // 50
-    rts, adc, inv, rra, dop, adc, ror, rra, pla, adc, ror, inv, jmp, adc, ror, rra, // 60
+    rts, adc, inv, rra, dop, adc, ror, rra, pla, adc, ror, arr, jmp, adc, ror, rra, // 60
     bvs, adc, inv, rra, dop, adc, ror, rra, sei, adc, nop, rra, top, adc, ror, rra, // 70
     dop, sta, dop, aax, sty, sta, stx, aax, dey, dop, txa, inv, sty, sta, stx, aax, // 80
     bcc, sta, inv, inv, sty, sta, stx, aax, tya, sta, txs, inv, inv, sta, inv, inv, // 90
-    ldy, lda, ldx, lax, ldy, lda, ldx, lax, tay, lda, tax, inv, ldy, lda, ldx, lax, // A0
+    ldy, lda, ldx, lax, ldy, lda, ldx, lax, tay, lda, tax, lax, ldy, lda, ldx, lax, // A0
     bcs, lda, inv, lax, ldy, lda, ldx, lax, clv, lda, tsx, inv, ldy, lda, ldx, lax, // B0
-    cpy, cmp, dop, dcp, cpy, cmp, dec, dcp, iny, cmp, dex, inv, cpy, cmp, dec, dcp, // C0
+    cpy, cmp, dop, dcp, cpy, cmp, dec, dcp, iny, cmp, dex, axs, cpy, cmp, dec, dcp, // C0
     bne, cmp, inv, dcp, dop, cmp, dec, dcp, cld, cmp, nop, dcp, top, cmp, dec, dcp, // D0
     cpx, sbc, dop, isc, cpx, sbc, inc, isc, inx, sbc, nop, sbc, cpx, sbc, inc, isc, // E0
     beq, sbc, inv, isc, dop, sbc, inc, isc, sed, sbc, nop, isc, top, sbc, inc, isc, // F0
 ];
 
 pub const CYCLE_TABLE: [u8; 256] = [
-    7, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 0, 4, 4, 6, 6, // 00
+    7, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6, // 00
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // 10
-    6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 0, 4, 4, 6, 6, // 20
+    6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 2, 4, 4, 6, 6, // 20
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // 30
-    6, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 0, 3, 4, 6, 6, // 40
+    6, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 2, 3, 4, 6, 6, // 40
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // 50
-    6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 0, 5, 4, 6, 6, // 60
+    6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6, // 60
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // 70
     2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 0, 4, 4, 4, 4, // 80
     2, 6, 0, 0, 4, 4, 4, 4, 2, 5, 2, 0, 0, 5, 0, 0, // 90
-    2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 0, 4, 4, 4, 4, // A0
+    2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4, // A0
     2, 5, 0, 5, 4, 4, 4, 4, 2, 4, 2, 0, 4, 4, 4, 4, // B0
-    2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 0, 4, 4, 6, 6, // C0
+    2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, // C0
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // D0
     2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, // E0
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // F0
 ];
 
 pub const ADDRESSING_MODE_TABLE: [usize; 256] = [
-    06, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 00, 01, 01, 01, 01, // 00
+    06, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 05, 01, 01, 01, 01, // 00
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // 10
-    01, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 00, 01, 01, 01, 01, // 20
+    01, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 05, 01, 01, 01, 01, // 20
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // 30
-    06, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 00, 01, 01, 01, 01, // 40
+    06, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 05, 01, 01, 01, 01, // 40
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // 50
-    06, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 00, 07, 01, 01, 01, // 60
+    06, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 05, 07, 01, 01, 01, // 60
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // 70
     05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 00, 01, 01, 01, 01, // 80
     10, 09, 00, 00, 12, 12, 13, 13, 06, 03, 06, 00, 00, 02, 00, 00, // 90
-    05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 00, 01, 01, 01, 01, // A0
+    05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 05, 01, 01, 01, 01, // A0
     10, 09, 00, 09, 12, 12, 13, 13, 06, 03, 06, 00, 02, 02, 03, 03, // B0
-    05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 00, 01, 01, 01, 01, // C0
+    05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 05, 01, 01, 01, 01, // C0
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // D0
     05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 05, 01, 01, 01, 01, // E0
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // F0
@@ -101,6 +101,14 @@ fn adc(cpu: &mut Cpu, addressing_mode: usize) {
     adc_impl(cpu, &operand);
 }
 
+fn anc(cpu: &mut Cpu, addressing_mode: usize) {
+    let operand = cpu.get_operand(addressing_mode);
+
+    and_impl(cpu, &operand);
+    let res = cpu.r.a;
+    cpu.r.set_status_flag(registers::CARRY_MASK, res & 0x80 != 0);
+}
+
 fn and_impl(cpu: &mut Cpu, operand: &Operand) {
     cpu.r.a &= operand.val;
     let res = cpu.r.a;
@@ -114,6 +122,26 @@ fn and(cpu: &mut Cpu, addressing_mode: usize) {
     }
 
     and_impl(cpu, &operand);
+}
+
+fn arr(cpu: &mut Cpu, addressing_mode: usize) {
+    let mut operand = cpu.get_operand(addressing_mode);
+
+    and_impl(cpu, &mut operand);
+    operand = cpu.get_operand(addressing_modes::ACCUMULATOR);
+    let mut res = operand.val >> 1;
+    res |= if cpu.r.get_status_flag(registers::CARRY_MASK) {
+        0x80
+    } else {
+        0
+    };
+    cpu.r.update_nz_flags(res);
+    let carry_bit = res & 0x40 != 0;
+    let overflow_bit = carry_bit ^ (res & 0x20 != 0);
+    cpu.r.set_status_flag(registers::CARRY_MASK, carry_bit);
+    cpu.r.set_status_flag(registers::OVERFLOW_MASK, overflow_bit);
+    operand.val = res;
+    cpu.write_operand(&mut operand);
 }
 
 fn asl_impl(cpu: &mut Cpu, operand: &mut Operand) {
@@ -135,6 +163,14 @@ fn asl(cpu: &mut Cpu, addressing_mode: usize) {
     asl_impl(cpu, &mut operand);
 }
 
+fn asr(cpu: &mut Cpu, addressing_mode: usize) {
+    let mut operand = cpu.get_operand(addressing_mode);
+
+    and_impl(cpu, &mut operand);
+    lsr(cpu, addressing_modes::ACCUMULATOR);
+}
+
+fn axs(cpu: &mut Cpu, addressing_mode: usize) {}
 fn branch_impl(cpu: &mut Cpu, cond: bool, addressing_mode: usize) {
     let (addr, _page_break) = addressing_modes::FUNCTION_TABLE[addressing_mode](cpu);
     if cond {
@@ -416,7 +452,7 @@ fn lsr(cpu: &mut Cpu, addressing_mode: usize) {
     lsr_impl(cpu, &mut operand);
 }
 
-fn nop(cpu: &mut Cpu, _addressing_mode: usize) {}
+fn nop(_cpu: &mut Cpu, _addressing_mode: usize) {}
 
 fn ora_impl(cpu: &mut Cpu, operand: &Operand) {
     cpu.r.a |= operand.val;
@@ -506,7 +542,7 @@ fn ror(cpu: &mut Cpu, addressing_mode: usize) {
 fn rti(cpu: &mut Cpu, _addressing_mode: usize) {
     plp(cpu, addressing_modes::IMPLIED);
     cpu.r.pc = cpu.pop_word();
-    println!("RETURNING FROM INTERRUPT");
+    // println!("RETURNING FROM INTERRUPT");
 }
 
 fn rts(cpu: &mut Cpu, _addressing_mode: usize) {

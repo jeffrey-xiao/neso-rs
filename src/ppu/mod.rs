@@ -96,7 +96,7 @@ impl Ppu {
                 self.vram[MIRRORING_MODE_TABLE[index] * 0x400 + offset]
             },
             0x3F00..=0x3FFF => {
-                if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F0C {
+                if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F1C {
                     addr -= 0x10;
                 }
                 self.palette_ram[((addr - 0x3F00) % 0x20) as usize]
@@ -121,7 +121,7 @@ impl Ppu {
             },
 
             0x3F00..=0x3FFF => {
-                if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F0C {
+                if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F1C {
                     addr -= 0x10;
                 }
                 self.palette_ram[((addr - 0x3F00) % 0x20) as usize] = val
@@ -173,11 +173,15 @@ impl Ppu {
             // PPUSTATUS
             2 => return,
             // OAMADDR
-            3 => self.r.oam_addr = val,
+            3 => {
+                println!("SET {:x}", val);
+                self.r.oam_addr = val;
+            },
             // OAMDATA
             4 => {
+                println!("READ {:x}", self.r.oam_addr);
                 self.primary_oam[self.r.oam_addr as usize] = val;
-                self.r.oam_addr += 1;
+                self.r.oam_addr = self.r.oam_addr.wrapping_add(1);
             },
             // PPUSCROLL
             5 => self.r.write_ppu_scroll(val),
@@ -387,7 +391,7 @@ impl Ppu {
 
             if self.cycle == 257 {
                 for i in 0..0x20 {
-                    self.secondary_oam[i] = 0;
+                    self.secondary_oam[i] = 0xFF;
                 }
                 let mut secondary_oam_index = 0;
                 for i in 0..64 {
@@ -418,7 +422,7 @@ impl Ppu {
                 let cpu = self.bus().cpu();
                 cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
             } else {
-                println!("NMI_ENABLED is false so no interrupt");
+                // println!("NMI_ENABLED is false so no interrupt");
             }
         }
 

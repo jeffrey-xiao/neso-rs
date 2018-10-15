@@ -28,7 +28,7 @@ impl Mapper for Nrom {
                     self.cartridge.read_prg_rom(addr - 0x8000)
                 }
             },
-            _ => panic!("Invalid memory address to read."),
+            _ => panic!("Invalid memory address to read: {:x}.", addr),
         }
     }
 
@@ -39,7 +39,7 @@ impl Mapper for Nrom {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len() as u16;
                 self.cartridge.write_prg_ram(addr, val);
             },
-            _ => panic!("Invalid memory address to write."),
+            _ => panic!("Invalid memory address to write: {:x}.", addr),
         }
     }
 

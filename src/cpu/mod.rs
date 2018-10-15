@@ -67,7 +67,7 @@ impl Cpu {
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
-            println!("TRIGGERED INTERRUPT");
+            // println!("TRIGGERED INTERRUPT");
             self.interrupt_flags[interrupt as usize] = true;
         }
     }
@@ -75,7 +75,7 @@ impl Cpu {
     pub fn handle_interrupt(&mut self, interrupt: usize) {
         let val = self.r.pc;
         self.push_word(val);
-        let val = self.r.p & 0x10;
+        let val = self.r.p | 0x10;
         self.push_byte(val);
         self.r
             .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
@@ -102,7 +102,7 @@ impl Cpu {
     fn push_byte(&mut self, val: u8) {
         let addr = self.r.sp as u16 + STACK_START;
         self.write_byte(addr, val);
-        self.r.sp -= 1;
+        self.r.sp = self.r.sp.wrapping_sub(1);
     }
 
     fn push_word(&mut self, word: u16) {
@@ -111,7 +111,7 @@ impl Cpu {
     }
 
     fn pop_byte(&mut self) -> u8 {
-        self.r.sp += 1;
+        self.r.sp = self.r.sp.wrapping_add(1);
         let addr = self.r.sp as u16 + STACK_START;
         self.read_byte(addr)
     }
@@ -165,13 +165,18 @@ impl Cpu {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = val,
             0x2000..=0x3FFF => {
                 let ppu = self.bus().ppu();
+                let old_nmi_enabled = ppu.borrow().r.nmi_enabled;
                 ppu.borrow_mut()
                     .write_register(((addr - 0x2000) % 8) as usize, val);
+                let nmi_enabled_toggled = !old_nmi_enabled && ppu.borrow().r.nmi_enabled;
+                if nmi_enabled_toggled && ppu.borrow().r.v_blank_started {
+                    self.trigger_interrupt(Interrupt::NMI);
+                }
             },
             // TODO: Implement APU and IO maps
             0x4000..=0x4017 => {
                 if addr == 0x4014 {
-                    // println!("OAMDMA");
+                    println!("OAMDMA");
                     let cpu_addr = (val as u16) << 8;
                     let ppu = self.bus().ppu.upgrade().unwrap();
                     for offset in 0..=0xFF {
@@ -201,6 +206,7 @@ impl Cpu {
 
     fn execute_opcode(&mut self, opcode: u8) {
         let ppu = self.bus().ppu();
+        println!("{:x}", opcode);
         // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
         let addressing_mode = opcodes::ADDRESSING_MODE_TABLE[opcode as usize];
         opcodes::INSTRUCTION_TABLE[opcode as usize](self, addressing_mode);
