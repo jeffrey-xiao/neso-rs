@@ -1,4 +1,4 @@
-use cpu::{Cpu, registers, addressing_modes, Interrupt};
+use cpu::{addressing_modes, registers, Cpu, Interrupt};
 
 pub struct Operand {
     pub val: u8,
@@ -6,6 +6,7 @@ pub struct Operand {
     pub page_crossing: bool,
 }
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub const INSTRUCTION_TABLE: [fn(&mut Cpu, usize) -> (); 256] = [
     brk, ora, inv, slo, dop, ora, asl, slo, php, ora, asl, anc, top, ora, asl, slo, // 00
     bpl, ora, inv, slo, dop, ora, asl, slo, clc, ora, nop, slo, top, ora, asl, slo, // 10
@@ -25,6 +26,7 @@ pub const INSTRUCTION_TABLE: [fn(&mut Cpu, usize) -> (); 256] = [
     beq, sbc, inv, isc, dop, sbc, inc, isc, sed, sbc, nop, isc, top, sbc, inc, isc, // F0
 ];
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub const CYCLE_TABLE: [u8; 256] = [
     7, 6, 0, 8, 3, 3, 5, 5, 3, 2, 2, 2, 4, 4, 6, 6, // 00
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // 10
@@ -44,6 +46,7 @@ pub const CYCLE_TABLE: [u8; 256] = [
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // F0
 ];
 
+#[cfg_attr(rustfmt, rustfmt_skip)]
 pub const ADDRESSING_MODE_TABLE: [usize; 256] = [
      6,  8,  0,  8, 11, 11, 11, 11,  6,  5,  4,  5,  1,  1,  1,  1, // 00
     10,  9,  0,  9, 12, 12, 12, 12,  6,  3,  6,  3,  2,  2,  2,  2, // 10
@@ -106,7 +109,8 @@ fn anc(cpu: &mut Cpu, addressing_mode: usize) {
 
     and_impl(cpu, &operand);
     let res = cpu.r.a;
-    cpu.r.set_status_flag(registers::CARRY_MASK, res & 0x80 != 0);
+    cpu.r
+        .set_status_flag(registers::CARRY_MASK, res & 0x80 != 0);
 }
 
 fn and_impl(cpu: &mut Cpu, operand: &Operand) {
@@ -139,7 +143,8 @@ fn arr(cpu: &mut Cpu, addressing_mode: usize) {
     let carry_bit = res & 0x40 != 0;
     let overflow_bit = carry_bit ^ (res & 0x20 != 0);
     cpu.r.set_status_flag(registers::CARRY_MASK, carry_bit);
-    cpu.r.set_status_flag(registers::OVERFLOW_MASK, overflow_bit);
+    cpu.r
+        .set_status_flag(registers::OVERFLOW_MASK, overflow_bit);
     operand.val = res;
     cpu.write_operand(&operand);
 }

@@ -1,6 +1,6 @@
+mod addressing_modes;
 mod opcodes;
 mod registers;
-mod addressing_modes;
 
 use self::registers::Registers;
 use bus::Bus;

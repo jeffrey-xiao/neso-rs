@@ -9,6 +9,7 @@ const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;
 
 // http://www.thealmightyguru.com/Games/Hacking/Wiki/index.php/NES_Palette
+#[cfg_attr(rustfmt, rustfmt_skip)]
 const PALETTE: [u32; 64] = [
     0x007C_7C7C, 0x0000_00FC, 0x0000_00BC, 0x0044_28BC, 0x0094_0084, 0x00A8_0020, 0x00A8_1000, 0x0088_1400, //
     0x0050_3000, 0x0000_7800, 0x0000_6800, 0x0000_5800, 0x0000_4058, 0x0000_0000, 0x0000_0000, 0x0000_0000, //

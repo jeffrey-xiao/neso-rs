@@ -176,9 +176,7 @@ impl Registers {
             self.x = val & 0x07;
             self.w = 1;
         } else {
-            self.t = (self.t & !0x73E0)
-                | ((val as u16 & 0x07) << 12)
-                | ((val as u16 & 0xF8) << 2);
+            self.t = (self.t & !0x73E0) | ((val as u16 & 0x07) << 12) | ((val as u16 & 0xF8) << 2);
             self.w = 0;
         }
     }

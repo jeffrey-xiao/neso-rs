@@ -1,17 +1,16 @@
 extern crate nes_wasm;
 extern crate sdl2;
 
-use std::time::{Duration, Instant};
 use nes_wasm::cpu::Interrupt;
-use std::ptr;
 use nes_wasm::Nes;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use std::fs;
+use std::ptr;
 use std::thread;
-
+use std::time::{Duration, Instant};
 
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
@@ -46,26 +45,73 @@ pub fn main() {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
-                | Event::KeyDown { keycode: Some(Keycode::Q), .. } => nes.cpu.borrow_mut().controller.press_button(0),
-                | Event::KeyDown { keycode: Some(Keycode::W), .. } => nes.cpu.borrow_mut().controller.press_button(1),
-                | Event::KeyDown { keycode: Some(Keycode::E), .. } => nes.cpu.borrow_mut().controller.press_button(2),
-                | Event::KeyDown { keycode: Some(Keycode::R), .. } => nes.cpu.borrow_mut().controller.press_button(3),
-                | Event::KeyDown { keycode: Some(Keycode::Up), .. } => nes.cpu.borrow_mut().controller.press_button(4),
-                | Event::KeyDown { keycode: Some(Keycode::Down), .. } => nes.cpu.borrow_mut().controller.press_button(5),
-                | Event::KeyDown { keycode: Some(Keycode::Left), .. } => nes.cpu.borrow_mut().controller.press_button(6),
-                | Event::KeyDown { keycode: Some(Keycode::Right), .. } => nes.cpu.borrow_mut().controller.press_button(7),
-                | Event::KeyUp { keycode: Some(Keycode::Q), .. } => nes.cpu.borrow_mut().controller.release_button(0),
-                | Event::KeyUp { keycode: Some(Keycode::W), .. } => nes.cpu.borrow_mut().controller.release_button(1),
-                | Event::KeyUp { keycode: Some(Keycode::E), .. } => nes.cpu.borrow_mut().controller.release_button(2),
-                | Event::KeyUp { keycode: Some(Keycode::R), .. } => nes.cpu.borrow_mut().controller.release_button(3),
-                | Event::KeyUp { keycode: Some(Keycode::Up), .. } => nes.cpu.borrow_mut().controller.release_button(4),
-                | Event::KeyUp { keycode: Some(Keycode::Down), .. } => nes.cpu.borrow_mut().controller.release_button(5),
-                | Event::KeyUp { keycode: Some(Keycode::Left), .. } => nes.cpu.borrow_mut().controller.release_button(6),
-                | Event::KeyUp { keycode: Some(Keycode::Right), .. } => nes.cpu.borrow_mut().controller.release_button(7),
+                Event::KeyDown {
+                    keycode: Some(Keycode::Q),
+                    ..
+                } => nes.cpu.borrow_mut().controller.press_button(0),
+                Event::KeyDown {
+                    keycode: Some(Keycode::W),
+                    ..
+                } => nes.cpu.borrow_mut().controller.press_button(1),
+                Event::KeyDown {
+                    keycode: Some(Keycode::E),
+                    ..
+                } => nes.cpu.borrow_mut().controller.press_button(2),
+                Event::KeyDown {
+                    keycode: Some(Keycode::R),
+                    ..
+                } => nes.cpu.borrow_mut().controller.press_button(3),
+                Event::KeyDown {
+                    keycode: Some(Keycode::Up),
+                    ..
+                } => nes.cpu.borrow_mut().controller.press_button(4),
+                Event::KeyDown {
+                    keycode: Some(Keycode::Down),
+                    ..
+                } => nes.cpu.borrow_mut().controller.press_button(5),
+                Event::KeyDown {
+                    keycode: Some(Keycode::Left),
+                    ..
+                } => nes.cpu.borrow_mut().controller.press_button(6),
+                Event::KeyDown {
+                    keycode: Some(Keycode::Right),
+                    ..
+                } => nes.cpu.borrow_mut().controller.press_button(7),
+                Event::KeyUp {
+                    keycode: Some(Keycode::Q),
+                    ..
+                } => nes.cpu.borrow_mut().controller.release_button(0),
+                Event::KeyUp {
+                    keycode: Some(Keycode::W),
+                    ..
+                } => nes.cpu.borrow_mut().controller.release_button(1),
+                Event::KeyUp {
+                    keycode: Some(Keycode::E),
+                    ..
+                } => nes.cpu.borrow_mut().controller.release_button(2),
+                Event::KeyUp {
+                    keycode: Some(Keycode::R),
+                    ..
+                } => nes.cpu.borrow_mut().controller.release_button(3),
+                Event::KeyUp {
+                    keycode: Some(Keycode::Up),
+                    ..
+                } => nes.cpu.borrow_mut().controller.release_button(4),
+                Event::KeyUp {
+                    keycode: Some(Keycode::Down),
+                    ..
+                } => nes.cpu.borrow_mut().controller.release_button(5),
+                Event::KeyUp {
+                    keycode: Some(Keycode::Left),
+                    ..
+                } => nes.cpu.borrow_mut().controller.release_button(6),
+                Event::KeyUp {
+                    keycode: Some(Keycode::Right),
+                    ..
+                } => nes.cpu.borrow_mut().controller.release_button(7),
                 _ => {},
             }
         }
-
 
         let mut texture = texture_creator
             .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
@@ -76,7 +122,11 @@ pub fn main() {
                 unsafe {
                     let ppu = nes.ppu.borrow();
                     // println!("{}", ppu.frame);
-                    ptr::copy_nonoverlapping(ppu.image.as_ptr(), buffer.as_mut_ptr(), 256 * 240 * 3);
+                    ptr::copy_nonoverlapping(
+                        ppu.image.as_ptr(),
+                        buffer.as_mut_ptr(),
+                        256 * 240 * 3,
+                    );
                 }
             })
             .unwrap();
