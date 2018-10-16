@@ -1,6 +1,6 @@
 use ppu::MirroringMode;
 
-const CARTRIDGE_HEADER: u32 = 0x1A53454E;
+const CARTRIDGE_HEADER: u32 = 0x1A53_454E;
 
 pub struct Cartridge {
     prg_rom: Vec<u8>,

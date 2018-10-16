@@ -1,7 +1,7 @@
 use cpu::Cpu;
 use mapper::Mapper;
 use ppu::Ppu;
-use std::cell::{Ref, RefCell, RefMut};
+use std::cell::RefCell;
 use std::rc::{Rc, Weak};
 
 pub struct Bus {
