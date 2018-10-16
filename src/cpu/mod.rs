@@ -57,9 +57,9 @@ impl Cpu {
             }
         }
 
-        print!("{:04X} ", self.r.pc);
+        // print!("{:04X} ", self.r.pc);
         let opcode = self.decode_byte();
-        print!("{:02X} ", opcode);
+        // print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
         self.stall_cycle = (self.cycle - start_cycle) * 3 - 1;
     }
@@ -207,7 +207,7 @@ impl Cpu {
     fn execute_opcode(&mut self, opcode: u8) {
         let ppu = self.bus().ppu();
         // println!("{:x}", opcode);
-        println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
+        // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
         let addressing_mode = opcodes::ADDRESSING_MODE_TABLE[opcode as usize];
         opcodes::INSTRUCTION_TABLE[opcode as usize](self, addressing_mode);
         self.cycle += opcodes::CYCLE_TABLE[opcode as usize] as u64;
@@ -234,7 +234,7 @@ impl Cpu {
         }
     }
 
-    fn write_operand(&mut self, operand: &mut opcodes::Operand) {
+    fn write_operand(&mut self, operand: &opcodes::Operand) {
         match operand.addr {
             Some(addr) => self.write_byte(addr, operand.val),
             None => self.r.a = operand.val,

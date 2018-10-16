@@ -59,36 +59,70 @@ impl Nes {
     }
 }
 
+#[cfg(test)]
 mod tests {
-    use super::Nes;
-    use std::fs;
+    macro_rules! instr_tests {
+        ($($test_name:ident: $file_name:expr,)*) => {
+            $(
+                #[test]
+                fn $test_name() {
+                    let buffer = fs::read(format!("./tests/cpu/instr_test/{}.nes", $file_name))
+                        .expect("Expected test rom to exist.");
+                    let mut nes = Nes::new();
+                    nes.load_rom(&buffer);
 
-    #[test]
-    fn test_rom() {
-        let buffer = fs::read("./tests/cpu/instr_test/03-immediate.nes").unwrap();
-        let mut nes = Nes::new();
-        nes.load_rom(&buffer);
+                    // Run until test status is running
+                    let mut addr = 0x6000;
+                    let mut byte = nes.cpu.borrow_mut().read_byte(addr);
+                    while byte != 0x80 {
+                        nes.step();
+                        byte = nes.cpu.borrow_mut().read_byte(addr);
+                    }
 
-        let mut b = nes.cpu.borrow_mut().read_byte(0x6000);
-        while b != 0x80 {
-            nes.step();
-            b = nes.cpu.borrow_mut().read_byte(0x6000);
+                    // Run until test status is finished
+                    byte = nes.cpu.borrow_mut().read_byte(addr);
+                    while byte == 0x80 {
+                        nes.step();
+                        byte = nes.cpu.borrow_mut().read_byte(addr);
+                    }
+
+                    // Read output
+                    let mut output = Vec::new();
+                    addr = 0x6004;
+                    byte = nes.cpu.borrow_mut().read_byte(addr);
+                    while byte != '\0' as u8 {
+                        output.push(byte);
+                        addr += 1;
+                        byte = nes.cpu.borrow_mut().read_byte(addr);
+                    }
+
+                    assert_eq!(
+                        String::from_utf8_lossy(&output),
+                        format!("\n{}\n\nPassed\n", $file_name),
+                    );
+                }
+            )*
         }
+    }
 
-        b = nes.cpu.borrow_mut().read_byte(0x6000);
-        while b == 0x80 {
-            nes.step();
-            b = nes.cpu.borrow_mut().read_byte(0x6000);
-        }
+    mod instr_tests {
+        use super::super::Nes;
+        use std::fs;
 
-        let mut addr = 0x6004;
-        let mut b = nes.cpu.borrow_mut().read_byte(addr);
-        let mut output = Vec::new();
-        while b != '\0' as u8 {
-            output.push(b);
-            addr += 1;
-            b = nes.cpu.borrow_mut().read_byte(addr);
-        }
-        println!("'{}'", String::from_utf8_lossy(&output));
+        instr_tests!(
+            test_01_basics: "01-basics",
+            test_02_implied: "02-implied",
+            test_03_immediate: "03-immediate",
+            test_04_zero_page: "04-zero_page",
+            test_05_zp_xy: "05-zp_xy",
+            test_06_absolute: "06-absolute",
+            test_07_abs_xy: "07-abs_xy",
+            test_08_ind_x: "08-ind_x",
+            test_09_ind_y: "09-ind_y",
+            test_10_branches: "10-branches",
+            test_11_stack: "11-stack",
+            test_12_jmp_jsr: "12-jmp_jsr",
+            test_13_rts: "13-rts",
+        );
     }
 }

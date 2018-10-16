@@ -16,7 +16,7 @@ pub const INSTRUCTION_TABLE: [fn(&mut Cpu, usize) -> (); 256] = [
     rts, adc, inv, rra, dop, adc, ror, rra, pla, adc, ror, arr, jmp, adc, ror, rra, // 60
     bvs, adc, inv, rra, dop, adc, ror, rra, sei, adc, nop, rra, top, adc, ror, rra, // 70
     dop, sta, dop, aax, sty, sta, stx, aax, dey, dop, txa, inv, sty, sta, stx, aax, // 80
-    bcc, sta, inv, inv, sty, sta, stx, aax, tya, sta, txs, inv, inv, sta, inv, inv, // 90
+    bcc, sta, inv, inv, sty, sta, stx, aax, tya, sta, txs, inv, shy, sta, shx, inv, // 90
     ldy, lda, ldx, lax, ldy, lda, ldx, lax, tay, lda, tax, lax, ldy, lda, ldx, lax, // A0
     bcs, lda, inv, lax, ldy, lda, ldx, lax, clv, lda, tsx, inv, ldy, lda, ldx, lax, // B0
     cpy, cmp, dop, dcp, cpy, cmp, dec, dcp, iny, cmp, dex, axs, cpy, cmp, dec, dcp, // C0
@@ -35,7 +35,7 @@ pub const CYCLE_TABLE: [u8; 256] = [
     6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6, // 60
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // 70
     2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 0, 4, 4, 4, 4, // 80
-    2, 6, 0, 0, 4, 4, 4, 4, 2, 5, 2, 0, 0, 5, 0, 0, // 90
+    2, 6, 0, 0, 4, 4, 4, 4, 2, 5, 2, 0, 5, 5, 5, 0, // 90
     2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4, // A0
     2, 5, 0, 5, 4, 4, 4, 4, 2, 4, 2, 0, 4, 4, 4, 4, // B0
     2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, // C0
@@ -54,7 +54,7 @@ pub const ADDRESSING_MODE_TABLE: [usize; 256] = [
     06, 08, 00, 08, 11, 11, 11, 11, 06, 05, 04, 05, 07, 01, 01, 01, // 60
     10, 09, 00, 09, 12, 12, 12, 12, 06, 03, 06, 03, 02, 02, 02, 02, // 70
     05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 00, 01, 01, 01, 01, // 80
-    10, 09, 00, 00, 12, 12, 13, 13, 06, 03, 06, 00, 00, 02, 00, 00, // 90
+    10, 09, 00, 00, 12, 12, 13, 13, 06, 03, 06, 00, 02, 02, 03, 00, // 90
     05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 05, 01, 01, 01, 01, // A0
     10, 09, 00, 09, 12, 12, 13, 13, 06, 03, 06, 00, 02, 02, 03, 03, // B0
     05, 08, 05, 08, 11, 11, 11, 11, 06, 05, 06, 05, 01, 01, 01, 01, // C0
@@ -141,7 +141,7 @@ fn arr(cpu: &mut Cpu, addressing_mode: usize) {
     cpu.r.set_status_flag(registers::CARRY_MASK, carry_bit);
     cpu.r.set_status_flag(registers::OVERFLOW_MASK, overflow_bit);
     operand.val = res;
-    cpu.write_operand(&mut operand);
+    cpu.write_operand(&operand);
 }
 
 fn asl_impl(cpu: &mut Cpu, operand: &mut Operand) {
@@ -599,6 +599,24 @@ fn sed(cpu: &mut Cpu, _addressing_mode: usize) {
 fn sei(cpu: &mut Cpu, _addressing_mode: usize) {
     cpu.r
         .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
+}
+
+fn shx(cpu: &mut Cpu, addressing_mode: usize) {
+    let (addr, page_break) = addressing_modes::FUNCTION_TABLE[addressing_mode](cpu);
+    let res = cpu.r.x & ((addr >> 8) as u8 + 1);
+
+    if !page_break {
+        cpu.write_byte(addr, res);
+    }
+}
+
+fn shy(cpu: &mut Cpu, addressing_mode: usize) {
+    let (addr, page_break) = addressing_modes::FUNCTION_TABLE[addressing_mode](cpu);
+    let res = cpu.r.y & ((addr >> 8) as u8 + 1);
+
+    if !page_break {
+        cpu.write_byte(addr, res);
+    }
 }
 
 fn slo(cpu: &mut Cpu, addressing_mode: usize) {
