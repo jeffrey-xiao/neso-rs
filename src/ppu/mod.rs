@@ -40,6 +40,7 @@ pub struct Ppu {
     pub image: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
     pub primary_oam: [u8; 0x100],
     pub secondary_oam: [u8; 0x20],
+    pub is_sprite_0: [bool; 8],
     pub vram: [u8; 0x2000],
     pub palette_ram: [u8; 0x20],
     pub cycle: u16,    // [0, 340]
@@ -56,6 +57,7 @@ impl Ppu {
             image: [0; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
             primary_oam: [0; 0x100],
             secondary_oam: [0; 0x20],
+            is_sprite_0: [false; 8],
             vram: [0; 0x2000],
             palette_ram: [0; 0x20],
             bus: None,
@@ -247,12 +249,12 @@ impl Ppu {
         ((self.r.tile >> 32 >> ((7 - self.r.x) * 4)) & 0x0F) as u16
     }
 
-    fn compute_sprite_pixel(&self) -> (u16, bool) {
+    fn compute_sprite_pixel(&self) -> (u16, bool, bool) {
         let y = self.scanline as u8;
         let x = (self.cycle - 1) as u8;
 
         if (x < 8 && !self.r.show_left_sprites) || !self.r.show_sprites {
-            return (0, false);
+            return (0, false, false);
         }
 
         for i in 0..8 {
@@ -304,15 +306,19 @@ impl Ppu {
                 continue;
             }
 
-            return (((palette << 2) | color) as u16, (attributes & 0x20) != 0);
+            return (
+                ((palette << 2) | color) as u16,
+                (attributes & 0x20) != 0,
+                self.is_sprite_0[i],
+            );
         }
 
-        (0, false)
+        (0, false, false)
     }
 
     fn draw_pixel(&mut self) {
         let background_pixel = self.compute_background_pixel();
-        let (sprite_pixel, sprite_priority) = self.compute_sprite_pixel();
+        let (sprite_pixel, sprite_priority, is_sprite_0) = self.compute_sprite_pixel();
 
         let background_on = background_pixel & 0x03 != 0;
         let sprite_on = sprite_pixel & 0x03 != 0;
@@ -321,8 +327,17 @@ impl Ppu {
             (false, false) => 0x3F00,
             (false, true) => 0x3F10 + sprite_pixel,
             (true, false) => 0x3F00 + background_pixel,
-            (true, true) if !sprite_priority => 0x3F10 + sprite_pixel,
-            (true, true) => 0x3F00 + background_pixel,
+            (true, true) => {
+                if self.cycle != 256 && is_sprite_0 {
+                    self.r.sprite_0_hit = true;
+                }
+
+                if !sprite_priority {
+                    0x3F10 + sprite_pixel
+                } else {
+                    0x3F00 + background_pixel
+                }
+            },
         };
 
         let color = PALETTE[self.read_byte(addr) as usize];
@@ -408,6 +423,7 @@ impl Ppu {
                         self.secondary_oam[secondary_oam_index + 1] = self.primary_oam[i * 4 + 1];
                         self.secondary_oam[secondary_oam_index + 2] = self.primary_oam[i * 4 + 2];
                         self.secondary_oam[secondary_oam_index + 3] = self.primary_oam[i * 4 + 3];
+                        self.is_sprite_0[secondary_oam_index / 4] = i == 0;
                         secondary_oam_index += 4;
                     } else {
                         self.r.sprite_overflow = true;
