@@ -19,11 +19,33 @@ pub fn main() {
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
+    let mut pattern_table = Vec::with_capacity(512);
+
+    for i in 0..512 {
+        let mut tile = [0; 64];
+
+        for index in 0..8 {
+            let byte = nes.ppu.borrow().read_byte(index + i * 16);
+            for y in 0..8 {
+                tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 1 } else { 0 };
+            }
+        }
+
+        for index in 0..8 {
+            let byte = nes.ppu.borrow().read_byte(index + 8 + i * 16);
+            for y in 0..8 {
+                tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 2 } else { 0 };
+            }
+        }
+
+        pattern_table.push(tile);
+    }
+
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
     let window = video_subsystem
-        .window("rust-sdl2 demo: Video", 800, 600)
+        .window("rust-sdl2 demo: Video", 1000, 600)
         .position_centered()
         .opengl()
         .build()
@@ -126,17 +148,77 @@ pub fn main() {
                         ppu.image.as_ptr(),
                         buffer.as_mut_ptr(),
                         256 * 240 * 3,
-                    );
+                        );
                 }
             })
-            .unwrap();
+        .unwrap();
         nes.step_frame();
 
         canvas.clear();
         canvas
             .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
             .unwrap();
+
+        let mut texture = texture_creator
+            .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
+            .unwrap();
+
+        texture
+            .with_lock(None, |buffer: &mut [u8], pitch: usize| {
+                for i in 0..30usize {
+                    for j in 0..32usize {
+                        let index = nes.ppu.borrow().read_byte(0x2000 + i as u16 * 32 + j as u16) as usize;
+                        for x in 0..8usize {
+                            for y in 0..8usize {
+                                let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;
+                                let val = match pattern_table[index + 256][x * 8 + y] {
+                                    0 => 255,
+                                    1 => 200,
+                                    2 => 150,
+                                    3 => 100,
+                                    _ => panic!("ERROR"),
+                                };
+                                buffer[offset] = val;
+                                buffer[offset + 1] = val;
+                                buffer[offset + 2] = val;
+                            }
+                        }
+                    }
+                }
+            })
+        .unwrap();
+        canvas
+            .copy(&texture, None, Some(Rect::new(240 * 2, 0, 240, 256)))
+            .unwrap();
+        texture
+            .with_lock(None, |buffer: &mut [u8], pitch: usize| {
+                for i in 0..30usize {
+                    for j in 0..32usize {
+                        let index = nes.ppu.borrow().read_byte(0x2800 + i as u16 * 32 + j as u16);
+                        for x in 0..8 {
+                            for y in 0..8 {
+                                let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;
+                                let val = match pattern_table[index as usize + 256][(x * 8 + y)] {
+                                    0 => 255,
+                                    1 => 200,
+                                    2 => 150,
+                                    3 => 100,
+                                    _ => panic!("ERROR"),
+                                };
+                                buffer[offset] = val;
+                                buffer[offset + 1] = val;
+                                buffer[offset + 2] = val;
+                            }
+                        }
+                    }
+                }
+            })
+        .unwrap();
+        canvas
+            .copy(&texture, None, Some(Rect::new(240 * 3, 0, 240, 256)))
+            .unwrap();
         canvas.present();
+
 
         if mus_per_frame > start.elapsed() {
             thread::sleep(mus_per_frame - start.elapsed());

@@ -94,9 +94,12 @@ impl Ppu {
                 ret
             },
             0x2000..=0x3EFF => {
-                let index = ((addr - 0x2000) / 0x400) as usize;
-                let offset = ((addr - 0x2000) % 0x400) as usize;
-                self.vram[MIRRORING_MODE_TABLE[index] * 0x400 + offset]
+                let mapper = self.bus().mapper();
+                let addr = (addr - 0x2000) % 0x1000;
+                let index = (addr / 0x400) as usize;
+                let offset = (addr % 0x400) as usize;
+                let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
+                self.vram[MIRRORING_MODE_TABLE[mirroring_mode + index] * 0x400 + offset]
             },
             0x3F00..=0x3FFF => {
                 if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F1C {
