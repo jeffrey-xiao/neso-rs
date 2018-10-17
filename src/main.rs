@@ -57,6 +57,7 @@ pub fn main() {
     canvas.present();
 
     let mut event_pump = sdl_context.event_pump().unwrap();
+    let mut step_scanline = false;
 
     'running: loop {
         let start = Instant::now();
@@ -99,6 +100,10 @@ pub fn main() {
                     keycode: Some(Keycode::Right),
                     ..
                 } => nes.cpu.borrow_mut().controller.press_button(7),
+                Event::KeyDown {
+                    keycode: Some(Keycode::Space),
+                    ..
+                } => step_scanline = true,
                 Event::KeyUp {
                     keycode: Some(Keycode::Q),
                     ..
@@ -131,6 +136,10 @@ pub fn main() {
                     keycode: Some(Keycode::Right),
                     ..
                 } => nes.cpu.borrow_mut().controller.release_button(7),
+                Event::KeyUp {
+                    keycode: Some(Keycode::Space),
+                    ..
+                } => step_scanline = false,
                 _ => {},
             }
         }
@@ -152,7 +161,11 @@ pub fn main() {
                 }
             })
         .unwrap();
-        nes.step_frame();
+        if step_scanline {
+            nes.step_scanline();
+        } else {
+            nes.step_frame();
+        }
 
         canvas.clear();
         canvas
@@ -220,8 +233,9 @@ pub fn main() {
         canvas.present();
 
 
-        if mus_per_frame > start.elapsed() {
-            thread::sleep(mus_per_frame - start.elapsed());
+        let elapsed = start.elapsed();
+        if mus_per_frame > elapsed {
+            thread::sleep(mus_per_frame - elapsed);
         }
     }
 }

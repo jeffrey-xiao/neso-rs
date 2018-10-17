@@ -173,7 +173,10 @@ impl Ppu {
         self.r.last_written_byte = val;
         match index {
             // PPUCTRL
-            0 => self.r.write_ppu_ctrl(val),
+            0 => {
+                println!("WRITE CTRL ON {} {}", self.scanline, self.cycle);
+                self.r.write_ppu_ctrl(val);
+            },
             // PPUMASK
             1 => self.r.write_ppu_mask(val),
             // PPUSTATUS
@@ -190,9 +193,15 @@ impl Ppu {
                 self.r.oam_addr = self.r.oam_addr.wrapping_add(1);
             },
             // PPUSCROLL
-            5 => self.r.write_ppu_scroll(val),
+            5 => {
+                println!("WRITE SCROLL ON {} {} {}", self.scanline, self.cycle, val);
+                self.r.write_ppu_scroll(val);
+            },
             // PPUADDR
-            6 => self.r.write_ppu_addr(val),
+            6 => {
+                println!("WRITE ADDR ON {} {}", self.scanline, self.cycle);
+                self.r.write_ppu_addr(val);
+            },
             // PPUDATA
             7 => {
                 // println!("WRITE TO ADDR {:x}", addr);
@@ -379,7 +388,9 @@ impl Ppu {
             }
 
             if self.cycle == 257 {
+                // println!("{} old x {} old t {}", self.scanline, self.r.v & 0b111, self.r.t);
                 self.r.copy_scroll_x();
+                // println!("{} new x {} new t {}", self.scanline, self.r.v & 0b111, self.r.t);
             }
 
             // background pipeline
@@ -437,9 +448,9 @@ impl Ppu {
 
         if self.scanline == 241 && self.cycle == 1 {
             self.r.v_blank_started = true;
-            // println!("V BLANK ON");
             if self.r.nmi_enabled {
                 let cpu = self.bus().cpu();
+                println!("TRIGGERED INTERRUPT");
                 cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
             } else {
                 // println!("NMI_ENABLED is false so no interrupt");
@@ -450,7 +461,6 @@ impl Ppu {
             self.r.v_blank_started = false;
             self.r.sprite_0_hit = false;
             self.r.sprite_overflow = false;
-            // println!("V BLANK OFF");
         }
     }
 }

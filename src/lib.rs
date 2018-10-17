@@ -51,6 +51,13 @@ impl Nes {
         self.ppu.borrow_mut().step();
     }
 
+    pub fn step_scanline(&mut self) {
+        let scanline = self.ppu.borrow().scanline;
+        while self.ppu.borrow().scanline == scanline {
+            self.step();
+        }
+    }
+
     pub fn step_frame(&mut self) {
         let frame = self.ppu.borrow().frame;
         while self.ppu.borrow().frame == frame {

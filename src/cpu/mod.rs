@@ -206,7 +206,6 @@ impl Cpu {
 
     fn execute_opcode(&mut self, opcode: u8) {
         let ppu = self.bus().ppu();
-        // println!("{:x}", opcode);
         // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
         let addressing_mode = opcodes::ADDRESSING_MODE_TABLE[opcode as usize];
         opcodes::INSTRUCTION_TABLE[opcode as usize](self, addressing_mode);
