@@ -174,7 +174,7 @@ impl Ppu {
         match index {
             // PPUCTRL
             0 => {
-                println!("WRITE CTRL ON {} {}", self.scanline, self.cycle);
+                // println!("WRITE CTRL ON {} {}", self.scanline, self.cycle);
                 self.r.write_ppu_ctrl(val);
             },
             // PPUMASK
@@ -194,12 +194,12 @@ impl Ppu {
             },
             // PPUSCROLL
             5 => {
-                println!("WRITE SCROLL ON {} {} {}", self.scanline, self.cycle, val);
+                // println!("WRITE SCROLL ON {} {} {}", self.scanline, self.cycle, val);
                 self.r.write_ppu_scroll(val);
             },
             // PPUADDR
             6 => {
-                println!("WRITE ADDR ON {} {}", self.scanline, self.cycle);
+                // println!("WRITE ADDR ON {} {}", self.scanline, self.cycle);
                 self.r.write_ppu_addr(val);
             },
             // PPUDATA
@@ -270,7 +270,7 @@ impl Ppu {
         }
 
         for i in 0..8 {
-            let sprite_y = self.secondary_oam[i * 4];
+            let sprite_y = self.secondary_oam[i * 4] + 1;
             let sprite_x = self.secondary_oam[i * 4 + 3];
             let mut tile_index = self.secondary_oam[i * 4 + 1];
             let attributes = self.secondary_oam[i * 4 + 2];
@@ -342,6 +342,8 @@ impl Ppu {
             (true, true) => {
                 if self.cycle != 256 && is_sprite_0 {
                     self.r.sprite_0_hit = true;
+                    println!("SPRITE 0 HIT AT {}", self.scanline);
+                    println!("{} {}", self.r.show_background, self.r.show_sprites);
                 }
 
                 if !sprite_priority {
@@ -425,7 +427,7 @@ impl Ppu {
                 }
                 let mut secondary_oam_index = 0;
                 for i in 0..64 {
-                    let y = self.primary_oam[i * 4] as i16;
+                    let y = self.primary_oam[i * 4] as i16 + 1;
                     let lo = y;
                     let hi = y + self.r.sprite_size.1 as i16 - 1;
                     if !(lo <= self.scanline + 1 && self.scanline + 1 <= hi) {

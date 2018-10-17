@@ -61,7 +61,7 @@ impl Cpu {
         let opcode = self.decode_byte();
         // print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
-        self.stall_cycle = (self.cycle - start_cycle) * 3 - 1;
+        self.stall_cycle += (self.cycle - start_cycle) * 3 - 1;
     }
 
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
@@ -176,7 +176,7 @@ impl Cpu {
             // TODO: Implement APU and IO maps
             0x4000..=0x4017 => {
                 if addr == 0x4014 {
-                    // println!("OAMDMA {:x}", addr);
+                    println!("OAMDMA {:x}", addr);
                     let cpu_addr = (val as u16) << 8;
                     let ppu = self.bus().ppu.upgrade().unwrap();
                     for offset in 0..=0xFF {
@@ -187,9 +187,9 @@ impl Cpu {
                     }
 
                     if self.cycle % 2 == 1 {
-                        self.stall_cycle += 514;
+                        self.stall_cycle += 514 * 3;
                     } else {
-                        self.stall_cycle += 513;
+                        self.stall_cycle += 513 * 3;
                     }
                 } else if addr == 0x4016 {
                     self.controller.write_strobe(val & 0x01 != 0);
