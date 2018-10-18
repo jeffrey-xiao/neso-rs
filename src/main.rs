@@ -157,10 +157,10 @@ pub fn main() {
                         ppu.image.as_ptr(),
                         buffer.as_mut_ptr(),
                         256 * 240 * 3,
-                        );
+                    );
                 }
             })
-        .unwrap();
+            .unwrap();
         if step_scanline {
             nes.step_scanline();
         } else {
@@ -181,7 +181,11 @@ pub fn main() {
                 .with_lock(None, |buffer: &mut [u8], pitch: usize| {
                     for i in 0..30usize {
                         for j in 0..32usize {
-                            let index = nes.ppu.borrow().read_byte(offset + i as u16 * 32 + j as u16) as usize;
+                            let index = nes
+                                .ppu
+                                .borrow()
+                                .read_byte(offset + i as u16 * 32 + j as u16)
+                                as usize;
                             for x in 0..8usize {
                                 for y in 0..8usize {
                                     let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;
@@ -200,10 +204,19 @@ pub fn main() {
                         }
                     }
                 })
-            .unwrap();
+                .unwrap();
 
             canvas
-                .copy(&texture, None, Some(Rect::new(240 * 2 + 240 * (nametable as i32 % 2), 256 * (nametable as i32 / 2), 240, 256)))
+                .copy(
+                    &texture,
+                    None,
+                    Some(Rect::new(
+                        240 * 2 + 240 * (nametable as i32 % 2),
+                        256 * (nametable as i32 / 2),
+                        240,
+                        256,
+                    )),
+                )
                 .unwrap();
         }
 
