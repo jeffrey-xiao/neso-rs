@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/super_mario_bros.nes").unwrap();
+    let buffer = fs::read("./tests/ice_climber.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -172,66 +172,42 @@ pub fn main() {
             .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
             .unwrap();
 
-        let mut texture = texture_creator
-            .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
+        for (nametable, offset) in [0x2000, 0x2400, 0x2800, 0x2C00].iter().enumerate() {
+            let mut texture = texture_creator
+                .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
+                .unwrap();
+
+            texture
+                .with_lock(None, |buffer: &mut [u8], pitch: usize| {
+                    for i in 0..30usize {
+                        for j in 0..32usize {
+                            let index = nes.ppu.borrow().read_byte(offset + i as u16 * 32 + j as u16) as usize;
+                            for x in 0..8usize {
+                                for y in 0..8usize {
+                                    let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;
+                                    let val = match pattern_table[index + 256][x * 8 + y] {
+                                        0 => 255,
+                                        1 => 200,
+                                        2 => 150,
+                                        3 => 100,
+                                        _ => panic!("ERROR"),
+                                    };
+                                    buffer[offset] = val;
+                                    buffer[offset + 1] = val;
+                                    buffer[offset + 2] = val;
+                                }
+                            }
+                        }
+                    }
+                })
             .unwrap();
 
-        texture
-            .with_lock(None, |buffer: &mut [u8], pitch: usize| {
-                for i in 0..30usize {
-                    for j in 0..32usize {
-                        let index = nes.ppu.borrow().read_byte(0x2000 + i as u16 * 32 + j as u16) as usize;
-                        for x in 0..8usize {
-                            for y in 0..8usize {
-                                let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;
-                                let val = match pattern_table[index + 256][x * 8 + y] {
-                                    0 => 255,
-                                    1 => 200,
-                                    2 => 150,
-                                    3 => 100,
-                                    _ => panic!("ERROR"),
-                                };
-                                buffer[offset] = val;
-                                buffer[offset + 1] = val;
-                                buffer[offset + 2] = val;
-                            }
-                        }
-                    }
-                }
-            })
-        .unwrap();
-        canvas
-            .copy(&texture, None, Some(Rect::new(240 * 2, 0, 240, 256)))
-            .unwrap();
-        texture
-            .with_lock(None, |buffer: &mut [u8], pitch: usize| {
-                for i in 0..30usize {
-                    for j in 0..32usize {
-                        let index = nes.ppu.borrow().read_byte(0x2800 + i as u16 * 32 + j as u16);
-                        for x in 0..8 {
-                            for y in 0..8 {
-                                let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;
-                                let val = match pattern_table[index as usize + 256][(x * 8 + y)] {
-                                    0 => 255,
-                                    1 => 200,
-                                    2 => 150,
-                                    3 => 100,
-                                    _ => panic!("ERROR"),
-                                };
-                                buffer[offset] = val;
-                                buffer[offset + 1] = val;
-                                buffer[offset + 2] = val;
-                            }
-                        }
-                    }
-                }
-            })
-        .unwrap();
-        canvas
-            .copy(&texture, None, Some(Rect::new(240 * 3, 0, 240, 256)))
-            .unwrap();
+            canvas
+                .copy(&texture, None, Some(Rect::new(240 * 2 + 240 * (nametable as i32 % 2), 256 * (nametable as i32 / 2), 240, 256)))
+                .unwrap();
+        }
+
         canvas.present();
-
 
         let elapsed = start.elapsed();
         if mus_per_frame > elapsed {
