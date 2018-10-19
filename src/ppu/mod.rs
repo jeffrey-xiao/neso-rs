@@ -25,7 +25,15 @@ const PALETTE: [u32; 64] = [
 pub enum MirroringMode {
     Horizontal = 0,
     Vertical = 1,
-    None = 2,
+    Lower = 2,
+    Upper = 3,
+    None = 4,
+}
+
+impl Default for MirroringMode {
+    fn default() -> MirroringMode {
+        MirroringMode::Horizontal
+    }
 }
 
 const MIRRORING_MODE_TABLE: [usize; 12] = [

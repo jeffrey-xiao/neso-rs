@@ -74,8 +74,6 @@ fn aax(cpu: &mut Cpu, addressing_mode: usize) {
     let (addr, _page_break) = addressing_modes::FUNCTION_TABLE[addressing_mode](cpu);
 
     let res = cpu.r.x & cpu.r.a;
-    // cpu.update_negative_flag(res);
-    // cpu.update_zero_flag(res);
     cpu.write_byte(addr, res);
 }
 

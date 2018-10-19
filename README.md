@@ -6,6 +6,10 @@
 
 An NES emulator written in Rust that compiles to WebAssembly.
 
+Features
+ - Cycle accurate MOS 6502 CPU
+ - Mapper 0 (NROM)
+
 ## Test Rom Progress
 
 CPU

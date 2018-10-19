@@ -3,7 +3,7 @@ use mapper::Mapper;
 use ppu::MirroringMode;
 
 pub struct Nrom {
-    pub cartridge: Cartridge,
+    cartridge: Cartridge,
 }
 
 impl Nrom {
