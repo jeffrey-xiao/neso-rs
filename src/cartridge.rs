@@ -83,32 +83,32 @@ impl Cartridge {
         self.prg_rom.len()
     }
 
-    pub fn read_prg_rom(&self, addr: u16) -> u8 {
-        self.prg_rom[addr as usize]
+    pub fn read_prg_rom(&self, addr: usize) -> u8 {
+        self.prg_rom[addr]
     }
 
     pub fn chr_rom_len(&self) -> usize {
         self.chr_rom.len()
     }
 
-    pub fn read_chr_rom(&self, addr: u16) -> u8 {
-        self.chr_rom[addr as usize]
+    pub fn read_chr_rom(&self, addr: usize) -> u8 {
+        self.chr_rom[addr]
     }
 
     // chr_rom is ram if the size reported in the header is 0.
-    pub fn write_chr_rom(&mut self, addr: u16, val: u8) {
-        self.chr_rom[addr as usize] = val;
+    pub fn write_chr_rom(&mut self, addr: usize, val: u8) {
+        self.chr_rom[addr] = val;
     }
 
     pub fn prg_ram_len(&self) -> usize {
         self.prg_ram.len()
     }
 
-    pub fn read_prg_ram(&self, addr: u16) -> u8 {
-        self.prg_ram[addr as usize]
+    pub fn read_prg_ram(&self, addr: usize) -> u8 {
+        self.prg_ram[addr]
     }
 
-    pub fn write_prg_ram(&mut self, addr: u16, val: u8) {
-        self.prg_ram[addr as usize] = val;
+    pub fn write_prg_ram(&mut self, addr: usize, val: u8) {
+        self.prg_ram[addr] = val;
     }
 }

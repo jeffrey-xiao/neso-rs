@@ -14,10 +14,11 @@ impl Nrom {
 
 impl Mapper for Nrom {
     fn read_byte(&self, addr: u16) -> u8 {
+        let addr = addr as usize;
         match addr {
             0x0000..=0x1FFF => self.cartridge.read_chr_rom(addr),
             0x6000..=0x7FFF => {
-                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len() as u16;
+                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.read_prg_ram(addr)
             },
             0x8000..=0xBFFF => self.cartridge.read_prg_rom(addr - 0x8000),
@@ -33,10 +34,11 @@ impl Mapper for Nrom {
     }
 
     fn write_byte(&mut self, addr: u16, val: u8) {
+        let addr = addr as usize;
         match addr {
             0x0000..=0x1FFF => self.cartridge.write_chr_rom(addr, val),
             0x6000..=0x7FFF => {
-                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len() as u16;
+                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.write_prg_ram(addr, val);
             },
             _ => {},

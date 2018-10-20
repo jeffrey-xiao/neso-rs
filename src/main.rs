@@ -19,33 +19,12 @@ pub fn main() {
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
-    let mut pattern_table = Vec::with_capacity(512);
-
-    for i in 0..512 {
-        let mut tile = [0; 64];
-
-        for index in 0..8 {
-            let byte = nes.ppu.borrow().read_byte(index + i * 16);
-            for y in 0..8 {
-                tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 1 } else { 0 };
-            }
-        }
-
-        for index in 0..8 {
-            let byte = nes.ppu.borrow().read_byte(index + 8 + i * 16);
-            for y in 0..8 {
-                tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 2 } else { 0 };
-            }
-        }
-
-        pattern_table.push(tile);
-    }
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
     let window = video_subsystem
-        .window("rust-sdl2 demo: Video", 1000, 600)
+        .window("rust-sdl2 demo: Video", 1000, 800)
         .position_centered()
         .opengl()
         .build()
@@ -145,7 +124,7 @@ pub fn main() {
         }
 
         let mut texture = texture_creator
-            .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
+            .create_texture_streaming(PixelFormatEnum::RGB24, 240, 256)
             .unwrap();
 
         texture
@@ -167,6 +146,28 @@ pub fn main() {
             nes.step_frame();
         }
 
+        let mut pattern_table = Vec::with_capacity(512);
+
+        for i in 0..512 {
+            let mut tile = [0; 64];
+
+            for index in 0..8 {
+                let byte = nes.ppu.borrow().read_byte(index + i * 16);
+                for y in 0..8 {
+                    tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 1 } else { 0 };
+                }
+            }
+
+            for index in 0..8 {
+                let byte = nes.ppu.borrow().read_byte(index + 8 + i * 16);
+                for y in 0..8 {
+                    tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 2 } else { 0 };
+                }
+            }
+
+            pattern_table.push(tile);
+        }
+
         canvas.clear();
         canvas
             .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
@@ -174,7 +175,7 @@ pub fn main() {
 
         for (nametable, offset) in [0x2000, 0x2400, 0x2800, 0x2C00].iter().enumerate() {
             let mut texture = texture_creator
-                .create_texture_streaming(PixelFormatEnum::RGB24, 256, 256)
+                .create_texture_streaming(PixelFormatEnum::RGB24, 240, 256)
                 .unwrap();
 
             texture
@@ -219,6 +220,52 @@ pub fn main() {
                 )
                 .unwrap();
         }
+
+        let mut texture = texture_creator
+            .create_texture_streaming(PixelFormatEnum::RGB24, 256, 128)
+            .unwrap();
+
+        texture
+            .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
+                for i in 0..16usize {
+                    for j in 0..32usize {
+                        for x in 0..8usize {
+                            for y in 0..8usize {
+                                let row = ((i * 2) % 16 + j / 16);
+                                let col = if i < 8 {
+                                    j % 16
+                                } else {
+                                    j % 16 + 16
+                                };
+                                let offset = ((row * 8 + x) * 256 + col * 8 + y) * 3;
+                                let val = match pattern_table[i * 32 + j][x * 8 + y] {
+                                    0 => 255,
+                                    1 => 200,
+                                    2 => 150,
+                                    3 => 100,
+                                    _ => panic!("ERROR"),
+                                };
+                                buffer[offset] = val;
+                                buffer[offset + 1] = val;
+                                buffer[offset + 2] = val;
+                            }
+                        }
+                    }
+                }
+            })
+            .unwrap();
+        canvas
+            .copy(
+                &texture,
+                None,
+                Some(Rect::new(
+                    0,
+                    256 * 2,
+                    256 * 2,
+                    128 * 2,
+                )),
+            )
+            .unwrap();
 
         canvas.present();
 

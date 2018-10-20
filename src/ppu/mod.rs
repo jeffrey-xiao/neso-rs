@@ -36,9 +36,11 @@ impl Default for MirroringMode {
     }
 }
 
-const MIRRORING_MODE_TABLE: [usize; 12] = [
+const MIRRORING_MODE_TABLE: [usize; 20] = [
     0, 0, 1, 1, // Horizontal
     0, 1, 0, 1, // Vertical
+    0, 0, 0, 0, // Lower
+    1, 1, 1, 1, // Upper
     0, 1, 2, 3, // None
 ];
 
@@ -123,7 +125,7 @@ impl Ppu {
         match addr {
             0x0000..=0x1FFF => {
                 let mapper = self.bus().mapper();
-                mapper.borrow_mut().read_byte(addr);
+                mapper.borrow_mut().write_byte(addr, val);
             },
             0x2000..=0x3EFF => {
                 let mapper = self.bus().mapper();
@@ -131,6 +133,7 @@ impl Ppu {
                 let index = (addr / 0x400) as usize;
                 let offset = (addr % 0x400) as usize;
                 let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
+                println!("[PPU] WRITE BYTE {:x} {}", addr, val);
                 self.vram[MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400 + offset] = val;
             },
 
@@ -148,21 +151,21 @@ impl Ppu {
         // print!("READ PPU REGISTER {} {} {} {:x} {}; ", index, self.scanline, self.cycle, self.r.read_ppu_status(), self.r.v_blank_started);
         match index {
             // PPUCTRL
-            0 => self.r.last_written_byte,
+            0x00 => self.r.last_written_byte,
             // PPUMASK
-            1 => self.r.last_written_byte,
+            0x01 => self.r.last_written_byte,
             // PPUSTATUS
-            2 => self.r.read_ppu_status(),
+            0x02 => self.r.read_ppu_status(),
             // OAMADDR
-            3 => self.r.last_written_byte,
+            0x03 => self.r.last_written_byte,
             // OAMDATA
-            4 => self.primary_oam[self.r.oam_addr as usize],
+            0x04 => self.primary_oam[self.r.oam_addr as usize],
             // PPUSCROLL
-            5 => self.r.last_written_byte,
+            0x05 => self.r.last_written_byte,
             // PPUADDR
-            6 => self.r.last_written_byte,
+            0x06 => self.r.last_written_byte,
             // PPUDATA
-            7 => {
+            0x07 => {
                 let mut ret = self.read_byte(self.r.bus_address);
                 if self.r.bus_address < 0x3F00 {
                     mem::swap(&mut ret, &mut self.r.buffer);
@@ -181,38 +184,37 @@ impl Ppu {
         self.r.last_written_byte = val;
         match index {
             // PPUCTRL
-            0 => {
+            0x00 => {
                 // println!("WRITE CTRL ON {} {}", self.scanline, self.cycle);
                 self.r.write_ppu_ctrl(val);
             },
             // PPUMASK
-            1 => self.r.write_ppu_mask(val),
+            0x01 => self.r.write_ppu_mask(val),
             // PPUSTATUS
-            2 => return,
+            0x02 => return,
             // OAMADDR
-            3 => {
+            0x03 => {
                 // println!("SET {:x}", val);
                 self.r.oam_addr = val;
             },
             // OAMDATA
-            4 => {
+            0x04 => {
                 // println!("READ {:x}", self.r.oam_addr);
                 self.primary_oam[self.r.oam_addr as usize] = val;
                 self.r.oam_addr = self.r.oam_addr.wrapping_add(1);
             },
             // PPUSCROLL
-            5 => {
+            0x05 => {
                 // println!("WRITE SCROLL ON {} {} {}", self.scanline, self.cycle, val);
                 self.r.write_ppu_scroll(val);
             },
             // PPUADDR
-            6 => {
+            0x06 => {
                 // println!("WRITE ADDR ON {} {}", self.scanline, self.cycle);
                 self.r.write_ppu_addr(val);
             },
             // PPUDATA
-            7 => {
-                // println!("WRITE TO ADDR {:x}", addr);
+            0x07 => {
                 let addr = self.r.bus_address;
                 self.write_byte(addr, val);
                 self.r.bus_address += self.r.vram_address_increment;
@@ -350,8 +352,6 @@ impl Ppu {
             (true, true) => {
                 if self.cycle != 256 && is_sprite_0 {
                     self.r.sprite_0_hit = true;
-                    println!("SPRITE 0 HIT AT {}", self.scanline);
-                    println!("{} {}", self.r.show_background, self.r.show_sprites);
                 }
 
                 if !sprite_priority {
@@ -460,7 +460,7 @@ impl Ppu {
             self.r.v_blank_started = true;
             if self.r.nmi_enabled {
                 let cpu = self.bus().cpu();
-                println!("TRIGGERED INTERRUPT");
+                // println!("TRIGGERED INTERRUPT");
                 cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
             } else {
                 // println!("NMI_ENABLED is false so no interrupt");
