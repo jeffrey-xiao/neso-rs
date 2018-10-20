@@ -7,19 +7,19 @@
 An NES emulator written in Rust that compiles to WebAssembly.
 
 Features
- - Cycle accurate MOS 6502 CPU
- - Mapper 0 (NROM)
+ - Cycle accurate MOS 6502 CPU with unofficial instructions
+ - NROM (Mapper 0), MMC1 (Mapper 1)
 
 ## Test Rom Progress
 
 CPU
   - kevtris's `nestest`: Pass
-  - blargg's `instr_misc` (2/4)
+  - blargg's `instr_misc`: (2/4)
     - `01-abs_x_wrap.nes`: Pass
     - `02-branch_wrap.nes`: Pass
     - `03-dummy_reads.nes`: Fail
     - `04-dummy_reads_apu.nes`: Fail
-  - blargg's `instr_test` (16/16)
+  - blargg's `instr_test`: (16/16)
     - `01-basics.nes`: Pass
     - `02-implied.nes`: Pass
     - `03-immediate.nes`: Pass
@@ -36,15 +36,20 @@ CPU
     - `14-rti.nes`: Pass
     - `15-brk.nes`: Pass
     - `16-special.nes`: Pass
-  - blargg's `instr_timing` (0/2)
-    - `1-instr_timing.nes`: Fail
-    - `2-branch_timing.nes`: Fail
+  - blargg's `instr_timing`: (0/2)
+    - `01-instr_timing.nes`: Fail
+    - `02-branch_timing.nes`: Fail
   - blargg's `interrupts`: (0/5)
-    - `1-cli_latency`
-    - `2-nmi_and_brk`
-    - `3-nmi_and_irq`
-    - `4-irq_and_dma`
-    - `5-branch_delays_irq`
+    - `01-cli_latency`: Fail
+    - `02-nmi_and_brk`: Fail
+    - `03-nmi_and_irq`: Fail
+    - `04-irq_and_dma`: Fail
+    - `05-branch_delays_irq`: Fail
+  - blargg's `branch_timing_tests`: (2/3)
+    - `01-branch_basics.nes`: Fail
+    - `02-backward_branch.nes`: Pass
+    - `03-forward_branch.nes`: Pass
+  - blargg's `cpu_timing_test`: Pass
 
 ## References
 
