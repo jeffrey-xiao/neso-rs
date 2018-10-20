@@ -238,7 +238,7 @@ impl Ppu {
 
     fn fetch_tile_byte(&mut self, high: bool) {
         let fine_y = (self.r.v >> 12) & 0x07;
-        let tile_offset = self.r.nametable_byte as u16 * 16;
+        let tile_offset = u16::from(self.r.nametable_byte) * 16;
         let addr = self.r.background_pattern_table_address + tile_offset + fine_y;
         if high {
             self.r.high_tile_byte = self.read_byte(addr + 8);
@@ -255,7 +255,7 @@ impl Ppu {
             self.r.high_tile_byte <<= 1;
             self.r.low_tile_byte <<= 1;
             curr_tile <<= 4;
-            curr_tile |= ((self.r.palette as u64) << 2) | color as u64;
+            curr_tile |= ((u64::from(self.r.palette)) << 2) | u64::from(color);
         }
         self.r.tile |= curr_tile;
     }
@@ -309,7 +309,7 @@ impl Ppu {
             }
 
             if self.r.sprite_size.1 == 16 {
-                nametable_address = (tile_index as u16 & 0x01) * 0x1000;
+                nametable_address = (u16::from(tile_index) & 0x01) * 0x1000;
                 tile_index &= 0xFE;
                 if py >= 8 {
                     py -= 8;
@@ -317,7 +317,7 @@ impl Ppu {
                 }
             }
 
-            let addr = nametable_address + tile_index as u16 * 16 + py as u16;
+            let addr = nametable_address + u16::from(tile_index) * 16 + u16::from(py);
             let low_tile_bit = (self.read_byte(addr) >> px) & 0x01;
             let high_tile_bit = (self.read_byte(addr + 8) >> px) & 0x01;
             let palette = (attributes & 0x03) as u8;
@@ -328,7 +328,7 @@ impl Ppu {
             }
 
             return (
-                ((palette << 2) | color) as u16,
+                u16::from((palette << 2) | color),
                 (attributes & 0x20) != 0,
                 self.is_sprite_0[i],
             );
@@ -364,7 +364,7 @@ impl Ppu {
         let color = PALETTE[self.read_byte(addr) as usize];
         self.image[self.image_index] = ((color >> 16) & 0xFF) as u8;
         self.image[self.image_index + 1] = ((color >> 8) & 0xFF) as u8;
-        self.image[self.image_index + 2] = ((color >> 0) & 0xFF) as u8;
+        self.image[self.image_index + 2] = (color & 0xFF) as u8;
         self.image_index += 3;
     }
 
@@ -434,9 +434,9 @@ impl Ppu {
                 }
                 let mut secondary_oam_index = 0;
                 for i in 0..64 {
-                    let y = self.primary_oam[i * 4] as i16 + 1;
+                    let y = i16::from(self.primary_oam[i * 4]) + 1;
                     let lo = y;
-                    let hi = y + self.r.sprite_size.1 as i16 - 1;
+                    let hi = y + i16::from(self.r.sprite_size.1) - 1;
                     if !(lo <= self.scanline + 1 && self.scanline + 1 <= hi) {
                         continue;
                     }
@@ -471,5 +471,11 @@ impl Ppu {
             self.r.sprite_0_hit = false;
             self.r.sprite_overflow = false;
         }
+    }
+}
+
+impl Default for Ppu {
+    fn default() -> Self {
+        Ppu::new()
     }
 }

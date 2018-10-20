@@ -24,7 +24,7 @@ impl Controller {
     }
 
     pub fn read_value(&mut self) -> u8 {
-        let ret = (self.value.wrapping_shr(self.index as u32)) & 0x01;
+        let ret = self.value.wrapping_shr(u32::from(self.index)) & 0x01;
         self.index = cmp::min(self.index + 1, 8);
         if self.strobe {
             self.index = 0;

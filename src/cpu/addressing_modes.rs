@@ -20,20 +20,12 @@ pub const FUNCTION_TABLE: [fn(&mut Cpu) -> (u16, bool); 14] = [
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
         let ret = addr.wrapping_add(cpu.r.x as u16);
-        let mut page_crossing = false;
-        if addr & 0xFF00 != ret & 0xFF00 {
-            page_crossing = true;
-        }
-        (ret, page_crossing)
+        (ret, addr & 0xFF00 != ret & 0xFF00)
     },
     |cpu: &mut Cpu| {
         let addr = cpu.decode_word();
         let ret = addr.wrapping_add(cpu.r.y as u16);
-        let mut page_crossing = false;
-        if addr & 0xFF00 != ret & 0xFF00 {
-            page_crossing = true;
-        }
-        (ret, page_crossing)
+        (ret, addr & 0xFF00 != ret & 0xFF00)
     },
     |_: &mut Cpu| panic!("No address associated with accumulator mode."),
     |cpu: &mut Cpu| {
@@ -69,11 +61,7 @@ pub const FUNCTION_TABLE: [fn(&mut Cpu) -> (u16, bool); 14] = [
         let addr = hi | lo;
 
         let ret = addr.wrapping_add(cpu.r.y as u16);
-        let mut page_crossing = false;
-        if addr & 0xFF00 != ret & 0xFF00 {
-            page_crossing = true;
-        }
-        (ret, page_crossing)
+        (ret, addr & 0xFF00 != ret & 0xFF00)
     },
     |cpu: &mut Cpu| {
         (

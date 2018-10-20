@@ -12,10 +12,10 @@ pub struct Cartridge {
 
 impl Cartridge {
     pub fn from_buffer(mut buffer: &[u8]) -> Self {
-        let header = (buffer[0] as u32)
-            | ((buffer[1] as u32) << 8)
-            | ((buffer[2] as u32) << 16)
-            | ((buffer[3] as u32) << 24);
+        let header = u32::from(buffer[0])
+            | (u32::from(buffer[1]) << 8)
+            | (u32::from(buffer[2]) << 16)
+            | (u32::from(buffer[3]) << 24);
         assert_eq!(
             header, CARTRIDGE_HEADER,
             "Error reading cartridge: expected header[0..4] = 0x1A53454E."
@@ -50,13 +50,12 @@ impl Cartridge {
         let (prg_rom_buffer, buffer) = buffer.split_at(prg_rom_len);
         let prg_rom = prg_rom_buffer.to_vec();
 
-        let chr_rom;
-        if chr_rom_len > 0 {
+        let chr_rom = if chr_rom_len > 0 {
             let (chr_rom_buffer, _) = buffer.split_at(chr_rom_len);
-            chr_rom = chr_rom_buffer.to_vec();
+            chr_rom_buffer.to_vec()
         } else {
-            chr_rom = vec![0; 0x2000];
-        }
+            vec![0; 0x2000]
+        };
 
         let mapper = (flags_7 & 0xF0) | (flags_6 >> 4);
 

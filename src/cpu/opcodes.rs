@@ -129,7 +129,7 @@ fn and(cpu: &mut Cpu, addressing_mode: usize) {
 fn arr(cpu: &mut Cpu, addressing_mode: usize) {
     let mut operand = cpu.get_operand(addressing_mode);
 
-    and_impl(cpu, &mut operand);
+    and_impl(cpu, &operand);
     operand = cpu.get_operand(addressing_modes::ACCUMULATOR);
     let mut res = operand.val >> 1;
     res |= if cpu.r.get_status_flag(registers::CARRY_MASK) {
@@ -164,9 +164,9 @@ fn asl(cpu: &mut Cpu, addressing_mode: usize) {
 }
 
 fn asr(cpu: &mut Cpu, addressing_mode: usize) {
-    let mut operand = cpu.get_operand(addressing_mode);
+    let operand = cpu.get_operand(addressing_mode);
 
-    and_impl(cpu, &mut operand);
+    and_impl(cpu, &operand);
     lsr(cpu, addressing_modes::ACCUMULATOR);
 }
 
@@ -299,7 +299,7 @@ fn dcp(cpu: &mut Cpu, addressing_mode: usize) {
     let mut operand = cpu.get_operand(addressing_mode);
 
     dec_impl(cpu, &mut operand);
-    cmp_impl(cpu, &mut operand);
+    cmp_impl(cpu, &operand);
 }
 
 fn dec_impl(cpu: &mut Cpu, operand: &mut Operand) {

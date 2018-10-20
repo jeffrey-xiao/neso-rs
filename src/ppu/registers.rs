@@ -156,7 +156,7 @@ impl Registers {
         self.sprite_size = if val & 0x20 != 0 { (8, 16) } else { (8, 8) };
         self.is_master = val & 0x40 != 0;
         self.nmi_enabled = val & 0x80 != 0;
-        self.t = (self.t & !0x0C00) | ((val as u16 & 0x03) << 10);
+        self.t = (self.t & !0x0C00) | ((u16::from(val) & 0x03) << 10);
     }
 
     pub fn write_ppu_mask(&mut self, val: u8) {
@@ -172,25 +172,33 @@ impl Registers {
 
     pub fn write_ppu_scroll(&mut self, val: u8) {
         if self.w == 0 {
-            self.t = (self.t & !0x001F) | (val as u16 >> 3);
+            self.t = (self.t & !0x001F) | (u16::from(val) >> 3);
             self.x = val & 0x07;
             self.w = 1;
         } else {
-            self.t = (self.t & !0x73E0) | ((val as u16 & 0x07) << 12) | ((val as u16 & 0xF8) << 2);
+            self.t = (self.t & !0x73E0)
+                | ((u16::from(val) & 0x07) << 12)
+                | ((u16::from(val) & 0xF8) << 2);
             self.w = 0;
         }
     }
 
     pub fn write_ppu_addr(&mut self, val: u8) {
         if self.w == 0 {
-            self.t = (self.t & !0x7F00) | ((val as u16 & 0x3F) << 8);
+            self.t = (self.t & !0x7F00) | ((u16::from(val) & 0x3F) << 8);
             self.w = 1;
         } else {
-            self.t = (self.t & !0x00FF) | val as u16;
+            self.t = (self.t & !0x00FF) | u16::from(val);
             self.v = self.t;
             self.bus_address = self.t & 0x3FFF;
             // println!("[PPU-REGISTER]: WRITE TO BUS ADDRESS {:x}", self.t & 0x3FFF);
             self.w = 0;
         }
+    }
+}
+
+impl Default for Registers {
+    fn default() -> Self {
+        Registers::new()
     }
 }

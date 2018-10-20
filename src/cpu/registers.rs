@@ -53,3 +53,9 @@ impl Registers {
         self.update_zero_flag(val);
     }
 }
+
+impl Default for Registers {
+    fn default() -> Self {
+        Registers::new()
+    }
+}

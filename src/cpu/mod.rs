@@ -100,7 +100,7 @@ impl Cpu {
 
     // stack related functions
     fn push_byte(&mut self, val: u8) {
-        let addr = self.r.sp as u16 + STACK_START;
+        let addr = u16::from(self.r.sp) + STACK_START;
         self.write_byte(addr, val);
         self.r.sp = self.r.sp.wrapping_sub(1);
     }
@@ -112,12 +112,12 @@ impl Cpu {
 
     fn pop_byte(&mut self) -> u8 {
         self.r.sp = self.r.sp.wrapping_add(1);
-        let addr = self.r.sp as u16 + STACK_START;
+        let addr = u16::from(self.r.sp) + STACK_START;
         self.read_byte(addr)
     }
 
     fn pop_word(&mut self) -> u16 {
-        (self.pop_byte() as u16) | ((self.pop_byte() as u16) << 8)
+        u16::from(self.pop_byte()) | (u16::from(self.pop_byte()) << 8)
     }
 
     // memory map related functions
@@ -155,7 +155,7 @@ impl Cpu {
     }
 
     pub fn read_word(&mut self, addr: u16) -> u16 {
-        ((self.read_byte(addr + 1) as u16) << 8) | self.read_byte(addr) as u16
+        (u16::from(self.read_byte(addr + 1)) << 8) | u16::from(self.read_byte(addr))
     }
 
     pub fn write_byte(&mut self, addr: u16, val: u8) {
@@ -176,7 +176,7 @@ impl Cpu {
             0x4000..=0x4017 => {
                 if addr == 0x4014 {
                     // println!("OAMDMA {:x}", val);
-                    let cpu_addr = (val as u16) << 8;
+                    let cpu_addr = u16::from(val) << 8;
                     let ppu = self.bus().ppu.upgrade().unwrap();
                     for offset in 0..=0xFF {
                         let oam_addr = ppu.borrow().r.oam_addr;
@@ -204,11 +204,11 @@ impl Cpu {
     }
 
     fn execute_opcode(&mut self, opcode: u8) {
-        let ppu = self.bus().ppu();
+        // let ppu = self.bus().ppu();
         // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
         let addressing_mode = opcodes::ADDRESSING_MODE_TABLE[opcode as usize];
         opcodes::INSTRUCTION_TABLE[opcode as usize](self, addressing_mode);
-        self.cycle += opcodes::CYCLE_TABLE[opcode as usize] as u64;
+        self.cycle += u64::from(opcodes::CYCLE_TABLE[opcode as usize]);
     }
 
     fn get_operand(&mut self, addressing_mode: usize) -> opcodes::Operand {
@@ -237,6 +237,12 @@ impl Cpu {
             Some(addr) => self.write_byte(addr, operand.val),
             None => self.r.a = operand.val,
         }
+    }
+}
+
+impl Default for Cpu {
+    fn default() -> Self {
+        Cpu::new()
     }
 }
 

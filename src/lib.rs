@@ -66,6 +66,12 @@ impl Nes {
     }
 }
 
+impl Default for Nes {
+    fn default() -> Self {
+        Nes::new()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     // Test output is at $6004.

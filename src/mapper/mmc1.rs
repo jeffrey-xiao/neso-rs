@@ -182,7 +182,7 @@ impl Mapper for Mmc1 {
     fn write_byte(&mut self, addr: u16, val: u8) {
         let addr = addr as usize;
 
-        if 0x0000 <= addr && addr <= 0x1FFF {
+        if addr <= 0x1FFF {
             // println!("WRITING CHR ROM {:x} {}", addr, val);
             self.cartridge.write_chr_rom(addr, val);
             return;

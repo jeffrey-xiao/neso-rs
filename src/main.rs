@@ -18,10 +18,6 @@ pub fn main() {
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
-    for i in 0..14 {
-        nes.step_frame();
-    }
-
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
 
@@ -143,11 +139,11 @@ pub fn main() {
             })
             .unwrap();
 
-        // if step_scanline {
-        //     nes.step_scanline();
-        // } else {
-        //     nes.step_frame();
-        // }
+        if step_scanline {
+            nes.step_scanline();
+        } else {
+            nes.step_frame();
+        }
 
         let mut pattern_table = Vec::with_capacity(512);
 
