@@ -1,16 +1,22 @@
 mod mmc1;
 mod nrom;
+mod uxrom;
+mod cnrom;
 
-pub use self::mmc1::Mmc1;
-pub use self::nrom::Nrom;
+pub use self::mmc1::MMC1;
+pub use self::nrom::NROM;
+pub use self::uxrom::UxROM;
+pub use self::cnrom::CNROM;
 use cartridge::Cartridge;
 use ppu::MirroringMode;
 
 pub fn from_cartridge(cartridge: Cartridge) -> Box<dyn Mapper> {
     match cartridge.mapper {
-        0 => Box::new(Nrom::new(cartridge)),
-        1 => Box::new(Mmc1::new(cartridge)),
-        _ => panic!("Unsupported mapper: {}.", cartridge.mapper),
+        0 => Box::new(NROM::new(cartridge)),
+        1 => Box::new(MMC1::new(cartridge)),
+        2 => Box::new(UxROM::new(cartridge)),
+        3 => Box::new(CNROM::new(cartridge)),
+        _ => panic!("[MAPPER] Unsupported mapper: {}.", cartridge.mapper),
     }
 }
 

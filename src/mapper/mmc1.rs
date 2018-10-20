@@ -123,21 +123,21 @@ impl Default for Registers {
     }
 }
 
-pub struct Mmc1 {
+pub struct MMC1 {
     cartridge: Cartridge,
     r: Registers,
 }
 
-impl Mmc1 {
+impl MMC1 {
     pub fn new(cartridge: Cartridge) -> Self {
-        Mmc1 {
+        MMC1 {
             cartridge,
             r: Registers::default(),
         }
     }
 }
 
-impl Mapper for Mmc1 {
+impl Mapper for MMC1 {
     fn read_byte(&self, addr: u16) -> u8 {
         let addr = addr as usize;
         match addr {
@@ -170,7 +170,6 @@ impl Mapper for Mmc1 {
                     PrgRomBankMode::FixFirstBank => self.r.prg_rom_bank as usize,
                     PrgRomBankMode::FixLastBank => self.cartridge.prg_rom_len() / 0x4000 - 1,
                 };
-                // println!("[MMC1] READ {:x}", addr);
                 self.cartridge.read_prg_rom(bank * 0x4000 + addr - 0xC000)
             },
             _ => 0,
@@ -182,38 +181,35 @@ impl Mapper for Mmc1 {
     fn write_byte(&mut self, addr: u16, val: u8) {
         let addr = addr as usize;
 
-        if addr <= 0x1FFF {
-            // println!("WRITING CHR ROM {:x} {}", addr, val);
-            self.cartridge.write_chr_rom(addr, val);
-            return;
-        }
-
-        if 0x6000 <= addr && addr <= 0x7FFF {
-            self.cartridge.write_prg_ram(addr - 0x6000, val);
-            return;
-        }
-
-        if addr < 0x8000 {
-            return;
-        }
-
-        // println!("addr {:x}", addr);
-        let val = match self.r.push_val(val) {
-            Some(val) => val,
-            None => return,
-        };
-
         match addr {
-            0x8000..=0x9FFF => self.r.write_control(val),
-            0xA000..=0xBFFF => {
-                // println!("CHR ROM BANK 0: {}", val);
-                self.r.chr_rom_bank_0 = val;
+            0x0000..=0x0FFF => {
+                let bank = match self.r.chr_rom_bank_mode {
+                    ChrRomBankMode::Switch8K => self.r.chr_rom_bank_0 as usize & !0x01,
+                    ChrRomBankMode::Switch4K => self.r.chr_rom_bank_0 as usize,
+                } as usize;
+                self.cartridge.write_chr_rom(bank * 0x1000 + addr, val);
             },
-            0xC000..=0xDFFF => {
-                // println!("CHR ROM BANK 1: {}", val);
-                self.r.chr_rom_bank_1 = val;
+            0x1000..=0x1FFF => {
+                let bank = match self.r.chr_rom_bank_mode {
+                    ChrRomBankMode::Switch8K => self.r.chr_rom_bank_0 as usize | 0x01,
+                    ChrRomBankMode::Switch4K => self.r.chr_rom_bank_1 as usize,
+                };
+                self.cartridge.write_chr_rom(bank * 0x1000 + addr - 0x1000, val)
             },
-            0xE000..=0xFFFF => self.r.write_prg_bank(val),
+            0x6000..=0x7FFF => self.cartridge.write_prg_ram(addr - 0x6000, val),
+            0x8000..=0xFFFF => {
+                let val = match self.r.push_val(val) {
+                    Some(val) => val,
+                    None => return,
+                };
+                match addr {
+                    0x8000..=0x9FFF => self.r.write_control(val),
+                    0xA000..=0xBFFF => self.r.chr_rom_bank_0 = val,
+                    0xC000..=0xDFFF => self.r.chr_rom_bank_1 = val,
+                    0xE000..=0xFFFF => self.r.write_prg_bank(val),
+                    _ => {},
+                }
+            }
             _ => {},
         }
     }

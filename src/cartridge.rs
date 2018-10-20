@@ -21,13 +21,6 @@ impl Cartridge {
             "Error reading cartridge: expected header[0..4] = 0x1A53454E."
         );
 
-        for val in buffer[11..=15].iter() {
-            assert_eq!(
-                *val, 0,
-                "Error reading cartridge: expected header[11..16] = 0x0."
-            );
-        }
-
         let prg_rom_len = buffer[4] as usize * 0x4000;
         let chr_rom_len = buffer[5] as usize * 0x2000;
         let mut prg_ram_len = buffer[8] as usize * 0x2000;

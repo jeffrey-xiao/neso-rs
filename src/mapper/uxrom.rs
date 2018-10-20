@@ -2,41 +2,46 @@ use cartridge::Cartridge;
 use mapper::Mapper;
 use ppu::MirroringMode;
 
-pub struct NROM {
+pub struct UxROM {
     cartridge: Cartridge,
+    prg_rom_bank: u8,
 }
 
-impl NROM {
+impl UxROM {
     pub fn new(cartridge: Cartridge) -> Self {
-        NROM { cartridge }
+        UxROM {
+            cartridge,
+            prg_rom_bank: 0,
+        }
     }
 }
 
-impl Mapper for NROM {
+impl Mapper for UxROM {
     fn read_byte(&self, addr: u16) -> u8 {
         let addr = addr as usize;
         match addr {
             0x0000..=0x1FFF => self.cartridge.read_chr_rom(addr),
-            0x6000..=0x7FFF => {
-                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
-                self.cartridge.read_prg_ram(addr)
+            0x8000..=0xBFFF => {
+                let addr = self.prg_rom_bank as usize * 0x4000 + addr - 0x8000;
+                self.cartridge.read_prg_rom(addr)
             },
-            0x8000..=0xFFFF if self.cartridge.prg_rom_len() == 0x8000 => {
-                self.cartridge.read_prg_rom(addr - 0x8000)
+            0xC000..=0xFFFF => {
+                let bank = self.cartridge.prg_rom_len() / 0x4000 - 1;
+                let addr = bank * 0x4000 + addr - 0xC000;
+                self.cartridge.read_prg_rom(addr)
             },
-            0x8000..=0xFFFF => self.cartridge.read_prg_rom((addr - 0x8000) % 0x4000),
             _ => 0,
         }
     }
 
     fn write_byte(&mut self, addr: u16, val: u8) {
+        if addr < 0x8000 {
+            return;
+        }
         let addr = addr as usize;
         match addr {
             0x0000..=0x1FFF => self.cartridge.write_chr_rom(addr, val),
-            0x6000..=0x7FFF => {
-                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
-                self.cartridge.write_prg_ram(addr, val);
-            },
+            0xC000..=0xFFFF => self.prg_rom_bank = val & 0x07,
             _ => {},
         }
     }
