@@ -68,17 +68,17 @@ impl Nes {
 
 #[cfg(test)]
 mod tests {
-    macro_rules! instr_tests {
-        ($($test_name:ident: $file_name:expr,)*) => {
+    // Test output is at $6004.
+    macro_rules! text_tests {
+        ($($test_name:ident: $path:expr$(,)*)*) => {
             $(
                 #[test]
                 fn $test_name() {
-                    let buffer = fs::read(format!("./tests/cpu/instr_test/{}.nes", $file_name))
-                        .expect("Expected test rom to exist.");
+                    let buffer = fs::read($path).expect("Expected test rom to exist.");
                     let mut nes = Nes::new();
                     nes.load_rom(&buffer);
 
-                    // Run until test status is running
+                    // Run until test status is running by polling $6000.
                     let mut addr = 0x6000;
                     let mut byte = nes.cpu.borrow_mut().read_byte(addr);
                     while byte != 0x80 {
@@ -86,14 +86,14 @@ mod tests {
                         byte = nes.cpu.borrow_mut().read_byte(addr);
                     }
 
-                    // Run until test status is finished
+                    // Run until test status is finished by polling $6000.
                     byte = nes.cpu.borrow_mut().read_byte(addr);
                     while byte == 0x80 {
                         nes.step();
                         byte = nes.cpu.borrow_mut().read_byte(addr);
                     }
 
-                    // Read output
+                    // Read output at $6004.
                     let mut output = Vec::new();
                     addr = 0x6004;
                     byte = nes.cpu.borrow_mut().read_byte(addr);
@@ -103,33 +103,112 @@ mod tests {
                         byte = nes.cpu.borrow_mut().read_byte(addr);
                     }
 
-                    assert_eq!(
-                        String::from_utf8_lossy(&output),
-                        format!("\n{}\n\nPassed\n", $file_name),
-                    );
+                    assert!(String::from_utf8_lossy(&output).contains("Passed"));
                 }
             )*
         }
     }
 
-    mod instr_tests {
-        use super::super::Nes;
-        use std::fs;
+    // Compare hash of nametables after specified frames for no text output tests.
+    macro_rules! graphical_tests {
+        ($($test_name:ident: ($path:expr, $frames:expr, $hash:expr)$(,)*)*) => {
+            $(
+                #[test]
+                fn $test_name() {
+                    let buffer = fs::read($path).expect("Expected test rom to exist.");
+                    let mut nes = Nes::new();
+                    nes.load_rom(&buffer);
 
-        instr_tests!(
-            test_01_basics: "01-basics",
-            test_02_implied: "02-implied",
-            test_03_immediate: "03-immediate",
-            test_04_zero_page: "04-zero_page",
-            test_05_zp_xy: "05-zp_xy",
-            test_06_absolute: "06-absolute",
-            test_07_abs_xy: "07-abs_xy",
-            test_08_ind_x: "08-ind_x",
-            test_09_ind_y: "09-ind_y",
-            test_10_branches: "10-branches",
-            test_11_stack: "11-stack",
-            test_12_jmp_jsr: "12-jmp_jsr",
-            test_13_rts: "13-rts",
-        );
+                    for i in 0..$frames {
+                        nes.step_frame();
+                    }
+
+                    let mut hasher = DefaultHasher::new();
+
+                    for addr in 0x2000..0x3000 {
+                        hasher.write_u8(nes.ppu.borrow().read_byte(addr));
+                    }
+
+                    assert_eq!(hasher.finish(), $hash);
+                }
+            )*
+        }
+    }
+
+    #[cfg(test)]
+    mod cpu {
+        #[cfg(test)]
+        mod instr_tests {
+            use Nes;
+            use std::fs;
+
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/cpu/instr_test/{}", file_name)
+            }
+
+            text_tests!(
+                test_01_basics: test_path("01-basics.nes"),
+                test_02_implied: test_path("02-implied.nes"),
+                test_03_immediate: test_path("03-immediate.nes"),
+                test_04_zero_page: test_path("04-zero_page.nes"),
+                test_05_zp_xy: test_path("05-zp_xy.nes"),
+                test_06_absolute: test_path("06-absolute.nes"),
+                test_07_abs_xy: test_path("07-abs_xy.nes"),
+                test_08_ind_x: test_path("08-ind_x.nes"),
+                test_09_ind_y: test_path("09-ind_y.nes"),
+                test_10_branches: test_path("10-branches.nes"),
+                test_11_stack: test_path("11-stack.nes"),
+                test_12_jmp_jsr: test_path("12-jmp_jsr.nes"),
+                test_13_rts: test_path("13-rts.nes"),
+            );
+        }
+
+        #[cfg(test)]
+        mod instr_misc {
+            use Nes;
+            use std::fs;
+
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/cpu/instr_misc/{}", file_name)
+            }
+
+            text_tests!(
+                test_01_abs_x_wrap: test_path("01-abs_x_wrap.nes"),
+                test_02_branch_wrap: test_path("02-branch_wrap.nes"),
+            );
+        }
+
+        #[cfg(test)]
+        mod instr_timing {
+            use Nes;
+            use std::fs;
+            use std::collections::hash_map::DefaultHasher;
+            use std::hash::Hasher;
+
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/cpu/instr_timing/{}", file_name)
+            }
+
+            graphical_tests!(
+                test_cpu_timing_test: (test_path("cpu_timing_test.nes"), 612, 0x884f_461f_a12c_f454),
+            );
+        }
+
+        #[cfg(test)]
+        mod branch_timing {
+            use Nes;
+            use std::fs;
+            use std::collections::hash_map::DefaultHasher;
+            use std::hash::Hasher;
+
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/cpu/branch_timing/{}", file_name)
+            }
+
+            graphical_tests!(
+                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0x1b68_8fbe_cde5_8ea7),
+                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0x4275_ce0c_e944_e57c),
+            );
+        }
     }
 }

@@ -279,7 +279,7 @@ impl Ppu {
         }
 
         for i in 0..8 {
-            let sprite_y = self.secondary_oam[i * 4] + 1;
+            let sprite_y = self.secondary_oam[i * 4].wrapping_add(1);
             let sprite_x = self.secondary_oam[i * 4 + 3];
             let mut tile_index = self.secondary_oam[i * 4 + 1];
             let attributes = self.secondary_oam[i * 4 + 2];
@@ -288,7 +288,7 @@ impl Ppu {
                 break;
             }
 
-            if !(sprite_x <= x && x < sprite_x + 8) {
+            if !(sprite_x <= x && x < sprite_x.wrapping_add(8)) {
                 continue;
             }
 

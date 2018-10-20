@@ -159,9 +159,6 @@ fn asl_impl(cpu: &mut Cpu, operand: &mut Operand) {
 
 fn asl(cpu: &mut Cpu, addressing_mode: usize) {
     let mut operand = cpu.get_operand(addressing_mode);
-    if operand.page_crossing {
-        cpu.cycle += 1;
-    }
 
     asl_impl(cpu, &mut operand);
 }
@@ -455,9 +452,6 @@ fn lsr_impl(cpu: &mut Cpu, operand: &mut Operand) {
 
 fn lsr(cpu: &mut Cpu, addressing_mode: usize) {
     let mut operand = cpu.get_operand(addressing_mode);
-    if operand.page_crossing {
-        cpu.cycle += 1;
-    }
 
     lsr_impl(cpu, &mut operand);
 }

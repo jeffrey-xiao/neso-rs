@@ -14,10 +14,13 @@ use std::time::{Duration, Instant};
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/castlevania_2.nes").unwrap();
+    let buffer = fs::read("./tests/cpu/instr_timing/forward_branch.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
+    for i in 0..14 {
+        nes.step_frame();
+    }
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
@@ -139,11 +142,12 @@ pub fn main() {
                 }
             })
             .unwrap();
-        if step_scanline {
-            nes.step_scanline();
-        } else {
-            nes.step_frame();
-        }
+
+        // if step_scanline {
+        //     nes.step_scanline();
+        // } else {
+        //     nes.step_frame();
+        // }
 
         let mut pattern_table = Vec::with_capacity(512);
 
@@ -234,11 +238,7 @@ pub fn main() {
                         for x in 0..8usize {
                             for y in 0..8usize {
                                 let row = (i * 2) % 16 + j / 16;
-                                let col = if i < 8 {
-                                    j % 16
-                                } else {
-                                    j % 16 + 16
-                                };
+                                let col = if i < 8 { j % 16 } else { j % 16 + 16 };
                                 let offset = ((row * 8 + x) * 256 + col * 8 + y) * 3;
                                 let val = match pattern_table[i * 32 + j][x * 8 + y] {
                                     0 => 255,
@@ -260,12 +260,7 @@ pub fn main() {
             .copy(
                 &texture,
                 None,
-                Some(Rect::new(
-                    0,
-                    256 * 2,
-                    256 * 2,
-                    128 * 2,
-                )),
+                Some(Rect::new(0, 256 * 2, 256 * 2, 128 * 2)),
             )
             .unwrap();
 

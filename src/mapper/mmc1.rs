@@ -62,7 +62,6 @@ impl Registers {
             // println!("CLEAR SR");
             return None;
         }
-
         // Shift bit 0 of val to sr
         else {
             self.sr = (self.sr >> 1) | (val & 0x01) << 4;
@@ -164,7 +163,7 @@ impl Mapper for Mmc1 {
                     PrgRomBankMode::FixLastBank => self.r.prg_rom_bank as usize,
                 };
                 self.cartridge.read_prg_rom(bank * 0x4000 + addr - 0x8000)
-            }
+            },
             0xC000..=0xFFFF => {
                 let bank = match self.r.prg_rom_bank_mode {
                     PrgRomBankMode::Switch32K => self.r.prg_rom_bank as usize | 0x01,

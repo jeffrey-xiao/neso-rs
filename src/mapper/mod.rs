@@ -1,8 +1,8 @@
-mod nrom;
 mod mmc1;
+mod nrom;
 
-pub use self::nrom::Nrom;
 pub use self::mmc1::Mmc1;
+pub use self::nrom::Nrom;
 use cartridge::Cartridge;
 use ppu::MirroringMode;
 
