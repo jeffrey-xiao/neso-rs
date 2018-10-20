@@ -133,7 +133,6 @@ impl Ppu {
                 let index = (addr / 0x400) as usize;
                 let offset = (addr % 0x400) as usize;
                 let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
-                println!("[PPU] WRITE BYTE {:x} {}", addr, val);
                 self.vram[MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400 + offset] = val;
             },
 
@@ -310,7 +309,7 @@ impl Ppu {
             }
 
             if self.r.sprite_size.1 == 16 {
-                nametable_address = (attributes as u16 & 0x01) * 0x1000;
+                nametable_address = (tile_index as u16 & 0x01) * 0x1000;
                 tile_index &= 0xFE;
                 if py >= 8 {
                     py -= 8;

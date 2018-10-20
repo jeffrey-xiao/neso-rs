@@ -1,7 +1,6 @@
 extern crate nes_wasm;
 extern crate sdl2;
 
-use nes_wasm::cpu::Interrupt;
 use nes_wasm::Nes;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -15,7 +14,7 @@ use std::time::{Duration, Instant};
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/mega_man_2.nes").unwrap();
+    let buffer = fs::read("./tests/castlevania_2.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -124,7 +123,7 @@ pub fn main() {
         }
 
         let mut texture = texture_creator
-            .create_texture_streaming(PixelFormatEnum::RGB24, 240, 256)
+            .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
             .unwrap();
 
         texture
@@ -175,22 +174,25 @@ pub fn main() {
 
         for (nametable, offset) in [0x2000, 0x2400, 0x2800, 0x2C00].iter().enumerate() {
             let mut texture = texture_creator
-                .create_texture_streaming(PixelFormatEnum::RGB24, 240, 256)
+                .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
                 .unwrap();
 
             texture
                 .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
                     for i in 0..30usize {
                         for j in 0..32usize {
-                            let index = nes
+                            let mut index = nes
                                 .ppu
                                 .borrow()
                                 .read_byte(offset + i as u16 * 32 + j as u16)
                                 as usize;
+                            if nes.ppu.borrow().r.background_pattern_table_address == 0x1000 {
+                                index += 256;
+                            }
                             for x in 0..8usize {
                                 for y in 0..8usize {
                                     let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;
-                                    let val = match pattern_table[index + 256][x * 8 + y] {
+                                    let val = match pattern_table[index][x * 8 + y] {
                                         0 => 255,
                                         1 => 200,
                                         2 => 150,
@@ -231,7 +233,7 @@ pub fn main() {
                     for j in 0..32usize {
                         for x in 0..8usize {
                             for y in 0..8usize {
-                                let row = ((i * 2) % 16 + j / 16);
+                                let row = (i * 2) % 16 + j / 16;
                                 let col = if i < 8 {
                                     j % 16
                                 } else {
