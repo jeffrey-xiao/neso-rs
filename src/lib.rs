@@ -139,8 +139,8 @@ mod tests {
     mod cpu {
         #[cfg(test)]
         mod instr_tests {
-            use Nes;
             use std::fs;
+            use Nes;
 
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/instr_test/{}", file_name)
@@ -165,8 +165,8 @@ mod tests {
 
         #[cfg(test)]
         mod instr_misc {
-            use Nes;
             use std::fs;
+            use Nes;
 
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/instr_misc/{}", file_name)
@@ -180,10 +180,10 @@ mod tests {
 
         #[cfg(test)]
         mod instr_timing {
-            use Nes;
-            use std::fs;
             use std::collections::hash_map::DefaultHasher;
+            use std::fs;
             use std::hash::Hasher;
+            use Nes;
 
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/instr_timing/{}", file_name)
@@ -196,10 +196,10 @@ mod tests {
 
         #[cfg(test)]
         mod branch_timing {
-            use Nes;
-            use std::fs;
             use std::collections::hash_map::DefaultHasher;
+            use std::fs;
             use std::hash::Hasher;
+            use Nes;
 
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/branch_timing/{}", file_name)
