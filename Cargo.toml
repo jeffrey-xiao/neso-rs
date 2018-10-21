@@ -37,5 +37,5 @@ lto = true
 opt-level = 'z'
 
 [[bin]]
-name = "asd"
+name = "nes-sdl2"
 path = "src/main.rs"
