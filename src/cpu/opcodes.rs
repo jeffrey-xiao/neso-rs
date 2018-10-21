@@ -67,7 +67,7 @@ pub const ADDRESSING_MODE_TABLE: [usize; 256] = [
 ];
 
 fn inv(_cpu: &mut Cpu, _addressing_mode: usize) {
-    panic!("Invalid opcode.");
+    panic!("[CPU] Invalid opcode.");
 }
 
 fn aax(cpu: &mut Cpu, addressing_mode: usize) {
@@ -546,7 +546,7 @@ fn ror(cpu: &mut Cpu, addressing_mode: usize) {
 fn rti(cpu: &mut Cpu, _addressing_mode: usize) {
     plp(cpu, addressing_modes::IMPLIED);
     cpu.r.pc = cpu.pop_word();
-    // println!("RETURNING FROM INTERRUPT");
+    println!("[CPU] Returning from interrupt.");
 }
 
 fn rts(cpu: &mut Cpu, _addressing_mode: usize) {

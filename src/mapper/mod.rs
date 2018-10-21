@@ -11,6 +11,7 @@ pub use self::nrom::NROM;
 pub use self::uxrom::UxROM;
 use cartridge::Cartridge;
 use ppu::MirroringMode;
+use bus::Bus;
 
 pub fn from_cartridge(cartridge: Cartridge) -> Box<dyn Mapper> {
     match cartridge.mapper {
@@ -27,4 +28,6 @@ pub trait Mapper {
     fn read_byte(&self, addr: u16) -> u8;
     fn write_byte(&mut self, addr: u16, val: u8);
     fn mirroring_mode(&self) -> MirroringMode;
+    fn attach_bus(&mut self, _bus: Bus) {}
+    fn step(&mut self) {}
 }

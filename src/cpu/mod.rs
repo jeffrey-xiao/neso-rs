@@ -42,6 +42,10 @@ impl Cpu {
         self.reset()
     }
 
+    fn bus(&self) -> &Bus {
+        self.bus.as_ref().expect("[CPU] No bus attached.")
+    }
+
     pub fn step(&mut self) {
         if self.stall_cycle > 0 {
             self.stall_cycle -= 1;
@@ -67,7 +71,7 @@ impl Cpu {
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
-            // println!("TRIGGERED INTERRUPT");
+            println!("[CPU] Interrupt triggered: {:?}.", interrupt);
             self.interrupt_flags[interrupt as usize] = true;
         }
     }
@@ -121,11 +125,6 @@ impl Cpu {
     }
 
     // memory map related functions
-    // TODO: Handle error with no bus attached.
-    fn bus(&self) -> &Bus {
-        self.bus.as_ref().unwrap()
-    }
-
     pub fn read_byte(&mut self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
@@ -150,7 +149,7 @@ impl Cpu {
                 let ret = mapper.borrow().read_byte(addr);
                 ret
             },
-            _ => panic!("Invalid memory address: {:#6x}.", addr),
+            _ => panic!("[CPU] Invalid read with memory address: {:#06x}.", addr),
         }
     }
 
@@ -159,7 +158,6 @@ impl Cpu {
     }
 
     pub fn write_byte(&mut self, addr: u16, val: u8) {
-        // println!("writing to {:04x} val: {:02x}", addr, val);
         match addr {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = val,
             0x2000..=0x3FFF => {
@@ -175,9 +173,9 @@ impl Cpu {
             // TODO: Implement APU and IO maps
             0x4000..=0x4017 => {
                 if addr == 0x4014 {
-                    // println!("OAMDMA {:x}", val);
+                    println!("[CPU] Performing OAM DMA on address {:#06x}.", val);
                     let cpu_addr = u16::from(val) << 8;
-                    let ppu = self.bus().ppu.upgrade().unwrap();
+                    let ppu = self.bus().ppu();
                     for offset in 0..=0xFF {
                         let oam_addr = ppu.borrow().r.oam_addr;
                         let cpu_addr = cpu_addr + offset;
@@ -199,7 +197,7 @@ impl Cpu {
                 let mapper = self.bus().mapper();
                 mapper.borrow_mut().write_byte(addr, val);
             },
-            _ => panic!("Invalid memory address: {:#6x}.", addr),
+            _ => panic!("[CPU] Invalid write with memory address: {:#06x}.", addr),
         }
     }
 
@@ -222,7 +220,6 @@ impl Cpu {
             },
             _ => {
                 let (addr, page_crossing) = addressing_modes::FUNCTION_TABLE[addressing_mode](self);
-                // println!("ADDR IS {:x}", addr);
                 opcodes::Operand {
                     val: self.read_byte(addr),
                     addr: Some(addr),
@@ -246,7 +243,7 @@ impl Default for Cpu {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum Interrupt {
     NMI = 0,
     IRQ = 1,

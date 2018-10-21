@@ -21,6 +21,11 @@ impl Cartridge {
             "Error reading cartridge: expected header[0..4] = 0x1A53454E."
         );
 
+        let mut is_zero = true;
+        for val in buffer[11..=15].iter() {
+            is_zero &= *val == 0;
+        }
+
         let prg_rom_len = buffer[4] as usize * 0x4000;
         let chr_rom_len = buffer[5] as usize * 0x2000;
         let mut prg_ram_len = buffer[8] as usize * 0x2000;
@@ -30,7 +35,7 @@ impl Cartridge {
         }
 
         let flags_6 = buffer[6];
-        let flags_7 = buffer[7];
+        let flags_7 = if is_zero { buffer[7] } else { 0 };
         let flags_9 = buffer[9];
         let flags_10 = buffer[10];
 

@@ -90,12 +90,11 @@ impl Ppu {
         self.bus = Some(bus);
     }
 
-    // memory map related functions
-    // TODO: Handle error with no bus attached.
     fn bus(&self) -> &Bus {
-        self.bus.as_ref().unwrap()
+        self.bus.as_ref().expect("[PPU] No bus attached.")
     }
 
+    // memory map related functions
     pub fn read_byte(&self, mut addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => {
@@ -117,7 +116,7 @@ impl Ppu {
                 }
                 self.palette_ram[((addr - 0x3F00) % 0x20) as usize]
             },
-            _ => panic!("Invalid memory address: {:#6x}.", addr),
+            _ => panic!("[PPU] Invalid read with memory address: {:#06x}.", addr),
         }
     }
 
@@ -142,12 +141,11 @@ impl Ppu {
                 }
                 self.palette_ram[((addr - 0x3F00) % 0x20) as usize] = val
             },
-            _ => panic!("Invalid memory address: {:#6x}.", addr),
+            _ => panic!("[PPU] Invalid write with memory address: {:#06x}.", addr),
         }
     }
 
     pub fn read_register(&mut self, index: usize) -> u8 {
-        // print!("READ PPU REGISTER {} {} {} {:x} {}; ", index, self.scanline, self.cycle, self.r.read_ppu_status(), self.r.v_blank_started);
         match index {
             // PPUCTRL
             0x00 => self.r.last_written_byte,
@@ -174,51 +172,37 @@ impl Ppu {
                 self.r.bus_address += self.r.vram_address_increment;
                 ret
             },
-            _ => panic!("Invalid ppu register index to read: {}.", index),
+            _ => panic!("[PPU] Invalid ppu register to read: {}.", index),
         }
     }
 
     pub fn write_register(&mut self, index: usize, val: u8) {
-        // print!("WRITE PPU REGISTER {} {:08b}; ", index, val);
         self.r.last_written_byte = val;
         match index {
             // PPUCTRL
-            0x00 => {
-                // println!("WRITE CTRL ON {} {}", self.scanline, self.cycle);
-                self.r.write_ppu_ctrl(val);
-            },
+            0x00 => self.r.write_ppu_ctrl(val),
             // PPUMASK
             0x01 => self.r.write_ppu_mask(val),
             // PPUSTATUS
             0x02 => return,
             // OAMADDR
-            0x03 => {
-                // println!("SET {:x}", val);
-                self.r.oam_addr = val;
-            },
+            0x03 => self.r.oam_addr = valm
             // OAMDATA
             0x04 => {
-                // println!("READ {:x}", self.r.oam_addr);
                 self.primary_oam[self.r.oam_addr as usize] = val;
                 self.r.oam_addr = self.r.oam_addr.wrapping_add(1);
             },
             // PPUSCROLL
-            0x05 => {
-                // println!("WRITE SCROLL ON {} {} {}", self.scanline, self.cycle, val);
-                self.r.write_ppu_scroll(val);
-            },
+            0x05 => self.r.write_ppu_scroll(val),
             // PPUADDR
-            0x06 => {
-                // println!("WRITE ADDR ON {} {}", self.scanline, self.cycle);
-                self.r.write_ppu_addr(val);
-            },
+            0x06 => self.r.write_ppu_addr(val),
             // PPUDATA
             0x07 => {
                 let addr = self.r.bus_address;
                 self.write_byte(addr, val);
                 self.r.bus_address += self.r.vram_address_increment;
             },
-            _ => panic!("Invalid ppu register index to write: {}.", index),
+            _ => panic!("[PPU] Invalid ppu register to write: {}.", index),
         }
     }
 
@@ -397,9 +381,7 @@ impl Ppu {
             }
 
             if self.cycle == 257 {
-                // println!("{} old x {} old t {}", self.scanline, self.r.v & 0b111, self.r.t);
                 self.r.copy_scroll_x();
-                // println!("{} new x {} new t {}", self.scanline, self.r.v & 0b111, self.r.t);
             }
 
             // background pipeline
@@ -459,10 +441,9 @@ impl Ppu {
             self.r.v_blank_started = true;
             if self.r.nmi_enabled {
                 let cpu = self.bus().cpu();
-                // println!("TRIGGERED INTERRUPT");
                 cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
             } else {
-                // println!("NMI_ENABLED is false so no interrupt");
+                println!("[PPU] NMI is not enabled, so interrupt is skipped.");
             }
         }
 

@@ -1,6 +1,8 @@
 use cartridge::Cartridge;
 use mapper::Mapper;
 use ppu::MirroringMode;
+use bus::Bus;
+use cpu::Interrupt;
 
 enum PrgRomBankMode {
     // prg rom is two switchable 8K banks and two fixed 8K banks on last two banks
@@ -35,6 +37,8 @@ struct Registers {
     chr_rom_bank_mode: ChrRomBankMode,
     prg_ram_writes_enabled: bool,
     prg_ram_enabled: bool,
+    irq_latch: u8,
+    irq_counter: u8,
     irq_enabled: bool,
     bank_data: [u8; 8],
     current_bank: u8,
@@ -48,6 +52,8 @@ impl Registers {
             chr_rom_bank_mode: ChrRomBankMode::default(),
             prg_ram_writes_enabled: true,
             prg_ram_enabled: true,
+            irq_latch: 0,
+            irq_counter: 0,
             irq_enabled: false,
             bank_data: [0; 8],
             current_bank: 0,
@@ -147,6 +153,7 @@ impl Default for Registers {
 pub struct MMC3 {
     cartridge: Cartridge,
     r: Registers,
+    bus: Option<Bus>,
 }
 
 impl MMC3 {
@@ -154,7 +161,12 @@ impl MMC3 {
         MMC3 {
             cartridge,
             r: Registers::default(),
+            bus: None,
         }
+    }
+
+    fn bus(&self) -> &Bus {
+        self.bus.as_ref().expect("[MMC3] No bus attached.")
     }
 }
 
@@ -191,8 +203,8 @@ impl Mapper for MMC3 {
             0xA000..=0xBFFF if addr & 0x01 == 0 => self.r.write_mirroring_mode(val),
             0xA000..=0xBFFF => self.r.write_prg_ram_protect(val),
             // TODO: Handle interrupts
-            0xC000..=0xDFFF if addr & 0x01 == 0 => {},
-            0xC000..=0xDFFF => {},
+            0xC000..=0xDFFF if addr & 0x01 == 0 => self.r.irq_latch = val,
+            0xC000..=0xDFFF => self.r.irq_counter = self.r.irq_latch,
             0xE000..=0xFFFF if addr & 0x01 == 0 => self.r.irq_enabled = false,
             0xE000..=0xFFFF => self.r.irq_enabled = true,
             _ => {},
@@ -204,6 +216,33 @@ impl Mapper for MMC3 {
             MirroringMode::None
         } else {
             self.r.mirroring_mode
+        }
+    }
+
+    fn attach_bus(&mut self, bus: Bus) {
+        self.bus = Some(bus);
+    }
+
+    fn step(&mut self) {
+        let ppu = self.bus().ppu();
+        let cycle = ppu.borrow().cycle;
+        let scanline = ppu.borrow().scanline;
+        let rendering_enabled = ppu.borrow().r.show_sprites ||
+            ppu.borrow().r.show_background;
+
+        if cycle != 260 || scanline >= 240 || !rendering_enabled {
+            return;
+        }
+
+        if self.r.irq_counter == 0 {
+            self.r.irq_counter = self.r.irq_latch;
+        } else {
+            self.r.irq_counter -= 1;
+            if self.r.irq_counter == 0 && self.r.irq_enabled {
+                println!("[MM3] Triggered interrupt.");
+                let cpu = self.bus().cpu();
+                cpu.borrow_mut().trigger_interrupt(Interrupt::IRQ);
+            }
         }
     }
 }

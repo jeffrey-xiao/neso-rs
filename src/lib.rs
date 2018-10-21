@@ -43,12 +43,16 @@ impl Nes {
         self.ppu
             .borrow_mut()
             .attach_bus(Bus::new(&self.cpu, &self.ppu, &mapper));
+        mapper
+            .borrow_mut()
+            .attach_bus(Bus::new(&self.cpu, &self.ppu, &mapper));
         self.mapper = Some(mapper);
     }
 
     pub fn step(&mut self) {
         self.cpu.borrow_mut().step();
         self.ppu.borrow_mut().step();
+        self.mapper.as_ref().unwrap().borrow_mut().step();
     }
 
     pub fn step_scanline(&mut self) {
