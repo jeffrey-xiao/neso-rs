@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/games/11/castle_of_deceit.nes").unwrap();
+    let buffer = fs::read("./tests/games/0/super_mario_bros.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -129,7 +129,6 @@ pub fn main() {
             .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
                 unsafe {
                     let ppu = nes.ppu.borrow();
-                    // println!("{}", ppu.frame);
                     ptr::copy_nonoverlapping(
                         ppu.image.as_ptr(),
                         buffer.as_mut_ptr(),

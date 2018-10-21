@@ -4,6 +4,7 @@ use cpu::Interrupt;
 use mapper::Mapper;
 use ppu::MirroringMode;
 
+#[derive(Debug)]
 enum PrgRomBankMode {
     // prg rom is two switchable 8K banks and two fixed 8K banks on last two banks
     TwoSwitchTwoFix,
@@ -18,6 +19,7 @@ impl Default for PrgRomBankMode {
     }
 }
 
+#[derive(Debug)]
 enum ChrRomBankMode {
     // chr rom is two switchable 2K banks and four switchable 1K banks
     Two2KFour1K,
@@ -66,18 +68,28 @@ impl Registers {
         } else {
             PrgRomBankMode::FixTwoSwitchFix
         };
+        println!(
+            "[MMC3] Write prg rom bank mode: {:?}.",
+            self.prg_rom_bank_mode
+        );
 
         self.chr_rom_bank_mode = if val & 0x80 == 0 {
             ChrRomBankMode::Two2KFour1K
         } else {
             ChrRomBankMode::Four1KTwo2K
         };
+        println!(
+            "[MMC3] Write chr rom bank mode: {:?}.",
+            self.chr_rom_bank_mode
+        );
 
         self.current_bank = val & 0x07;
+        println!("[MMC3] Write current bank: {}.", self.current_bank);
     }
 
     pub fn write_bank_data(&mut self, val: u8) {
         self.bank_data[self.current_bank as usize] = val;
+        println!("[MMC3] Write bank data: {}.", val);
     }
 
     pub fn write_mirroring_mode(&mut self, val: u8) {
@@ -86,6 +98,7 @@ impl Registers {
         } else {
             MirroringMode::Horizontal
         };
+        println!("[MMC3] Write mirroring mode: {:?}.", self.mirroring_mode);
     }
 
     pub fn write_prg_ram_protect(&mut self, val: u8) {
@@ -202,7 +215,6 @@ impl Mapper for MMC3 {
             0x8000..=0x9FFF => self.r.write_bank_data(val),
             0xA000..=0xBFFF if addr & 0x01 == 0 => self.r.write_mirroring_mode(val),
             0xA000..=0xBFFF => self.r.write_prg_ram_protect(val),
-            // TODO: Handle interrupts
             0xC000..=0xDFFF if addr & 0x01 == 0 => self.r.irq_latch = val,
             0xC000..=0xDFFF => self.r.irq_counter = self.r.irq_latch,
             0xE000..=0xFFFF if addr & 0x01 == 0 => self.r.irq_enabled = false,

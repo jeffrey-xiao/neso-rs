@@ -191,7 +191,6 @@ impl Registers {
             self.t = (self.t & !0x00FF) | u16::from(val);
             self.v = self.t;
             self.bus_address = self.t & 0x3FFF;
-            // println!("[PPU-REGISTER]: WRITE TO BUS ADDRESS {:x}", self.t & 0x3FFF);
             self.w = 0;
         }
     }

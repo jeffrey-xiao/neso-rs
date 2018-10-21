@@ -124,9 +124,9 @@ impl Registers {
 
     pub fn write_prg_bank(&mut self, val: u8) {
         self.prg_rom_bank = val & 0x0F;
-        println!("[MMC1] Write prg rom bank: {}", self.prg_rom_bank);
+        println!("[MMC1] Write prg rom bank: {}.", self.prg_rom_bank);
         self.prg_ram_enabled = val & 0x10 == 0;
-        println!("[MMC1] Write prg ram enabled: {}", self.prg_ram_enabled);
+        println!("[MMC1] Write prg ram enabled: {}.", self.prg_ram_enabled);
     }
 }
 
@@ -225,8 +225,14 @@ impl Mapper for MMC1 {
                 };
                 match addr {
                     0x8000..=0x9FFF => self.r.write_control(val),
-                    0xA000..=0xBFFF => self.r.chr_rom_bank_0 = val,
-                    0xC000..=0xDFFF => self.r.chr_rom_bank_1 = val,
+                    0xA000..=0xBFFF => {
+                        self.r.chr_rom_bank_0 = val;
+                        println!("[MMC1] Write chr rom bank 0: {}.", self.r.chr_rom_bank_0);
+                    },
+                    0xC000..=0xDFFF => {
+                        self.r.chr_rom_bank_1 = val;
+                        println!("[MMC1] Write chr rom bank 1: {}.", self.r.chr_rom_bank_1);
+                    },
                     0xE000..=0xFFFF => self.r.write_prg_bank(val),
                     _ => {},
                 }

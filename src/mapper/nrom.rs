@@ -21,10 +21,10 @@ impl Mapper for NROM {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.read_prg_ram(addr)
             },
-            0x8000..=0xFFFF if self.cartridge.prg_rom_len() == 0x8000 => {
-                self.cartridge.read_prg_rom(addr - 0x8000)
+            0x8000..=0xFFFF => {
+                let addr = (addr - 0x8000) % self.cartridge.prg_rom_len();
+                self.cartridge.read_prg_rom(addr)
             },
-            0x8000..=0xFFFF => self.cartridge.read_prg_rom((addr - 0x8000) % 0x4000),
             _ => 0,
         }
     }

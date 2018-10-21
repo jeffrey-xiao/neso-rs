@@ -1,18 +1,18 @@
+mod axrom;
 mod cnrom;
+mod color_dreams;
 mod mmc1;
 mod mmc3;
 mod nrom;
 mod uxrom;
-mod axrom;
-mod color_dreams;
 
+use self::axrom::AxROM;
 use self::cnrom::CNROM;
+use self::color_dreams::ColorDreams;
 use self::mmc1::MMC1;
 use self::mmc3::MMC3;
 use self::nrom::NROM;
 use self::uxrom::UxROM;
-use self::axrom::AxROM;
-use self::color_dreams::ColorDreams;
 use bus::Bus;
 use cartridge::Cartridge;
 use ppu::MirroringMode;

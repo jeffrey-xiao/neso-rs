@@ -41,8 +41,10 @@ impl Mapper for AxROM {
                 } else {
                     MirroringMode::Upper
                 };
+                println!("[AxROM] Write mirroring mode: {:?}.", self.mirroring_mode);
 
                 self.prg_rom_bank = val & 0x07;
+                println!("[AxROM] Write prg rom bank: {}.", self.prg_rom_bank);
             },
             _ => {},
         }
