@@ -21,7 +21,7 @@ const PALETTE: [u32; 64] = [
     0x00F8_D878, 0x00D8_F878, 0x00B8_F8B8, 0x00B8_F8D8, 0x0000_FCFC, 0x00F8_D8F8, 0x0000_0000, 0x0000_0000, //
 ];
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum MirroringMode {
     Horizontal = 0,
     Vertical = 1,

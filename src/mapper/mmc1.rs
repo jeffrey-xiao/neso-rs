@@ -3,6 +3,7 @@ use mapper::Mapper;
 use ppu::MirroringMode;
 use std::mem;
 
+#[derive(Debug)]
 enum PrgRomBankMode {
     // prg rom is one switchable 32K bank
     Switch32K,
@@ -18,6 +19,7 @@ impl Default for PrgRomBankMode {
     }
 }
 
+#[derive(Debug)]
 enum ChrRomBankMode {
     // chr rom is one switchable 8K bank
     Switch8K,
@@ -57,13 +59,13 @@ impl Registers {
     }
 
     pub fn push_val(&mut self, val: u8) -> Option<u8> {
-        // println!("PUSH SR");
+        println!("[MMC1] Push shift register.");
         let is_full = self.sr & 0x01 == 1;
 
         // Clear sr to original state
         if val & 0x80 != 0 {
             self.sr = 0x10;
-            // println!("CLEAR SR");
+            println!("[MMC1] Clear shift register.");
             return None;
         }
         // Shift bit 0 of val to sr
@@ -79,7 +81,6 @@ impl Registers {
     }
 
     pub fn write_mirroring_mode(&mut self, val: u8) {
-        // println!("WRITING MIRRORING MODE: {}", val);
         self.mirroring_mode = match val {
             0x00 => MirroringMode::Lower,
             0x01 => MirroringMode::Upper,
@@ -87,25 +88,26 @@ impl Registers {
             0x03 => MirroringMode::Horizontal,
             _ => panic!("[MMC1] Invalid mirroring mode."),
         };
+        println!("[MMC1] Write mirroring mode: {:?}.", self.mirroring_mode);
     }
 
     pub fn write_prg_rom_bank_mode(&mut self, val: u8) {
-        // println!("WRITING PRG ROM BANK MODE: {}", val);
         self.prg_rom_bank_mode = match val {
             0x00 | 0x01 => PrgRomBankMode::Switch32K,
             0x02 => PrgRomBankMode::FixFirstBank,
             0x03 => PrgRomBankMode::FixLastBank,
             _ => panic!("[MMC1] Invalid prg rom bank mode."),
         };
+        println!("[MMC1] Write prg rom bank mode: {:?}.", self.prg_rom_bank_mode);
     }
 
     pub fn write_chr_rom_bank_mode(&mut self, val: u8) {
-        // println!("WRITING CHR ROM BANK MODE: {}", val);
         self.chr_rom_bank_mode = match val {
             0x00 => ChrRomBankMode::Switch8K,
             0x01 => ChrRomBankMode::Switch4K,
             _ => panic!("[MMC1] Invalid chr rom bank mode."),
-        }
+        };
+        println!("[MMC1] Write chr rom bank mode: {:?}.", self.chr_rom_bank_mode);
     }
 
     pub fn write_control(&mut self, val: u8) {
@@ -115,9 +117,10 @@ impl Registers {
     }
 
     pub fn write_prg_bank(&mut self, val: u8) {
-        // println!("WRITING PRG BANK: {}", val & 0x0F);
         self.prg_rom_bank = val & 0x0F;
+        println!("[MMC1] Write prg rom bank: {}", self.prg_rom_bank);
         self.prg_ram_enabled = val & 0x10 == 0;
+        println!("[MMC1] Write prg ram enabled: {}", self.prg_ram_enabled);
     }
 }
 
@@ -141,6 +144,7 @@ impl MMC1 {
     }
 }
 
+// TODO: Handle differences between variants.
 impl Mapper for MMC1 {
     fn read_byte(&self, addr: u16) -> u8 {
         let addr = addr as usize;
@@ -159,7 +163,7 @@ impl Mapper for MMC1 {
                 };
                 self.cartridge.read_chr_rom(bank * 0x1000 + addr - 0x1000)
             },
-            0x6000..=0x7FFF => {
+            0x6000..=0x7FFF if self.r.prg_ram_enabled => {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.read_prg_ram(addr)
             },
@@ -204,7 +208,7 @@ impl Mapper for MMC1 {
                 self.cartridge
                     .write_chr_rom(bank * 0x1000 + addr - 0x1000, val)
             },
-            0x6000..=0x7FFF => {
+            0x6000..=0x7FFF if self.r.prg_ram_enabled => {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.write_prg_ram(addr, val);
             },
