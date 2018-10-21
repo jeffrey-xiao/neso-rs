@@ -1,14 +1,14 @@
+mod cnrom;
 mod mmc1;
 mod mmc3;
 mod nrom;
 mod uxrom;
-mod cnrom;
 
+pub use self::cnrom::CNROM;
 pub use self::mmc1::MMC1;
+pub use self::mmc3::MMC3;
 pub use self::nrom::NROM;
 pub use self::uxrom::UxROM;
-pub use self::cnrom::CNROM;
-pub use self::mmc3::MMC3;
 use cartridge::Cartridge;
 use ppu::MirroringMode;
 

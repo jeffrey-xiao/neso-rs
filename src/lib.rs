@@ -116,7 +116,7 @@ mod tests {
     }
 
     // Compare hash of nametables after specified frames for no text output tests.
-macro_rules! graphical_tests {
+    macro_rules! graphical_tests {
     ($($test_name:ident: ($path:expr, $frames:expr, $hash:expr)$(,)*)*) => {
         $(
             #[test]

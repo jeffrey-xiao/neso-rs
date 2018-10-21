@@ -89,42 +89,50 @@ impl Registers {
 
     pub fn get_chr_rom_address(&self, addr: usize) -> usize {
         match self.chr_rom_bank_mode {
-            ChrRomBankMode::Two2KFour1K => match addr {
-                0x0000..=0x07FF => (self.bank_data[0] as usize & !0x01) * 0x400 + addr,
-                0x0800..=0x0FFF => (self.bank_data[1] as usize & !0x01) * 0x400 + addr - 0x0800,
-                0x1000..=0x13FF => (self.bank_data[2] as usize) * 0x400 + addr - 0x1000,
-                0x1400..=0x17FF => (self.bank_data[3] as usize) * 0x400 + addr - 0x1400,
-                0x1800..=0x1BFF => (self.bank_data[4] as usize) * 0x400 + addr - 0x1800,
-                0x1C00..=0x1FFF => (self.bank_data[5] as usize) * 0x400 + addr - 0x1C00,
-                _ => panic!("[MMC3] Invalid chr rom address."),
+            ChrRomBankMode::Two2KFour1K => {
+                match addr {
+                    0x0000..=0x07FF => (self.bank_data[0] as usize & !0x01) * 0x400 + addr,
+                    0x0800..=0x0FFF => (self.bank_data[1] as usize & !0x01) * 0x400 + addr - 0x0800,
+                    0x1000..=0x13FF => (self.bank_data[2] as usize) * 0x400 + addr - 0x1000,
+                    0x1400..=0x17FF => (self.bank_data[3] as usize) * 0x400 + addr - 0x1400,
+                    0x1800..=0x1BFF => (self.bank_data[4] as usize) * 0x400 + addr - 0x1800,
+                    0x1C00..=0x1FFF => (self.bank_data[5] as usize) * 0x400 + addr - 0x1C00,
+                    _ => panic!("[MMC3] Invalid chr rom address."),
+                }
             },
-            ChrRomBankMode::Four1KTwo2K => match addr {
-                0x0000..=0x03FF => (self.bank_data[2] as usize) * 0x400 + addr,
-                0x0400..=0x07FF => (self.bank_data[3] as usize) * 0x400 + addr - 0x0400,
-                0x0800..=0x0BFF => (self.bank_data[4] as usize) * 0x400 + addr - 0x0800,
-                0x0C00..=0x0FFF => (self.bank_data[5] as usize) * 0x400 + addr - 0x0C00,
-                0x1000..=0x17FF => (self.bank_data[0] as usize & !0x01) * 0x400 + addr - 0x1000,
-                0x1800..=0x1FFF => (self.bank_data[1] as usize & !0x01) * 0x400 + addr - 0x1800,
-                _ => panic!("[MMC3] Invalid chr rom address."),
+            ChrRomBankMode::Four1KTwo2K => {
+                match addr {
+                    0x0000..=0x03FF => (self.bank_data[2] as usize) * 0x400 + addr,
+                    0x0400..=0x07FF => (self.bank_data[3] as usize) * 0x400 + addr - 0x0400,
+                    0x0800..=0x0BFF => (self.bank_data[4] as usize) * 0x400 + addr - 0x0800,
+                    0x0C00..=0x0FFF => (self.bank_data[5] as usize) * 0x400 + addr - 0x0C00,
+                    0x1000..=0x17FF => (self.bank_data[0] as usize & !0x01) * 0x400 + addr - 0x1000,
+                    0x1800..=0x1FFF => (self.bank_data[1] as usize & !0x01) * 0x400 + addr - 0x1800,
+                    _ => panic!("[MMC3] Invalid chr rom address."),
+                }
             },
         }
     }
 
     pub fn get_prg_rom_address(&self, addr: usize, prg_rom_banks: usize) -> usize {
         match self.prg_rom_bank_mode {
-            PrgRomBankMode::TwoSwitchTwoFix => match addr {
-                0x8000..=0x9FFF => (self.bank_data[6] as usize) * 0x2000 + addr - 0x8000,
-                0xA000..=0xBFFF => (self.bank_data[7] as usize) * 0x2000 + addr - 0xA000,
-                0xC000..=0xDFFF => (prg_rom_banks - 2) * 0x2000 + addr - 0xC000,
-                0xE000..=0xFFFF => (prg_rom_banks - 1) * 0x2000 + addr - 0xE000,
-                _ => panic!("[MMC3] Invalid prg rom address."),
+            PrgRomBankMode::TwoSwitchTwoFix => {
+                match addr {
+                    0x8000..=0x9FFF => (self.bank_data[6] as usize) * 0x2000 + addr - 0x8000,
+                    0xA000..=0xBFFF => (self.bank_data[7] as usize) * 0x2000 + addr - 0xA000,
+                    0xC000..=0xDFFF => (prg_rom_banks - 2) * 0x2000 + addr - 0xC000,
+                    0xE000..=0xFFFF => (prg_rom_banks - 1) * 0x2000 + addr - 0xE000,
+                    _ => panic!("[MMC3] Invalid prg rom address."),
+                }
             },
-            PrgRomBankMode::FixTwoSwitchFix => match addr {
-                0x8000..=0x9FFF => (prg_rom_banks - 2) * 0x2000 + addr - 0x8000,
-                0xA000..=0xBFFF => (self.bank_data[7] as usize) * 0x2000 + addr - 0xA000,
-                0xC000..=0xDFFF => (self.bank_data[6] as usize) * 0x2000 + addr - 0xC000,
-                0xE000..=0xFFFF => (prg_rom_banks - 1) * 0x2000 + addr - 0xE000,
-                _ => panic!("[MMC3] Invalid prg rom address."),
+            PrgRomBankMode::FixTwoSwitchFix => {
+                match addr {
+                    0x8000..=0x9FFF => (prg_rom_banks - 2) * 0x2000 + addr - 0x8000,
+                    0xA000..=0xBFFF => (self.bank_data[7] as usize) * 0x2000 + addr - 0xA000,
+                    0xC000..=0xDFFF => (self.bank_data[6] as usize) * 0x2000 + addr - 0xC000,
+                    0xE000..=0xFFFF => (prg_rom_banks - 1) * 0x2000 + addr - 0xE000,
+                    _ => panic!("[MMC3] Invalid prg rom address."),
+                }
             },
         }
     }
@@ -185,7 +193,7 @@ impl Mapper for MMC3 {
             // TODO: Handle interrupts
             0xC000..=0xDFFF if addr & 0x01 == 0 => {},
             0xC000..=0xDFFF => {},
-            0xE000..=0xFFFF if addr & 0x01 ==0 => self.r.irq_enabled = false,
+            0xE000..=0xFFFF if addr & 0x01 == 0 => self.r.irq_enabled = false,
             0xE000..=0xFFFF => self.r.irq_enabled = true,
             _ => {},
         }

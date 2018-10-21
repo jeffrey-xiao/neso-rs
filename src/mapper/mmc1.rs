@@ -201,7 +201,8 @@ impl Mapper for MMC1 {
                     ChrRomBankMode::Switch8K => self.r.chr_rom_bank_0 as usize | 0x01,
                     ChrRomBankMode::Switch4K => self.r.chr_rom_bank_1 as usize,
                 };
-                self.cartridge.write_chr_rom(bank * 0x1000 + addr - 0x1000, val)
+                self.cartridge
+                    .write_chr_rom(bank * 0x1000 + addr - 0x1000, val)
             },
             0x6000..=0x7FFF => {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
@@ -219,7 +220,7 @@ impl Mapper for MMC1 {
                     0xE000..=0xFFFF => self.r.write_prg_bank(val),
                     _ => {},
                 }
-            }
+            },
             _ => {},
         }
     }
