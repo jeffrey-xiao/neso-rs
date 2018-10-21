@@ -6,9 +6,23 @@
 
 An NES emulator written in Rust that compiles to WebAssembly.
 
-Features
- - Cycle accurate MOS 6502 CPU with unofficial instructions
- - NROM (Mapper 0), MMC1 (Mapper 1)
+## Features
+
+ - Instruction-cycle accurate MOS 6502 CPU with unofficial instructions.
+ - Mostly cycle accurate PPU.
+
+## Compatibility
+
+The following mappers are implemented:
+ - `000`: NROM
+ - `001`: MMC1
+ - `002`: UNROM
+ - `003`: CNROM
+ - `004`: MMC3
+ - `007`: AxROM
+ - `011`: ColorDreams
+ - `094`: UN1ROM
+ - `180`: _Crazy Climber_
 
 ## Test Rom Progress
 
@@ -51,7 +65,14 @@ CPU
     - `03-forward_branch.nes`: Pass
   - blargg's `cpu_timing_test`: Pass
 
+PPU
+
+APU
+
 ## References
+
+ - [NESDev Wiki](https://wiki.nesdev.com)
+ - [Obelisk 6502 Reference](http://www.obelisk.me.uk/6502/reference.html)
 
 ## License
 
