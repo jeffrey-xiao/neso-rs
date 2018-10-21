@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/games/super_mario_bros_3.nes").unwrap();
+    let buffer = fs::read("./tests/games/180/crazy_climber.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 

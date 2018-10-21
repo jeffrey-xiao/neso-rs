@@ -345,7 +345,7 @@ impl Ppu {
             },
         };
 
-        let color = PALETTE[self.read_byte(addr) as usize];
+        let color = PALETTE[self.read_byte(addr) as usize & 0x3F];
         self.image[self.image_index] = ((color >> 16) & 0xFF) as u8;
         self.image[self.image_index + 1] = ((color >> 8) & 0xFF) as u8;
         self.image[self.image_index + 2] = (color & 0xFF) as u8;

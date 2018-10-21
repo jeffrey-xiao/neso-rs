@@ -1,8 +1,8 @@
+use bus::Bus;
 use cartridge::Cartridge;
+use cpu::Interrupt;
 use mapper::Mapper;
 use ppu::MirroringMode;
-use bus::Bus;
-use cpu::Interrupt;
 
 enum PrgRomBankMode {
     // prg rom is two switchable 8K banks and two fixed 8K banks on last two banks
@@ -227,8 +227,7 @@ impl Mapper for MMC3 {
         let ppu = self.bus().ppu();
         let cycle = ppu.borrow().cycle;
         let scanline = ppu.borrow().scanline;
-        let rendering_enabled = ppu.borrow().r.show_sprites
-            || ppu.borrow().r.show_background;
+        let rendering_enabled = ppu.borrow().r.show_sprites || ppu.borrow().r.show_background;
 
         if cycle != 260 || scanline >= 240 || !rendering_enabled {
             return;

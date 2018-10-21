@@ -98,7 +98,10 @@ impl Registers {
             0x03 => PrgRomBankMode::FixLastBank,
             _ => panic!("[MMC1] Invalid prg rom bank mode."),
         };
-        println!("[MMC1] Write prg rom bank mode: {:?}.", self.prg_rom_bank_mode);
+        println!(
+            "[MMC1] Write prg rom bank mode: {:?}.",
+            self.prg_rom_bank_mode
+        );
     }
 
     pub fn write_chr_rom_bank_mode(&mut self, val: u8) {
@@ -107,7 +110,10 @@ impl Registers {
             0x01 => ChrRomBankMode::Switch4K,
             _ => panic!("[MMC1] Invalid chr rom bank mode."),
         };
-        println!("[MMC1] Write chr rom bank mode: {:?}.", self.chr_rom_bank_mode);
+        println!(
+            "[MMC1] Write chr rom bank mode: {:?}.",
+            self.chr_rom_bank_mode
+        );
     }
 
     pub fn write_control(&mut self, val: u8) {
