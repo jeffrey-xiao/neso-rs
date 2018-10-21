@@ -56,6 +56,7 @@ impl Cartridge {
         };
 
         let mapper = (flags_7 & 0xF0) | (flags_6 >> 4);
+        println!("[CARTRIDGE] Mapper: {}.", mapper);
 
         let mirroring_mode = {
             if flags_6 & 0x08 != 0 {
@@ -66,6 +67,7 @@ impl Cartridge {
                 MirroringMode::Horizontal
             }
         };
+        println!("[CARTRIDGE] Mirroring mode: {:?}.", mirroring_mode);
 
         Cartridge {
             prg_rom,

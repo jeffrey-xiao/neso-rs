@@ -186,7 +186,7 @@ impl Ppu {
             // PPUSTATUS
             0x02 => return,
             // OAMADDR
-            0x03 => self.r.oam_addr = valm
+            0x03 => self.r.oam_addr = val,
             // OAMDATA
             0x04 => {
                 self.primary_oam[self.r.oam_addr as usize] = val;

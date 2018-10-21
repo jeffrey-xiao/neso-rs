@@ -227,8 +227,8 @@ impl Mapper for MMC3 {
         let ppu = self.bus().ppu();
         let cycle = ppu.borrow().cycle;
         let scanline = ppu.borrow().scanline;
-        let rendering_enabled = ppu.borrow().r.show_sprites ||
-            ppu.borrow().r.show_background;
+        let rendering_enabled = ppu.borrow().r.show_sprites
+            || ppu.borrow().r.show_background;
 
         if cycle != 260 || scanline >= 240 || !rendering_enabled {
             return;

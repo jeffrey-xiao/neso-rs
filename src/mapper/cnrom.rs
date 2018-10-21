@@ -39,7 +39,7 @@ impl Mapper for CNROM {
                 let addr = self.chr_rom_bank as usize * 0x2000 + addr;
                 self.cartridge.write_chr_rom(addr, val);
             },
-            0xC000..=0xFFFF => self.chr_rom_bank = val & 0x03,
+            0x8000..=0xFFFF => self.chr_rom_bank = val & 0x03,
             _ => {},
         }
     }
