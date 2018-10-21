@@ -116,30 +116,30 @@ mod tests {
     }
 
     // Compare hash of nametables after specified frames for no text output tests.
-    macro_rules! graphical_tests {
-        ($($test_name:ident: ($path:expr, $frames:expr, $hash:expr)$(,)*)*) => {
-            $(
-                #[test]
-                fn $test_name() {
-                    let buffer = fs::read($path).expect("Expected test rom to exist.");
-                    let mut nes = Nes::new();
-                    nes.load_rom(&buffer);
+macro_rules! graphical_tests {
+    ($($test_name:ident: ($path:expr, $frames:expr, $hash:expr)$(,)*)*) => {
+        $(
+            #[test]
+            fn $test_name() {
+                let buffer = fs::read($path).expect("Expected test rom to exist.");
+                let mut nes = Nes::new();
+                nes.load_rom(&buffer);
 
-                    for i in 0..$frames {
-                        nes.step_frame();
-                    }
-
-                    let mut hasher = DefaultHasher::new();
-
-                    for addr in 0x2000..0x3000 {
-                        hasher.write_u8(nes.ppu.borrow().read_byte(addr));
-                    }
-
-                    assert_eq!(hasher.finish(), $hash);
+                for i in 0..$frames {
+                    nes.step_frame();
                 }
-            )*
-        }
+
+                let mut hasher = DefaultHasher::new();
+
+                for addr in 0x2000..0x3000 {
+                    hasher.write_u8(nes.ppu.borrow().read_byte(addr));
+                }
+
+                assert_eq!(hasher.finish(), $hash);
+            }
+        )*
     }
+}
 
     #[cfg(test)]
     mod cpu {

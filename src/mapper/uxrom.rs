@@ -35,9 +35,6 @@ impl Mapper for UxROM {
     }
 
     fn write_byte(&mut self, addr: u16, val: u8) {
-        if addr < 0x8000 {
-            return;
-        }
         let addr = addr as usize;
         match addr {
             0x0000..=0x1FFF => self.cartridge.write_chr_rom(addr, val),

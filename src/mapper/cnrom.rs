@@ -28,7 +28,7 @@ impl Mapper for CNROM {
                 self.cartridge.read_prg_rom(addr - 0x8000)
             },
             0x8000..=0xFFFF => self.cartridge.read_prg_rom((addr - 0x8000) % 0x4000),
-            _ => panic!("READ AT {}", addr),
+            _ => 0,
         }
     }
 
@@ -40,7 +40,7 @@ impl Mapper for CNROM {
                 self.cartridge.write_chr_rom(addr, val);
             },
             0xC000..=0xFFFF => self.chr_rom_bank = val & 0x03,
-            _ => panic!("WRITE AT {}", addr),
+            _ => {},
         }
     }
 

@@ -3,10 +3,12 @@ use mapper::Mapper;
 use ppu::MirroringMode;
 use std::mem;
 
-#[derive(Debug)]
 enum PrgRomBankMode {
+    // prg rom is one switchable 32K bank
     Switch32K,
+    // prg rom is one fixed 16K bank on the first bank and one switchable 16K bank
     FixFirstBank,
+    // prg rom is one switchable 16K bank and one fixed 16K bank on the last bank
     FixLastBank,
 }
 
@@ -17,7 +19,9 @@ impl Default for PrgRomBankMode {
 }
 
 enum ChrRomBankMode {
+    // chr rom is one switchable 8K bank
     Switch8K,
+    // chr rom is two switchable 4K banks
     Switch4K,
 }
 
@@ -155,7 +159,10 @@ impl Mapper for MMC1 {
                 };
                 self.cartridge.read_chr_rom(bank * 0x1000 + addr - 0x1000)
             },
-            0x6000..=0x7FFF => self.cartridge.read_prg_ram(addr - 0x6000),
+            0x6000..=0x7FFF => {
+                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
+                self.cartridge.read_prg_ram(addr)
+            },
             0x8000..=0xBFFF => {
                 let bank = match self.r.prg_rom_bank_mode {
                     PrgRomBankMode::Switch32K => self.r.prg_rom_bank as usize & !0x01,
@@ -196,7 +203,10 @@ impl Mapper for MMC1 {
                 };
                 self.cartridge.write_chr_rom(bank * 0x1000 + addr - 0x1000, val)
             },
-            0x6000..=0x7FFF => self.cartridge.write_prg_ram(addr - 0x6000, val),
+            0x6000..=0x7FFF => {
+                let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
+                self.cartridge.write_prg_ram(addr, val);
+            },
             0x8000..=0xFFFF => {
                 let val = match self.r.push_val(val) {
                     Some(val) => val,
