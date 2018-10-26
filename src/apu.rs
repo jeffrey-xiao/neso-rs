@@ -64,6 +64,7 @@ pub struct Apu {
 impl Apu {
     pub fn new() -> Self {
         Apu {
+            cycle: 0,
             bus: None,
             pulses: [Pulse::default(), Pulse::default()],
         }
