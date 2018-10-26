@@ -31,6 +31,7 @@ impl Cpu {
         }
     }
 
+    // TODO: This should be initialize. Handle RESET interrupt.
     pub fn reset(&mut self) {
         self.r.pc = self.read_word(0xFFFC);
         self.r.sp = 0xFD;
@@ -130,19 +131,14 @@ impl Cpu {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
             0x2000..=0x3FFF => {
                 let ppu = self.bus().ppu();
-                let ret = ppu
-                    .borrow_mut()
-                    .read_register(((addr - 0x2000) % 8) as usize);
+                let addr = (addr - 0x2000) % 8 + 0x2000;
+                let ret = ppu.borrow_mut().read_register(addr);
                 ret
             },
-            // TODO: Implement APU and IO maps
-            0x4000..=0x4017 => {
-                if addr == 0x4016 {
-                    self.controller.read_value()
-                } else {
-                    0
-                }
-            },
+            // TODO: Add support for second controller at 0x4017
+            0x4016 => self.controller.read_value(),
+            // TODO: Are APU registers read only?
+            0x4000..=0x4017 => 0,
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFF => {
                 let mapper = self.bus().mapper();
@@ -163,34 +159,34 @@ impl Cpu {
             0x2000..=0x3FFF => {
                 let ppu = self.bus().ppu();
                 let old_nmi_enabled = ppu.borrow().r.nmi_enabled;
-                ppu.borrow_mut()
-                    .write_register(((addr - 0x2000) % 8) as usize, val);
+                let addr = (addr - 0x2000) % 8 + 0x2000;
+                ppu.borrow_mut().write_register(addr, val);
                 let nmi_enabled_toggled = !old_nmi_enabled && ppu.borrow().r.nmi_enabled;
                 if nmi_enabled_toggled && ppu.borrow().r.v_blank_started {
                     self.trigger_interrupt(Interrupt::NMI);
                 }
             },
-            // TODO: Implement APU and IO maps
-            0x4000..=0x4017 => {
-                if addr == 0x4014 {
-                    println!("[CPU] Performing OAM DMA on address {:#06x}.", val);
-                    let cpu_addr = u16::from(val) << 8;
-                    let ppu = self.bus().ppu();
-                    for offset in 0..=0xFF {
-                        let oam_addr = ppu.borrow().r.oam_addr;
-                        let cpu_addr = cpu_addr + offset;
-                        ppu.borrow_mut().primary_oam[oam_addr as usize] = self.read_byte(cpu_addr);
-                        ppu.borrow_mut().r.oam_addr = oam_addr.wrapping_add(1);
-                    }
-
-                    if self.cycle % 2 == 1 {
-                        self.stall_cycle += 514 * 3;
-                    } else {
-                        self.stall_cycle += 513 * 3;
-                    }
-                } else if addr == 0x4016 {
-                    self.controller.write_strobe(val & 0x01 != 0);
+            0x4014 => {
+                println!("[CPU] Performing OAM DMA on address {:#06x}.", val);
+                let cpu_addr = u16::from(val) << 8;
+                let ppu = self.bus().ppu();
+                for offset in 0..=0xFF {
+                    let oam_addr = ppu.borrow().r.oam_addr;
+                    let cpu_addr = cpu_addr + offset;
+                    ppu.borrow_mut().primary_oam[oam_addr as usize] = self.read_byte(cpu_addr);
+                    ppu.borrow_mut().r.oam_addr = oam_addr.wrapping_add(1);
                 }
+
+                if self.cycle % 2 == 1 {
+                    self.stall_cycle += 514 * 3;
+                } else {
+                    self.stall_cycle += 513 * 3;
+                }
+            },
+            0x4016 => self.controller.write_strobe(val & 0x01 != 0),
+            0x4000..=0x4017 => {
+                let apu = self.bus().apu();
+                apu.borrow_mut().write_register(addr, val);
             },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFF => {

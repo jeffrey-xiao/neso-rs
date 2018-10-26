@@ -4,6 +4,7 @@ extern crate sdl2;
 use nes_wasm::Nes;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
+use sdl2::audio::AudioSpecDesired;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use std::fs;
@@ -11,15 +12,36 @@ use std::ptr;
 use std::thread;
 use std::time::{Duration, Instant};
 
+fn gen_wave(bytes_to_write: i32) -> Vec<i16> {
+    // Generate a square wave
+    let tone_volume = 1_000i16;
+    let period = 48_000 / 256;
+    let sample_count = bytes_to_write;
+    let mut result = Vec::new();
+
+    for x in 0..sample_count {
+        result.push(
+                if (x / period) % 2 == 0 {
+                tone_volume
+                }
+                else {
+                -tone_volume
+                }
+        );
+    }
+    result
+}
+
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/games/0/super_mario_bros.nes").unwrap();
+    let buffer = fs::read("./tests/games/0/balloon_fight.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
     let sdl_context = sdl2::init().unwrap();
     let video_subsystem = sdl_context.video().unwrap();
+    let audio_subsystem = sdl_context.audio().unwrap();
 
     let window = video_subsystem
         .window("rust-sdl2 demo: Video", 1000, 800)
@@ -143,6 +165,18 @@ pub fn main() {
         } else {
             nes.step_frame();
         }
+
+        let desired_spec = AudioSpecDesired {
+            freq: Some(48_000),
+            channels: Some(2),
+            samples: Some(4)
+        };
+        let device = audio_subsystem.open_queue::<i16, _>(None, &desired_spec).unwrap();
+        let target_bytes = 4096;
+        let wave = gen_wave(target_bytes);
+        device.queue(&wave);
+        // Start playback
+        device.resume();
 
         let mut pattern_table = Vec::with_capacity(512);
 

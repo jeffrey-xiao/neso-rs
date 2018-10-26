@@ -3,6 +3,7 @@ extern crate js_sys;
 extern crate wasm_bindgen;
 
 mod bus;
+mod apu;
 mod cartridge;
 mod controller;
 mod cpu;
@@ -15,11 +16,13 @@ use cartridge::Cartridge;
 use cpu::Cpu;
 use mapper::Mapper;
 use ppu::Ppu;
+use apu::Apu;
 use std::cell::RefCell;
 use std::rc::Rc;
 
 // TODO: Leave better error messages for panics that should never happen.
 pub struct Nes {
+    pub apu: Rc<RefCell<Apu>>,
     pub cpu: Rc<RefCell<Cpu>>,
     pub ppu: Rc<RefCell<Ppu>>,
     pub mapper: Option<Rc<RefCell<Box<Mapper>>>>,
@@ -27,25 +30,30 @@ pub struct Nes {
 
 impl Nes {
     pub fn new() -> Self {
+        let apu = Rc::new(RefCell::new(Apu::new()));
         let cpu = Rc::new(RefCell::new(Cpu::new()));
         let ppu = Rc::new(RefCell::new(Ppu::new()));
         let mapper = None;
 
-        Nes { cpu, ppu, mapper }
+        Nes { apu, cpu, ppu, mapper }
     }
 
     pub fn load_rom(&mut self, buffer: &[u8]) {
         let cartridge = Cartridge::from_buffer(buffer);
         let mapper = Rc::new(RefCell::new(mapper::from_cartridge(cartridge)));
+        let bus = Bus::new(&self.apu, &self.cpu, &self.ppu, &mapper);
+        self.apu
+            .borrow_mut()
+            .attach_bus(bus.clone());
         self.cpu
             .borrow_mut()
-            .attach_bus(Bus::new(&self.cpu, &self.ppu, &mapper));
+            .attach_bus(bus.clone());
         self.ppu
             .borrow_mut()
-            .attach_bus(Bus::new(&self.cpu, &self.ppu, &mapper));
+            .attach_bus(bus.clone());
         mapper
             .borrow_mut()
-            .attach_bus(Bus::new(&self.cpu, &self.ppu, &mapper));
+            .attach_bus(bus);
         self.mapper = Some(mapper);
     }
 

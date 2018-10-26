@@ -145,24 +145,24 @@ impl Ppu {
         }
     }
 
-    pub fn read_register(&mut self, index: usize) -> u8 {
-        match index {
+    pub fn read_register(&mut self, addr: u16) -> u8 {
+        match addr {
             // PPUCTRL
-            0x00 => self.r.last_written_byte,
+            0x2000 => self.r.last_written_byte,
             // PPUMASK
-            0x01 => self.r.last_written_byte,
+            0x2001 => self.r.last_written_byte,
             // PPUSTATUS
-            0x02 => self.r.read_ppu_status(),
+            0x2002 => self.r.read_ppu_status(),
             // OAMADDR
-            0x03 => self.r.last_written_byte,
+            0x2003 => self.r.last_written_byte,
             // OAMDATA
-            0x04 => self.primary_oam[self.r.oam_addr as usize],
+            0x2004 => self.primary_oam[self.r.oam_addr as usize],
             // PPUSCROLL
-            0x05 => self.r.last_written_byte,
+            0x2005 => self.r.last_written_byte,
             // PPUADDR
-            0x06 => self.r.last_written_byte,
+            0x2006 => self.r.last_written_byte,
             // PPUDATA
-            0x07 => {
+            0x2007 => {
                 let mut ret = self.read_byte(self.r.bus_address);
                 if self.r.bus_address < 0x3F00 {
                     mem::swap(&mut ret, &mut self.r.buffer);
@@ -172,37 +172,37 @@ impl Ppu {
                 self.r.bus_address += self.r.vram_address_increment;
                 ret
             },
-            _ => panic!("[PPU] Invalid ppu register to read: {}.", index),
+            _ => panic!("[PPU] Invalid ppu register to read: {:#06x}.", addr),
         }
     }
 
-    pub fn write_register(&mut self, index: usize, val: u8) {
+    pub fn write_register(&mut self, addr: u16, val: u8) {
         self.r.last_written_byte = val;
-        match index {
+        match addr {
             // PPUCTRL
-            0x00 => self.r.write_ppu_ctrl(val),
+            0x2000 => self.r.write_ppu_ctrl(val),
             // PPUMASK
-            0x01 => self.r.write_ppu_mask(val),
+            0x2001 => self.r.write_ppu_mask(val),
             // PPUSTATUS
-            0x02 => return,
+            0x2002 => return,
             // OAMADDR
-            0x03 => self.r.oam_addr = val,
+            0x2003 => self.r.oam_addr = val,
             // OAMDATA
-            0x04 => {
+            0x2004 => {
                 self.primary_oam[self.r.oam_addr as usize] = val;
                 self.r.oam_addr = self.r.oam_addr.wrapping_add(1);
             },
             // PPUSCROLL
-            0x05 => self.r.write_ppu_scroll(val),
+            0x2005 => self.r.write_ppu_scroll(val),
             // PPUADDR
-            0x06 => self.r.write_ppu_addr(val),
+            0x2006 => self.r.write_ppu_addr(val),
             // PPUDATA
-            0x07 => {
+            0x2007 => {
                 let addr = self.r.bus_address;
                 self.write_byte(addr, val);
                 self.r.bus_address += self.r.vram_address_increment;
             },
-            _ => panic!("[PPU] Invalid ppu register to write: {}.", index),
+            _ => panic!("[PPU] Invalid ppu register to write: {:#06x}.", addr),
         }
     }
 
