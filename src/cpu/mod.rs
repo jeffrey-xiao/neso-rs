@@ -66,7 +66,7 @@ impl Cpu {
         let opcode = self.decode_byte();
         // print!("{:02X} ", opcode);
         self.execute_opcode(opcode);
-        self.stall_cycle += (self.cycle - start_cycle) * 3 - 1;
+        self.stall_cycle += (self.cycle - start_cycle) - 1;
     }
 
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
@@ -137,8 +137,11 @@ impl Cpu {
             },
             // TODO: Add support for second controller at 0x4017
             0x4016 => self.controller.read_value(),
-            // TODO: Are APU registers read only?
-            0x4000..=0x4017 => 0,
+            0x4000..=0x4017 => {
+                let apu = self.bus().apu();
+                let ret = apu.borrow_mut().read_register(addr);
+                ret
+            },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFF => {
                 let mapper = self.bus().mapper();
@@ -178,9 +181,9 @@ impl Cpu {
                 }
 
                 if self.cycle % 2 == 1 {
-                    self.stall_cycle += 514 * 3;
+                    self.stall_cycle += 514;
                 } else {
-                    self.stall_cycle += 513 * 3;
+                    self.stall_cycle += 513;
                 }
             },
             0x4016 => self.controller.write_strobe(val & 0x01 != 0),

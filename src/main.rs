@@ -35,7 +35,7 @@ fn gen_wave(bytes_to_write: i32) -> Vec<i16> {
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/games/0/balloon_fight.nes").unwrap();
+    let buffer = fs::read("./tests/games/4/super_mario_bros_3.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 

@@ -59,8 +59,11 @@ impl Nes {
 
     pub fn step(&mut self) {
         self.cpu.borrow_mut().step();
-        self.ppu.borrow_mut().step();
-        self.mapper.as_ref().unwrap().borrow_mut().step();
+        for _ in 0..3 {
+            self.ppu.borrow_mut().step();
+            self.mapper.as_ref().unwrap().borrow_mut().step();
+        }
+        self.apu.borrow_mut().step();
     }
 
     pub fn step_scanline(&mut self) {

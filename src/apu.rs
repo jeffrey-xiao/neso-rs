@@ -7,13 +7,23 @@ const LENGTH_COUNTER_TABLE: [u8; 32] = [
     12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
+// https://wiki.nesdev.com/w/index.php/APU_Pulse
+#[cfg_attr(rustfmt, rustfmt_skip)]
+const u8 DUTY_CYCLE_TABLE: [u8, 32] = [
+  0, 1, 0, 0, 0, 0, 0, 0,
+  0, 1, 1, 0, 0, 0, 0, 0,
+  0, 1, 1, 1, 1, 0, 0, 0,
+  1, 0, 0, 1, 1, 1, 1, 1,
+];
+
 pub struct Pulse {
     enabled: bool,
     duty_cycle: u8,
-    duty_index: u8,
+    duty_val: u8,
     length_counter_enabled: bool,
     length_counter: u8,
     timer_period: u16,
+    timer_val: u16,
     envelope_enabled: bool,
     envelope_loop: bool,
     envelope_period: u8,
@@ -78,6 +88,22 @@ impl Apu {
         self.bus.as_ref().expect("[APU] No bus attached.")
     }
 
+    pub fn read_register(&self, addr: u16) -> u8 {
+        match addr {
+            0x4015 => {
+                let mut ret = 0;
+                for (index, pulse) in self.pulses.iter().enumerate() {
+                    if pulse.enabled {
+                        ret |= 1 << index;
+                    }
+                }
+                // TODO: Handle other waves
+                ret
+            },
+            _ => 0,
+        }
+    }
+
     pub fn write_register(&mut self, addr: u16, val: u8) {
         match addr {
             0x4000 | 0x4004 => {
@@ -127,5 +153,12 @@ impl Apu {
             },
             _ => {},
         }
+    }
+
+    pub fn step(&mut self) {
+        self.cycle += 1;
+
+        if 
+        // TODO: Handle other waves and frame counter
     }
 }
