@@ -1,4 +1,5 @@
 use bus::Bus;
+use std::f64::consts;
 
 // https://wiki.nesdev.com/w/index.php/APU_Length_Counter
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -15,6 +16,87 @@ const DUTY_CYCLE_TABLE: [u8; 32] = [
   0, 1, 1, 1, 1, 0, 0, 0,
   1, 0, 0, 1, 1, 1, 1, 1,
 ];
+
+pub trait FirstOrderFilter {
+    fn filter(&mut self, input_sample: f64) -> f64;
+}
+
+struct FirstOrderFilterParams {
+    pub frequency: u64,
+    pub sample_rate: u64,
+    pub rc: f64,
+    pub dt: f64,
+    pub alpha: f64,
+}
+
+impl FirstOrderFilterParams {
+    pub fn new(frequency: u64, sample_rate: u64) -> Self {
+        let rc = 1.0 / (2.0 * consts::PI * frequency as f64);
+        let dt = 1.0 / sample_rate as f64;
+        FirstOrderFilterParams {
+            frequency,
+            sample_rate,
+            rc,
+            dt,
+            alpha: dt / (rc + dt),
+        }
+    }
+}
+
+struct LowPassFilter {
+    prev_input_sample: f64,
+    prev_output_sample: f64,
+    params: FirstOrderFilterParams,
+}
+
+impl LowPassFilter {
+    pub fn new(frequency: u64, sample_rate: u64) -> Self {
+        LowPassFilter {
+            prev_input_sample: 0.0,
+            prev_output_sample: 0.0,
+            params: FirstOrderFilterParams::new(frequency, sample_rate),
+        }
+    }
+}
+
+impl FirstOrderFilter for LowPassFilter {
+    fn filter(&mut self, input_sample: f64) -> f64 {
+        let output_sample = self.prev_output_sample + self.params.alpha * (input_sample - self.prev_input_sample);
+        self.prev_input_sample = input_sample;
+        self.prev_output_sample = output_sample;
+        output_sample
+    }
+}
+
+struct HighPassFilter {
+    prev_input_sample: f64,
+    prev_output_sample: f64,
+    params: FirstOrderFilterParams,
+}
+
+impl HighPassFilter {
+    pub fn new(frequency: u64, sample_rate: u64) -> Self {
+        HighPassFilter {
+            prev_input_sample: 0.0,
+            prev_output_sample: 0.0,
+            params: FirstOrderFilterParams::new(frequency, sample_rate),
+        }
+    }
+}
+
+impl FirstOrderFilter for HighPassFilter {
+    fn filter(&mut self, input_sample: f64) -> f64 {
+        let output_sample = self.params.alpha * (self.prev_output_sample + input_sample - self.prev_input_sample);
+        self.prev_input_sample = input_sample;
+        self.prev_output_sample = output_sample;
+        output_sample
+    }
+}
+
+pub enum FrameCounterMode {
+    FourStep,
+    FiveStep,
+}
 
 pub struct Pulse {
     enabled: bool,
@@ -90,6 +172,7 @@ pub struct Apu {
     pub cycle: u64,
     pub bus: Option<Bus>,
     pub pulses: [Pulse; 2],
+    pub frame_counter_mode: FrameCounterMode,
 }
 
 impl Apu {
@@ -98,6 +181,7 @@ impl Apu {
             cycle: 0,
             bus: None,
             pulses: [Pulse::default(), Pulse::default()],
+            frame_counter_mode: FrameCounterMode::FourStep,
         }
     }
 
@@ -154,7 +238,8 @@ impl Apu {
                 let index = ((addr - 0x4000) / 4) as usize;
                 let val = ((val as u16) & 0x07) << 8;
                 self.pulses[index].timer_period = (self.pulses[index].timer_period & 0x00FF) | val;
-                self.pulses[index].length_counter = LENGTH_COUNTER_TABLE[(val as usize & 0xF8) >> 3];
+                self.pulses[index].length_counter =
+                    LENGTH_COUNTER_TABLE[(val as usize & 0xF8) >> 3];
                 self.pulses[index].duty_val = 0;
                 self.pulses[index].envelope_reset = true;
             },
@@ -169,9 +254,7 @@ impl Apu {
                 }
                 // TODO: Handle other waves
             },
-            0x4017 => {
-
-            },
+            0x4017 => {},
             _ => {},
         }
     }

@@ -2,8 +2,8 @@ extern crate cfg_if;
 extern crate js_sys;
 extern crate wasm_bindgen;
 
-mod bus;
 mod apu;
+mod bus;
 mod cartridge;
 mod controller;
 mod cpu;
@@ -11,12 +11,12 @@ mod mapper;
 mod ppu;
 mod utils;
 
+use apu::Apu;
 use bus::Bus;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use mapper::Mapper;
 use ppu::Ppu;
-use apu::Apu;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -35,25 +35,22 @@ impl Nes {
         let ppu = Rc::new(RefCell::new(Ppu::new()));
         let mapper = None;
 
-        Nes { apu, cpu, ppu, mapper }
+        Nes {
+            apu,
+            cpu,
+            ppu,
+            mapper,
+        }
     }
 
     pub fn load_rom(&mut self, buffer: &[u8]) {
         let cartridge = Cartridge::from_buffer(buffer);
         let mapper = Rc::new(RefCell::new(mapper::from_cartridge(cartridge)));
         let bus = Bus::new(&self.apu, &self.cpu, &self.ppu, &mapper);
-        self.apu
-            .borrow_mut()
-            .attach_bus(bus.clone());
-        self.cpu
-            .borrow_mut()
-            .attach_bus(bus.clone());
-        self.ppu
-            .borrow_mut()
-            .attach_bus(bus.clone());
-        mapper
-            .borrow_mut()
-            .attach_bus(bus);
+        self.apu.borrow_mut().attach_bus(bus.clone());
+        self.cpu.borrow_mut().attach_bus(bus.clone());
+        self.ppu.borrow_mut().attach_bus(bus.clone());
+        mapper.borrow_mut().attach_bus(bus);
         self.mapper = Some(mapper);
     }
 

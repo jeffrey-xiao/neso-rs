@@ -1,9 +1,9 @@
+use apu::Apu;
 use cpu::Cpu;
 use mapper::Mapper;
 use ppu::Ppu;
 use std::cell::RefCell;
 use std::rc::{Rc, Weak};
-use apu::Apu;
 
 #[derive(Clone)]
 pub struct Bus {

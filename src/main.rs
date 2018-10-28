@@ -21,12 +21,12 @@ fn gen_wave(bytes_to_write: i32) -> Vec<i16> {
 
     for x in 0..sample_count {
         result.push(
-                if (x / period) % 2 == 0 {
+            if (x / period) % 2 == 0 {
                 tone_volume
-                }
-                else {
+            }
+            else {
                 -tone_volume
-                }
+            }
         );
     }
     result
