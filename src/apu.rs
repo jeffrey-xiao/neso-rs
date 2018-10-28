@@ -9,7 +9,7 @@ const LENGTH_COUNTER_TABLE: [u8; 32] = [
 
 // https://wiki.nesdev.com/w/index.php/APU_Pulse
 #[cfg_attr(rustfmt, rustfmt_skip)]
-const u8 DUTY_CYCLE_TABLE: [u8, 32] = [
+const DUTY_CYCLE_TABLE: [u8; 32] = [
   0, 1, 0, 0, 0, 0, 0, 0,
   0, 1, 1, 0, 0, 0, 0, 0,
   0, 1, 1, 1, 1, 0, 0, 0,
@@ -41,10 +41,11 @@ impl Pulse {
         Pulse {
             enabled: false,
             duty_cycle: 0,
-            duty_index: 0,
+            duty_val: 0,
             length_counter_enabled: false,
             length_counter: 0,
             timer_period: 0,
+            timer_val: 0,
             envelope_enabled: false,
             envelope_loop: false,
             envelope_period: 0,
@@ -56,6 +57,26 @@ impl Pulse {
             sweep_reset: false,
             constant_volume: 0,
         }
+    }
+
+    pub fn step(&mut self) {
+        if self.timer_val == 0 {
+            self.timer_val = self.timer_period;
+        } else {
+            self.timer_val -= 1;
+            if self.timer_val == 0 {
+                self.duty_cycle = (self.duty_cycle + 1) % 8;
+            }
+        }
+    }
+
+    pub fn output(&self) -> u8 {
+        let ret = DUTY_CYCLE_TABLE[self.duty_cycle as usize * 8 + self.duty_val as usize];
+        // TODO: Handle envelope
+        if self.enabled || ret == 0 {
+            return 0;
+        }
+        ret
     }
 }
 
@@ -134,7 +155,7 @@ impl Apu {
                 let val = ((val as u16) & 0x07) << 8;
                 self.pulses[index].timer_period = (self.pulses[index].timer_period & 0x00FF) | val;
                 self.pulses[index].length_counter = LENGTH_COUNTER_TABLE[(val as usize & 0xF8) >> 3];
-                self.pulses[index].duty_index = 0;
+                self.pulses[index].duty_val = 0;
                 self.pulses[index].envelope_reset = true;
             },
             0x4015 => {
@@ -158,7 +179,10 @@ impl Apu {
     pub fn step(&mut self) {
         self.cycle += 1;
 
-        if 
+        if self.cycle % 2 == 0 {
+            self.pulses[0].step();
+            self.pulses[1].step();
+        }
         // TODO: Handle other waves and frame counter
     }
 }
