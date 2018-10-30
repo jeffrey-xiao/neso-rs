@@ -15,7 +15,7 @@ script:
   - cargo +nightly clippy --all-targets
   - cargo +nightly fmt --verbose --all -- --check
   - cargo build --verbose --lib
-  - cargo test --verbose --all
+  - cargo test --verbose --lib
 
 after_success:
   - |
