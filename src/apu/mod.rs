@@ -22,7 +22,6 @@ const DUTY_CYCLE_TABLE: [u8; 32] = [
   1, 0, 0, 1, 1, 1, 1, 1,
 ];
 
-
 pub enum FrameCounterMode {
     FourStep,
     FiveStep,

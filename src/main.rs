@@ -2,9 +2,9 @@ extern crate nes_wasm;
 extern crate sdl2;
 
 use nes_wasm::Nes;
+use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
-use sdl2::audio::AudioSpecDesired;
 use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use std::fs;
@@ -23,10 +23,9 @@ fn gen_wave(bytes_to_write: i32) -> Vec<i16> {
         result.push(
             if (x / period) % 2 == 0 {
                 tone_volume
-            }
-            else {
+            } else {
                 -tone_volume
-            }
+            },
         );
     }
     result
@@ -169,9 +168,11 @@ pub fn main() {
         let desired_spec = AudioSpecDesired {
             freq: Some(48_000),
             channels: Some(2),
-            samples: Some(4)
+            samples: Some(4),
         };
-        let device = audio_subsystem.open_queue::<i16, _>(None, &desired_spec).unwrap();
+        let device = audio_subsystem
+            .open_queue::<i16, _>(None, &desired_spec)
+            .unwrap();
         let target_bytes = 4096;
         let wave = gen_wave(target_bytes);
         device.queue(&wave);

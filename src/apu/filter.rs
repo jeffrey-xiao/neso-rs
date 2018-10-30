@@ -45,7 +45,8 @@ impl LowPassFilter {
 
 impl FirstOrderFilter for LowPassFilter {
     fn filter(&mut self, input_sample: f64) -> f64 {
-        let output_sample = self.prev_output_sample + self.params.alpha * (input_sample - self.prev_input_sample);
+        let output_sample =
+            self.prev_output_sample + self.params.alpha * (input_sample - self.prev_input_sample);
         self.prev_input_sample = input_sample;
         self.prev_output_sample = output_sample;
         output_sample
@@ -71,7 +72,8 @@ impl HighPassFilter {
 
 impl FirstOrderFilter for HighPassFilter {
     fn filter(&mut self, input_sample: f64) -> f64 {
-        let output_sample = self.params.alpha * (self.prev_output_sample + input_sample - self.prev_input_sample);
+        let output_sample =
+            self.params.alpha * (self.prev_output_sample + input_sample - self.prev_input_sample);
         self.prev_input_sample = input_sample;
         self.prev_output_sample = output_sample;
         output_sample
