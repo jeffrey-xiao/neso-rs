@@ -6,11 +6,6 @@ rust:
   - beta
   - nightly
 
-before_install:
-  - sudo apt-get update -qq
-  - sudo apt-get install -qq cppcheck
-  - sudo apt-get install -qq libsdl2-dev libsdl2-image-dev libsdl2-mixer-dev libsdl2-ttf-dev libegl1-mesa-dev libgles2-mesa-dev
-
 before_script:
   - rustup install nightly
   - rustup component add clippy-preview --toolchain nightly
@@ -19,7 +14,7 @@ before_script:
 script:
   - cargo +nightly clippy --all-targets
   - cargo +nightly fmt --verbose --all -- --check
-  - cargo build --verbose --all
+  - cargo build --verbose --lib
   - cargo test --verbose --all
 
 after_success:
