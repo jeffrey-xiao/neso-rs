@@ -34,7 +34,7 @@ fn gen_wave(bytes_to_write: i32) -> Vec<i16> {
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/games/4/super_mario_bros_3.nes").unwrap();
+    let buffer = fs::read("./tests/apu/2-len_table.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -142,23 +142,6 @@ pub fn main() {
             }
         }
 
-        let mut texture = texture_creator
-            .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
-            .unwrap();
-
-        texture
-            .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
-                unsafe {
-                    let ppu = nes.ppu.borrow();
-                    ptr::copy_nonoverlapping(
-                        ppu.image.as_ptr(),
-                        buffer.as_mut_ptr(),
-                        256 * 240 * 3,
-                    );
-                }
-            })
-            .unwrap();
-
         if step_scanline {
             nes.step_scanline();
         } else {
@@ -178,6 +161,23 @@ pub fn main() {
         device.queue(&wave);
         // Start playback
         device.resume();
+
+        let mut texture = texture_creator
+            .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
+            .unwrap();
+
+        texture
+            .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
+                unsafe {
+                    let ppu = nes.ppu.borrow();
+                    ptr::copy_nonoverlapping(
+                        ppu.image.as_ptr(),
+                        buffer.as_mut_ptr(),
+                        256 * 240 * 3,
+                    );
+                }
+            })
+            .unwrap();
 
         let mut pattern_table = Vec::with_capacity(512);
 

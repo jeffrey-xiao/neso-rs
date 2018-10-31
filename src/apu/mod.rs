@@ -3,8 +3,8 @@ mod mixer;
 
 use self::filter::{FirstOrderFilter, HighPassFilter, LowPassFilter};
 use self::mixer::Mixer;
+use cpu::Interrupt;
 use bus::Bus;
-use std::f64::consts;
 
 // https://wiki.nesdev.com/w/index.php/APU_Length_Counter
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -22,6 +22,9 @@ const DUTY_CYCLE_TABLE: [u8; 32] = [
   1, 0, 0, 1, 1, 1, 1, 1,
 ];
 
+const CLOCK_FREQ: u64 = 1_789_773;
+const SAMPLE_FREQ: u64 = 44_100;
+
 pub enum FrameCounterMode {
     FourStep,
     FiveStep,
@@ -38,6 +41,8 @@ pub struct Pulse {
     envelope_enabled: bool,
     envelope_loop: bool,
     envelope_period: u8,
+    envelope_decay_val: u8,
+    envelope_val: u8,
     envelope_reset: bool,
     sweep_enabled: bool,
     sweep_period: u8,
@@ -60,6 +65,8 @@ impl Pulse {
             envelope_enabled: false,
             envelope_loop: false,
             envelope_period: 0,
+            envelope_decay_val: 0,
+            envelope_val: 0,
             envelope_reset: false,
             sweep_enabled: false,
             sweep_period: 0,
@@ -104,6 +111,8 @@ pub struct Apu {
     pub filters: [Box<FirstOrderFilter>; 3],
     pub mixer: Mixer,
     pub frame_counter_mode: FrameCounterMode,
+    pub frame_counter_val: u64,
+    pub inhibit_irq: bool,
 }
 
 impl Apu {
@@ -119,6 +128,8 @@ impl Apu {
             ],
             mixer: Mixer::new(),
             frame_counter_mode: FrameCounterMode::FourStep,
+            frame_counter_val: 0,
+            inhibit_irq: false,
         }
     }
 
@@ -126,7 +137,7 @@ impl Apu {
         self.bus = Some(bus);
     }
 
-    fn _bus(&self) -> &Bus {
+    fn bus(&self) -> &Bus {
         self.bus.as_ref().expect("[APU] No bus attached.")
     }
 
@@ -156,7 +167,6 @@ impl Apu {
                 self.pulses[index].envelope_enabled = val & 0x10 == 0;
                 self.pulses[index].envelope_period = val & 0x0F;
                 self.pulses[index].constant_volume = val & 0x0F;
-                self.pulses[index].envelope_reset = true;
             },
             0x4001 | 0x4005 => {
                 let index = ((addr - 0x4000) / 4) as usize;
@@ -191,8 +201,45 @@ impl Apu {
                 }
                 // TODO: Handle other waves
             },
-            0x4017 => {},
+            0x4017 => {
+                self.frame_counter_mode = if val >> 7 == 0 {
+                    FrameCounterMode::FourStep
+                } else {
+                    FrameCounterMode::FiveStep
+                };
+
+                self.inhibit_irq = (val >> 6) & 0x01 != 0;
+            },
             _ => {},
+        }
+    }
+
+    fn step_envelope(&mut self) {
+        // TODO: Modularize
+        for pulse in &mut self.pulses {
+            if pulse.envelope_reset {
+                pulse.envelope_reset = false;
+                pulse.envelope_decay_val = 15;
+                pulse.envelope_val = pulse.envelope_period;
+            } else if pulse.envelope_val > 0 {
+                pulse.envelope_val -= 1;
+            } else {
+                pulse.envelope_val = pulse.envelope_period;
+                if pulse.envelope_decay_val > 0 {
+                    pulse.envelope_decay_val -= 1;
+                } else if pulse.envelope_loop {
+                    pulse.envelope_decay_val = 15;
+                }
+            }
+        }
+    }
+
+    fn step_length_counter(&mut self) {
+        // TODO: Modularize
+        for pulse in &mut self.pulses {
+            if pulse.length_counter_enabled && pulse.length_counter > 0 {
+                pulse.length_counter -= 1;
+            }
         }
     }
 
@@ -203,6 +250,53 @@ impl Apu {
             self.pulses[0].step();
             self.pulses[1].step();
         }
-        // TODO: Handle other waves and frame counter
+
+        // Frame counter ticks at 240 Hz
+        if self.cycle % (CLOCK_FREQ / 240) == 0 {
+            match self.frame_counter_mode {
+                FrameCounterMode::FourStep => match self.frame_counter_val % 4 {
+                    0 | 2 => {
+                        // envelope
+                        self.step_envelope();
+                    },
+                    1 => {
+                        // envelope
+                        self.step_envelope();
+                        // length counter
+                        self.step_length_counter();
+                    },
+                    3 => {
+                        // envelope
+                        self.step_envelope();
+                        // length counter
+                        self.step_length_counter();
+                        // irq
+                        if !self.inhibit_irq {
+                            let cpu = self.bus().cpu();
+                            cpu.borrow_mut().trigger_interrupt(Interrupt::IRQ);
+                        }
+                    },
+                    _ => {},
+                },
+                FrameCounterMode::FiveStep => match self.frame_counter_val % 5 {
+                    0 | 2 => {
+                        // envelope
+                        self.step_envelope();
+                        // length counter
+                        self.step_length_counter();
+                    },
+                    1 | 3 => {
+                        // envelope
+                        self.step_envelope();
+                    },
+                    _ => {},
+                },
+            }
+        }
+
+        // Output sample device is 44.1 kHz
+        if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 {
+
+        }
     }
 }

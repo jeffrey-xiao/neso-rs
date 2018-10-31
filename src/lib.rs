@@ -208,7 +208,7 @@ mod tests {
             }
 
             graphical_tests!(
-                test_cpu_timing_test: (test_path("cpu_timing_test.nes"), 612, 0x884f_461f_a12c_f454),
+                test_cpu_timing_test: (test_path("cpu_timing_test.nes"), 612, 0x884F_461F_A12C_F454),
             );
         }
 
@@ -224,8 +224,8 @@ mod tests {
             }
 
             graphical_tests!(
-                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0x1b68_8fbe_cde5_8ea7),
-                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0x4275_ce0c_e944_e57c),
+                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0x1B68_8FBE_CDE5_8EA7),
+                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0x4275_CE0C_E944_E57C),
             );
         }
     }
