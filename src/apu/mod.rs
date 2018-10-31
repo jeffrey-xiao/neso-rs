@@ -46,6 +46,7 @@ pub struct Pulse {
     envelope_reset: bool,
     sweep_enabled: bool,
     sweep_period: u8,
+    sweep_val: u8,
     sweep_negated: bool,
     sweep_shift: u8,
     sweep_reset: bool,
@@ -70,6 +71,7 @@ impl Pulse {
             envelope_reset: false,
             sweep_enabled: false,
             sweep_period: 0,
+            sweep_val: 0,
             sweep_negated: false,
             sweep_shift: 0,
             sweep_reset: false,
@@ -243,6 +245,32 @@ impl Apu {
         }
     }
 
+    fn step_sweep(&mut self) {
+        // TODO: Modularize
+        for (index, pulse) in self.pulses.iter_mut().enumerate() {
+            if pulse.sweep_val == 0 && pulse.sweep_enabled {
+                let mut change_amount = (pulse.timer_period >> pulse.sweep_shift) as i16;
+                if pulse.sweep_negated {
+                    change_amount = -change_amount + (index as i16) - 1;
+                }
+                // Cannot be negative
+                let target_timer_period = (pulse.timer_period as i16 + change_amount) as u16;
+
+                // Change period if not muted
+                if 0x0008 <= target_timer_period && target_timer_period < 0x07FF {
+                    pulse.timer_period = target_timer_period;
+                }
+            }
+
+            if pulse.sweep_val == 0 || pulse.sweep_reset {
+                pulse.sweep_reset = false;
+                pulse.sweep_val = pulse.sweep_period;
+            } else {
+                pulse.sweep_val -= 1;
+            }
+        }
+    }
+
     pub fn step(&mut self) {
         self.cycle += 1;
 
@@ -262,14 +290,16 @@ impl Apu {
                     1 => {
                         // envelope
                         self.step_envelope();
-                        // length counter
+                        // length counter and sweep
                         self.step_length_counter();
+                        self.step_sweep();
                     },
                     3 => {
                         // envelope
                         self.step_envelope();
-                        // length counter
+                        // length counter and sweep
                         self.step_length_counter();
+                        self.step_sweep();
                         // irq
                         if !self.inhibit_irq {
                             let cpu = self.bus().cpu();
@@ -284,6 +314,7 @@ impl Apu {
                         self.step_envelope();
                         // length counter
                         self.step_length_counter();
+                        self.step_sweep();
                     },
                     1 | 3 => {
                         // envelope
