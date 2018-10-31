@@ -91,12 +91,17 @@ impl Pulse {
     }
 
     pub fn output(&self) -> u8 {
-        let ret = DUTY_CYCLE_TABLE[self.duty_cycle as usize * 8 + self.duty_val as usize];
-        // TODO: Handle envelope
-        if self.enabled || ret == 0 {
+        let val = DUTY_CYCLE_TABLE[self.duty_cycle as usize * 8 + self.duty_val as usize];
+        let is_muted = self.timer_period < 0x0008 || self.timer_period >= 0x07FF;
+        if !self.enabled || val == 0 || self.length_counter == 0 || is_muted {
             return 0;
         }
-        ret
+
+        if self.envelope_enabled {
+            self.envelope_decay_val
+        } else {
+            self.constant_volume
+        }
     }
 }
 
