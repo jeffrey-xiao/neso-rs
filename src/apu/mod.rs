@@ -3,8 +3,8 @@ mod mixer;
 
 use self::filter::{FirstOrderFilter, HighPassFilter, LowPassFilter};
 use self::mixer::Mixer;
-use cpu::Interrupt;
 use bus::Bus;
+use cpu::Interrupt;
 
 // https://wiki.nesdev.com/w/index.php/APU_Length_Counter
 #[cfg_attr(rustfmt, rustfmt_skip)]
@@ -287,52 +287,54 @@ impl Apu {
         // Frame counter ticks at 240 Hz
         if self.cycle % (CLOCK_FREQ / 240) == 0 {
             match self.frame_counter_mode {
-                FrameCounterMode::FourStep => match self.frame_counter_val % 4 {
-                    0 | 2 => {
-                        // envelope
-                        self.step_envelope();
-                    },
-                    1 => {
-                        // envelope
-                        self.step_envelope();
-                        // length counter and sweep
-                        self.step_length_counter();
-                        self.step_sweep();
-                    },
-                    3 => {
-                        // envelope
-                        self.step_envelope();
-                        // length counter and sweep
-                        self.step_length_counter();
-                        self.step_sweep();
-                        // irq
-                        if !self.inhibit_irq {
-                            let cpu = self.bus().cpu();
-                            cpu.borrow_mut().trigger_interrupt(Interrupt::IRQ);
-                        }
-                    },
-                    _ => {},
+                FrameCounterMode::FourStep => {
+                    match self.frame_counter_val % 4 {
+                        0 | 2 => {
+                            // envelope
+                            self.step_envelope();
+                        },
+                        1 => {
+                            // envelope
+                            self.step_envelope();
+                            // length counter and sweep
+                            self.step_length_counter();
+                            self.step_sweep();
+                        },
+                        3 => {
+                            // envelope
+                            self.step_envelope();
+                            // length counter and sweep
+                            self.step_length_counter();
+                            self.step_sweep();
+                            // irq
+                            if !self.inhibit_irq {
+                                let cpu = self.bus().cpu();
+                                cpu.borrow_mut().trigger_interrupt(Interrupt::IRQ);
+                            }
+                        },
+                        _ => {},
+                    }
                 },
-                FrameCounterMode::FiveStep => match self.frame_counter_val % 5 {
-                    0 | 2 => {
-                        // envelope
-                        self.step_envelope();
-                        // length counter
-                        self.step_length_counter();
-                        self.step_sweep();
-                    },
-                    1 | 3 => {
-                        // envelope
-                        self.step_envelope();
-                    },
-                    _ => {},
+                FrameCounterMode::FiveStep => {
+                    match self.frame_counter_val % 5 {
+                        0 | 2 => {
+                            // envelope
+                            self.step_envelope();
+                            // length counter
+                            self.step_length_counter();
+                            self.step_sweep();
+                        },
+                        1 | 3 => {
+                            // envelope
+                            self.step_envelope();
+                        },
+                        _ => {},
+                    }
                 },
             }
         }
 
         // Output sample device is 44.1 kHz
-        if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 {
-
-        }
+        if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 {}
     }
 }
