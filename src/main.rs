@@ -34,7 +34,7 @@ fn gen_wave(bytes_to_write: i32) -> Vec<i16> {
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/apu/2-len_table.nes").unwrap();
+    let buffer = fs::read("./tests/games/0/super_mario_bros.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -51,6 +51,16 @@ pub fn main() {
 
     let mut canvas = window.into_canvas().build().unwrap();
     let texture_creator = canvas.texture_creator();
+
+    let desired_spec = AudioSpecDesired {
+        freq: Some(48_100),
+        channels: Some(2),
+        samples: Some(4),
+    };
+    let device = audio_subsystem
+        .open_queue::<f32, _>(None, &desired_spec)
+        .unwrap();
+    device.resume();
 
     canvas.present();
 
@@ -148,19 +158,7 @@ pub fn main() {
             nes.step_frame();
         }
 
-        let desired_spec = AudioSpecDesired {
-            freq: Some(48_000),
-            channels: Some(2),
-            samples: Some(4),
-        };
-        let device = audio_subsystem
-            .open_queue::<i16, _>(None, &desired_spec)
-            .unwrap();
-        let target_bytes = 4096;
-        let wave = gen_wave(target_bytes);
-        device.queue(&wave);
-        // Start playback
-        device.resume();
+        device.queue(&nes.apu.borrow().buffer[0..40]);
 
         let mut texture = texture_creator
             .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)

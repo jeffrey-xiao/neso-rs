@@ -24,6 +24,7 @@ const DUTY_CYCLE_TABLE: [u8; 32] = [
 
 const CLOCK_FREQ: u64 = 1_789_773;
 const SAMPLE_FREQ: u64 = 44_100;
+const BUFFER_SIZE: usize = 735;
 
 pub enum FrameCounterMode {
     FourStep,
@@ -85,7 +86,7 @@ impl Pulse {
         } else {
             self.timer_val -= 1;
             if self.timer_val == 0 {
-                self.duty_cycle = (self.duty_cycle + 1) % 8;
+                self.duty_val = (self.duty_val + 1) % 8;
             }
         }
     }
@@ -120,6 +121,8 @@ pub struct Apu {
     pub frame_counter_mode: FrameCounterMode,
     pub frame_counter_val: u64,
     pub inhibit_irq: bool,
+    pub buffer_index: usize,
+    pub buffer: [f32; BUFFER_SIZE],
 }
 
 impl Apu {
@@ -137,6 +140,8 @@ impl Apu {
             frame_counter_mode: FrameCounterMode::FourStep,
             frame_counter_val: 0,
             inhibit_irq: false,
+            buffer_index: 0,
+            buffer: [0.0; BUFFER_SIZE],
         }
     }
 
@@ -335,6 +340,15 @@ impl Apu {
         }
 
         // Output sample device is 44.1 kHz
-        if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 {}
+        if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 && self.buffer_index < BUFFER_SIZE {
+            self.buffer[self.buffer_index] = self.mixer.sample(
+                self.pulses[0].output(),
+                self.pulses[1].output(),
+                0,
+                0,
+                0,
+            ) * 250.0;
+            self.buffer_index += 1;
+        }
     }
 }
