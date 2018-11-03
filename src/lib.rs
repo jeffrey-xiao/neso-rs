@@ -71,10 +71,6 @@ impl Nes {
     }
 
     pub fn step_frame(&mut self) {
-        // for val in self.apu.borrow_mut().buffer.iter() {
-        // print!("{} ", val);
-        // }
-        // println!("");
         self.apu.borrow_mut().buffer_index = 0;
         let frame = self.ppu.borrow().frame;
         while self.ppu.borrow().frame == frame {
