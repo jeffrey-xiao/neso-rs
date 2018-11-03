@@ -38,7 +38,7 @@ const NOISE_PERIOD_TABLE: [u16; 16] = [
 
 const CLOCK_FREQ: u64 = 1_789_773;
 const SAMPLE_FREQ: u64 = 44_100;
-const BUFFER_SIZE: usize = 735;
+const BUFFER_SIZE: usize = 745;
 
 pub enum FrameCounterMode {
     FourStep,
@@ -279,9 +279,11 @@ impl Noise {
             self.timer_val = self.timer_period;
         } else {
             self.timer_val -= 1;
-            let feedback = ((self.shift_register >> (if self.mode { 6 } else { 1 })) & 0x01)
-                ^ (self.shift_register & 0x01);
-            self.shift_register = (self.shift_register >> 1) | (feedback << 14);
+            if self.timer_val == 0 {
+                let feedback = ((self.shift_register >> (if self.mode { 6 } else { 1 })) & 0x01)
+                    ^ (self.shift_register & 0x01);
+                self.shift_register = (self.shift_register >> 1) | (feedback << 14);
+            }
         }
     }
 
@@ -328,9 +330,9 @@ impl Apu {
             triangle: Triangle::default(),
             noise: Noise::default(),
             filters: [
-                Box::new(HighPassFilter::new(90, 1)),
-                Box::new(HighPassFilter::new(440, 1)),
-                Box::new(LowPassFilter::new(14000, 1)),
+                Box::new(HighPassFilter::new(90, SAMPLE_FREQ)),
+                Box::new(HighPassFilter::new(440, SAMPLE_FREQ)),
+                Box::new(LowPassFilter::new(14000, SAMPLE_FREQ)),
             ],
             mixer: Mixer::new(),
             frame_counter_mode: FrameCounterMode::FourStep,
@@ -396,15 +398,16 @@ impl Apu {
             },
             0x4002 | 0x4006 => {
                 let index = ((addr - 0x4000) / 4) as usize;
-                let val = val as u16;
-                self.pulses[index].timer_period = (self.pulses[index].timer_period & 0xFF00) | val;
+                let timer_period_low = val as u16;
+                self.pulses[index].timer_period &= 0xFF00;
+                self.pulses[index].timer_period |= timer_period_low;
             },
             0x4003 | 0x4007 => {
                 let index = ((addr - 0x4000) / 4) as usize;
-                let val = ((val as u16) & 0x07) << 8;
-                self.pulses[index].timer_period = (self.pulses[index].timer_period & 0x00FF) | val;
-                self.pulses[index].length_counter.val =
-                    LENGTH_COUNTER_TABLE[(val as usize & 0xF8) >> 3];
+                let timer_period_high = ((val as u16) & 0x07) << 8;
+                self.pulses[index].timer_period &= 0x00FF;
+                self.pulses[index].timer_period |= timer_period_high;
+                self.pulses[index].length_counter.val = LENGTH_COUNTER_TABLE[val as usize >> 3];
                 self.pulses[index].duty_val = 0;
                 self.pulses[index].envelope.reset = true;
             },
@@ -415,13 +418,15 @@ impl Apu {
                 self.triangle.linear_counter_period = val & 0x7F;
             },
             0x400A => {
-                let val = val as u16;
-                self.triangle.timer_period = (self.triangle.timer_period & 0xFF00) | val;
+                let timer_period_low = val as u16;
+                self.triangle.timer_period &= 0xFF00;
+                self.triangle.timer_period |= timer_period_low;
             },
             0x400B => {
-                let val = ((val as u16) & 0x07) << 8;
-                self.triangle.timer_period = (self.triangle.timer_period & 0x00FF) | val;
-                self.triangle.length_counter.val = LENGTH_COUNTER_TABLE[(val as usize & 0xF8) >> 3];
+                let timer_period_high = ((val as u16) & 0x07) << 8;
+                self.triangle.timer_period &= 0x00FF;
+                self.triangle.timer_period |= timer_period_high;
+                self.triangle.length_counter.val = LENGTH_COUNTER_TABLE[val as usize >> 3];
                 self.triangle.linear_counter_reset = true;
             },
             // Noise
@@ -437,7 +442,7 @@ impl Apu {
                 self.noise.timer_period = NOISE_PERIOD_TABLE[(val & 0x0F) as usize];
             },
             0x400F => {
-                self.noise.length_counter.val = LENGTH_COUNTER_TABLE[(val as usize & 0xF8) >> 3];
+                self.noise.length_counter.val = LENGTH_COUNTER_TABLE[val as usize >> 3];
                 self.noise.envelope.reset = true;
             },
             0x4015 => {
@@ -487,7 +492,6 @@ impl Apu {
     }
 
     fn step_length_counter(&mut self) {
-        // TODO: Modularize
         for pulse in &mut self.pulses {
             pulse.length_counter.step();
         }
@@ -503,7 +507,7 @@ impl Apu {
                 let target_timer_period = if pulse.sweep_negated {
                     pulse.timer_period - change_amount + index as u16 - 1
                 } else {
-                    pulse.timer_period + 1
+                    pulse.timer_period + change_amount
                 };
 
                 // Change period if not muted
@@ -588,7 +592,7 @@ impl Apu {
         }
 
         // Output sample device is 44.1 kHz
-        if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 && self.buffer_index < BUFFER_SIZE {
+        if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 && self.buffer_index < self.buffer.len() {
             let mut sample = self.mixer.sample(
                 self.pulses[0].output(),
                 self.pulses[1].output(),

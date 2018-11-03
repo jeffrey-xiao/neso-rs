@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/games/0/super_mario_bros.nes").unwrap();
+    let buffer = fs::read("./tests/apu/1-len_ctr.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -34,7 +34,7 @@ pub fn main() {
     let texture_creator = canvas.texture_creator();
 
     let desired_spec = AudioSpecDesired {
-        freq: Some(48_100),
+        freq: Some(44_100),
         channels: Some(1),
         samples: Some(1024),
     };
@@ -164,6 +164,7 @@ pub fn main() {
             .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
             .unwrap();
 
+        /*
         let mut pattern_table = Vec::with_capacity(512);
 
         for i in 0..512 {
@@ -273,6 +274,7 @@ pub fn main() {
                 Some(Rect::new(0, 256 * 2, 256 * 2, 128 * 2)),
             )
             .unwrap();
+        */
 
         canvas.present();
 
