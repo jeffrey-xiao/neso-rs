@@ -134,33 +134,32 @@ mod tests {
 
     // Compare hash of nametables after specified frames for no text output tests.
     macro_rules! graphical_tests {
-    ($($test_name:ident: ($path:expr, $frames:expr, $hash:expr)$(,)*)*) => {
-        $(
-            #[test]
-            fn $test_name() {
-                let buffer = fs::read($path).expect("Expected test rom to exist.");
-                let mut nes = Nes::new();
-                nes.load_rom(&buffer);
+        ($($test_name:ident: ($path:expr, $frames:expr, $hash:expr)$(,)*)*) => {
+            $(
+                #[test]
+                fn $test_name() {
+                    let buffer = fs::read($path).expect("Expected test rom to exist.");
+                    let mut nes = Nes::new();
+                    nes.load_rom(&buffer);
 
-                for i in 0..$frames {
-                    nes.step_frame();
+                    for i in 0..$frames {
+                        nes.step_frame();
+                    }
+
+                    let mut hasher = DefaultHasher::new();
+
+                    let ppu = nes.ppu.borrow();
+                    for val in ppu.image.iter() {
+                        hasher.write_u8(*val);
+                    }
+
+                    assert_eq!(hasher.finish(), $hash);
                 }
-
-                let mut hasher = DefaultHasher::new();
-
-                for addr in 0x2000..0x3000 {
-                    hasher.write_u8(nes.ppu.borrow().read_byte(addr));
-                }
-
-                assert_eq!(hasher.finish(), $hash);
-            }
-        )*
+            )*
+        }
     }
-}
 
-    #[cfg(test)]
     mod cpu {
-        #[cfg(test)]
         mod instr_tests {
             use std::fs;
             use Nes;
@@ -186,7 +185,6 @@ mod tests {
             );
         }
 
-        #[cfg(test)]
         mod instr_misc {
             use std::fs;
             use Nes;
@@ -201,7 +199,6 @@ mod tests {
             );
         }
 
-        #[cfg(test)]
         mod instr_timing {
             use std::collections::hash_map::DefaultHasher;
             use std::fs;
@@ -213,11 +210,10 @@ mod tests {
             }
 
             graphical_tests!(
-                test_cpu_timing_test: (test_path("cpu_timing_test.nes"), 612, 0x884F_461F_A12C_F454),
+                test_cpu_timing_test: (test_path("timing_test.nes"), 612, 0x97F3FD46B6820231),
             );
         }
 
-        #[cfg(test)]
         mod branch_timing {
             use std::collections::hash_map::DefaultHasher;
             use std::fs;
@@ -229,8 +225,28 @@ mod tests {
             }
 
             graphical_tests!(
-                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0x1B68_8FBE_CDE5_8EA7),
-                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0x4275_CE0C_E944_E57C),
+                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0x12A2_BBD5_3910_0F21),
+                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0xE2D4_D5FD_FE05_A2FF),
+            );
+        }
+    }
+
+    mod ppu {
+        mod general {
+            use std::collections::hash_map::DefaultHasher;
+            use std::fs;
+            use std::hash::Hasher;
+            use Nes;
+
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/ppu/general/{}", file_name)
+            }
+
+            graphical_tests!(
+                test_palette_ram: (test_path("palette_ram.nes"), 18, 0xAC82_B330_9FFC_8614),
+                test_power_up_palette: (test_path("power_up_palette.nes"), 18, 0xAC82_B330_9FFC_8614),
+                test_sprite_ram: (test_path("sprite_ram.nes"), 18, 0xAC82_B330_9FFC_8614),
+                test_vram_access: (test_path("vram_access.nes"), 18, 0xAC82_B330_9FFC_8614),
             );
         }
     }
