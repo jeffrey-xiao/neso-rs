@@ -1,21 +1,21 @@
-use std::f64::consts;
+use std::f32::consts;
 
 pub trait FirstOrderFilter {
-    fn filter(&mut self, input_sample: f64) -> f64;
+    fn process(&mut self, input_sample: f32) -> f32;
 }
 
 struct FirstOrderFilterParams {
     pub frequency: u64,
     pub sample_rate: u64,
-    pub rc: f64,
-    pub dt: f64,
-    pub alpha: f64,
+    pub rc: f32,
+    pub dt: f32,
+    pub alpha: f32,
 }
 
 impl FirstOrderFilterParams {
     pub fn new(frequency: u64, sample_rate: u64) -> Self {
-        let rc = 1.0 / (2.0 * consts::PI * frequency as f64);
-        let dt = 1.0 / sample_rate as f64;
+        let rc = 1.0 / (2.0 * consts::PI * frequency as f32);
+        let dt = 1.0 / sample_rate as f32;
         FirstOrderFilterParams {
             frequency,
             sample_rate,
@@ -28,8 +28,8 @@ impl FirstOrderFilterParams {
 
 // https://en.wikipedia.org/wiki/Low-pass_filter
 pub struct LowPassFilter {
-    prev_input_sample: f64,
-    prev_output_sample: f64,
+    prev_input_sample: f32,
+    prev_output_sample: f32,
     params: FirstOrderFilterParams,
 }
 
@@ -44,7 +44,7 @@ impl LowPassFilter {
 }
 
 impl FirstOrderFilter for LowPassFilter {
-    fn filter(&mut self, input_sample: f64) -> f64 {
+    fn process(&mut self, input_sample: f32) -> f32 {
         let output_sample =
             self.prev_output_sample + self.params.alpha * (input_sample - self.prev_input_sample);
         self.prev_input_sample = input_sample;
@@ -55,8 +55,8 @@ impl FirstOrderFilter for LowPassFilter {
 
 // https://en.wikipedia.org/wiki/High-pass_filter
 pub struct HighPassFilter {
-    prev_input_sample: f64,
-    prev_output_sample: f64,
+    prev_input_sample: f32,
+    prev_output_sample: f32,
     params: FirstOrderFilterParams,
 }
 
@@ -71,7 +71,7 @@ impl HighPassFilter {
 }
 
 impl FirstOrderFilter for HighPassFilter {
-    fn filter(&mut self, input_sample: f64) -> f64 {
+    fn process(&mut self, input_sample: f32) -> f32 {
         let output_sample =
             self.params.alpha * (self.prev_output_sample + input_sample - self.prev_input_sample);
         self.prev_input_sample = input_sample;

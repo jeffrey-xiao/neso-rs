@@ -12,25 +12,6 @@ use std::ptr;
 use std::thread;
 use std::time::{Duration, Instant};
 
-fn gen_wave(bytes_to_write: i32) -> Vec<i16> {
-    // Generate a square wave
-    let tone_volume = 1_000i16;
-    let period = 48_000 / 256;
-    let sample_count = bytes_to_write;
-    let mut result = Vec::new();
-
-    for x in 0..sample_count {
-        result.push(
-            if (x / period) % 2 == 0 {
-                tone_volume
-            } else {
-                -tone_volume
-            },
-        );
-    }
-    result
-}
-
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
@@ -54,8 +35,8 @@ pub fn main() {
 
     let desired_spec = AudioSpecDesired {
         freq: Some(48_100),
-        channels: Some(2),
-        samples: Some(4),
+        channels: Some(1),
+        samples: Some(1024),
     };
     let device = audio_subsystem
         .open_queue::<f32, _>(None, &desired_spec)
@@ -158,7 +139,9 @@ pub fn main() {
             nes.step_frame();
         }
 
-        device.queue(&nes.apu.borrow().buffer[0..40]);
+        device.queue(&nes.apu.borrow().buffer[0..735]);
+
+        canvas.clear();
 
         let mut texture = texture_creator
             .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
@@ -175,6 +158,10 @@ pub fn main() {
                     );
                 }
             })
+            .unwrap();
+
+        canvas
+            .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
             .unwrap();
 
         let mut pattern_table = Vec::with_capacity(512);
@@ -198,11 +185,6 @@ pub fn main() {
 
             pattern_table.push(tile);
         }
-
-        canvas.clear();
-        canvas
-            .copy(&texture, None, Some(Rect::new(0, 0, 240 * 2, 256 * 2)))
-            .unwrap();
 
         for (nametable, offset) in [0x2000, 0x2400, 0x2800, 0x2C00].iter().enumerate() {
             let mut texture = texture_creator

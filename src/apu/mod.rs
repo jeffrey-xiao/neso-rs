@@ -31,6 +31,45 @@ pub enum FrameCounterMode {
     FiveStep,
 }
 
+pub struct Envelope {
+    enabled: bool,
+    looped: bool,
+    reset: bool,
+    period: u8,
+    val: u8,
+    volume: u8,
+}
+
+impl Envelope {
+    pub fn new() -> Self {
+        Envelope {
+            enabled: false,
+            looped: false,
+            reset: false,
+            period: 0,
+            val: 0,
+            volume: 0,
+        }
+    }
+
+    pub fn step(&mut self) {
+        if self.reset {
+            self.reset = false;
+            self.volume = 15;
+            self.val = self.period;
+        } else if self.val > 0 {
+            self.val -= 1;
+        } else {
+            self.val = self.period;
+            if self.volume > 0 {
+                self.volume -= 1;
+            } else if self.looped {
+                self.volume = 15;
+            }
+        }
+    }
+}
+
 pub struct Pulse {
     enabled: bool,
     duty_cycle: u8,
@@ -39,12 +78,7 @@ pub struct Pulse {
     length_counter: u8,
     timer_period: u16,
     timer_val: u16,
-    envelope_enabled: bool,
-    envelope_loop: bool,
-    envelope_period: u8,
-    envelope_decay_val: u8,
-    envelope_val: u8,
-    envelope_reset: bool,
+    envelope: Envelope,
     sweep_enabled: bool,
     sweep_period: u8,
     sweep_val: u8,
@@ -64,12 +98,7 @@ impl Pulse {
             length_counter: 0,
             timer_period: 0,
             timer_val: 0,
-            envelope_enabled: false,
-            envelope_loop: false,
-            envelope_period: 0,
-            envelope_decay_val: 0,
-            envelope_val: 0,
-            envelope_reset: false,
+            envelope: Envelope::new(),
             sweep_enabled: false,
             sweep_period: 0,
             sweep_val: 0,
@@ -98,8 +127,8 @@ impl Pulse {
             return 0;
         }
 
-        if self.envelope_enabled {
-            self.envelope_decay_val
+        if self.envelope.enabled {
+            self.envelope.volume
         } else {
             self.constant_volume
         }
@@ -175,9 +204,9 @@ impl Apu {
                 let index = ((addr - 0x4000) / 4) as usize;
                 self.pulses[index].duty_cycle = val >> 6;
                 self.pulses[index].length_counter_enabled = val & 0x20 == 0;
-                self.pulses[index].envelope_loop = val & 0x20 != 0;
-                self.pulses[index].envelope_enabled = val & 0x10 == 0;
-                self.pulses[index].envelope_period = val & 0x0F;
+                self.pulses[index].envelope.looped = val & 0x20 != 0;
+                self.pulses[index].envelope.enabled = val & 0x10 == 0;
+                self.pulses[index].envelope.period = val & 0x0F;
                 self.pulses[index].constant_volume = val & 0x0F;
             },
             0x4001 | 0x4005 => {
@@ -200,7 +229,7 @@ impl Apu {
                 self.pulses[index].length_counter =
                     LENGTH_COUNTER_TABLE[(val as usize & 0xF8) >> 3];
                 self.pulses[index].duty_val = 0;
-                self.pulses[index].envelope_reset = true;
+                self.pulses[index].envelope.reset = true;
             },
             0x4015 => {
                 self.pulses[0].enabled = val & 0x01 != 0;
@@ -227,22 +256,8 @@ impl Apu {
     }
 
     fn step_envelope(&mut self) {
-        // TODO: Modularize
         for pulse in &mut self.pulses {
-            if pulse.envelope_reset {
-                pulse.envelope_reset = false;
-                pulse.envelope_decay_val = 15;
-                pulse.envelope_val = pulse.envelope_period;
-            } else if pulse.envelope_val > 0 {
-                pulse.envelope_val -= 1;
-            } else {
-                pulse.envelope_val = pulse.envelope_period;
-                if pulse.envelope_decay_val > 0 {
-                    pulse.envelope_decay_val -= 1;
-                } else if pulse.envelope_loop {
-                    pulse.envelope_decay_val = 15;
-                }
-            }
+            pulse.envelope.step()
         }
     }
 
@@ -341,13 +356,19 @@ impl Apu {
 
         // Output sample device is 44.1 kHz
         if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 && self.buffer_index < BUFFER_SIZE {
-            self.buffer[self.buffer_index] = self.mixer.sample(
+            let mut sample = self.mixer.sample(
                 self.pulses[0].output(),
                 self.pulses[1].output(),
                 0,
                 0,
                 0,
-            ) * 250.0;
+            );
+
+            for filter in &mut self.filters {
+                sample = filter.process(sample);
+            }
+
+            self.buffer[self.buffer_index] = sample;
             self.buffer_index += 1;
         }
     }
