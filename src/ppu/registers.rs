@@ -28,6 +28,7 @@ pub struct Registers {
     pub emphasize_red: bool,
     pub emphasize_green: bool,
     pub emphasize_blue: bool,
+    pub rendering_enabled: bool,
 
     // PPUSTATUS
     pub sprite_overflow: bool,
@@ -82,6 +83,7 @@ impl Registers {
             emphasize_red: false,
             emphasize_green: false,
             emphasize_blue: false,
+            rendering_enabled: false,
 
             // PPUSTATUS
             sprite_overflow: false,
@@ -168,6 +170,7 @@ impl Registers {
         self.emphasize_red = val & 0x20 != 0;
         self.emphasize_green = val & 0x40 != 0;
         self.emphasize_blue = val & 0x80 != 0;
+        self.rendering_enabled = self.show_background || self.show_sprites;
     }
 
     pub fn write_ppu_scroll(&mut self, val: u8) {

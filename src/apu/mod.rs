@@ -40,6 +40,7 @@ const CLOCK_FREQ: u64 = 1_789_773;
 const SAMPLE_FREQ: u64 = 44_100;
 const BUFFER_SIZE: usize = 745;
 
+#[derive(Debug)]
 pub enum FrameCounterMode {
     FourStep,
     FiveStep,
@@ -62,6 +63,10 @@ impl LengthCounter {
         if self.enabled && self.val > 0 {
             self.val -= 1;
         }
+    }
+
+    pub fn reload(&mut self, index: usize) {
+        self.val = LENGTH_COUNTER_TABLE[index];
     }
 }
 
@@ -108,6 +113,14 @@ impl Envelope {
             }
         }
     }
+
+    pub fn volume(&self) -> u8 {
+        if self.enabled {
+            self.volume
+        } else {
+            self.period
+        }
+    }
 }
 
 impl Default for Envelope {
@@ -130,7 +143,6 @@ pub struct Pulse {
     sweep_negated: bool,
     sweep_shift: u8,
     sweep_reset: bool,
-    constant_volume: u8,
 }
 
 impl Pulse {
@@ -149,18 +161,15 @@ impl Pulse {
             sweep_negated: false,
             sweep_shift: 0,
             sweep_reset: false,
-            constant_volume: 0,
         }
     }
 
     pub fn step(&mut self) {
-        if self.timer_val == 0 {
-            self.timer_val = self.timer_period;
-        } else {
+        if self.timer_val > 0 {
             self.timer_val -= 1;
-            if self.timer_val == 0 {
-                self.duty_val = (self.duty_val + 1) % 8;
-            }
+        } else {
+            self.timer_val = self.timer_period;
+            self.duty_val = (self.duty_val + 1) % 8;
         }
     }
 
@@ -171,11 +180,7 @@ impl Pulse {
             return 0;
         }
 
-        if self.envelope.enabled {
-            self.envelope.volume
-        } else {
-            self.constant_volume
-        }
+        self.envelope.volume()
     }
 }
 
@@ -213,13 +218,11 @@ impl Triangle {
     }
 
     pub fn step(&mut self) {
-        if self.timer_val == 0 {
-            self.timer_val = self.timer_period;
-        } else {
+        if self.timer_val > 0 {
             self.timer_val -= 1;
-            if self.timer_val == 0 {
-                self.duty_val = (self.duty_val + 1) % 32;
-            }
+        } else {
+            self.timer_val = self.timer_period;
+            self.duty_val = (self.duty_val + 1) % 32;
         }
     }
 
@@ -257,7 +260,6 @@ pub struct Noise {
     shift_register: u16,
     length_counter: LengthCounter,
     envelope: Envelope,
-    constant_volume: u8,
 }
 
 impl Noise {
@@ -270,20 +272,17 @@ impl Noise {
             shift_register: 1,
             length_counter: LengthCounter::default(),
             envelope: Envelope::default(),
-            constant_volume: 0,
         }
     }
 
     pub fn step(&mut self) {
-        if self.timer_val == 0 {
-            self.timer_val = self.timer_period;
-        } else {
+        if self.timer_val > 0 {
             self.timer_val -= 1;
-            if self.timer_val == 0 {
-                let feedback = ((self.shift_register >> (if self.mode { 6 } else { 1 })) & 0x01)
-                    ^ (self.shift_register & 0x01);
-                self.shift_register = (self.shift_register >> 1) | (feedback << 14);
-            }
+        } else {
+            self.timer_val = self.timer_period;
+            let feedback = ((self.shift_register >> (if self.mode { 6 } else { 1 })) & 0x01)
+                ^ (self.shift_register & 0x01);
+            self.shift_register = (self.shift_register >> 1) | (feedback << 14);
         }
     }
 
@@ -291,12 +290,7 @@ impl Noise {
         if !self.enabled || self.shift_register & 0x01 != 0 || self.length_counter.val == 0 {
             return 0;
         }
-
-        if self.envelope.enabled {
-            self.envelope.volume
-        } else {
-            self.constant_volume
-        }
+        self.envelope.volume()
     }
 }
 
@@ -316,7 +310,8 @@ pub struct Apu {
     pub mixer: Mixer,
     pub frame_counter_mode: FrameCounterMode,
     pub frame_counter_val: u64,
-    pub inhibit_irq: bool,
+    pub irq_enabled: bool,
+    pub irq_pending: bool,
     pub buffer_index: usize,
     pub buffer: [f32; BUFFER_SIZE],
 }
@@ -337,7 +332,8 @@ impl Apu {
             mixer: Mixer::new(),
             frame_counter_mode: FrameCounterMode::FourStep,
             frame_counter_val: 0,
-            inhibit_irq: false,
+            irq_enabled: false,
+            irq_pending: false,
             buffer_index: 0,
             buffer: [0.0; BUFFER_SIZE],
         }
@@ -351,7 +347,7 @@ impl Apu {
         self.bus.as_ref().expect("[APU] No bus attached.")
     }
 
-    pub fn read_register(&self, addr: u16) -> u8 {
+    pub fn read_register(&mut self, addr: u16) -> u8 {
         match addr {
             0x4015 => {
                 let mut ret = 0;
@@ -362,14 +358,20 @@ impl Apu {
                 }
 
                 if self.triangle.length_counter.val > 0 {
-                    ret |= 1 << 2;
+                    ret |= 0x04;
                 }
 
                 if self.noise.length_counter.val > 0 {
-                    ret |= 1 << 3;
+                    ret |= 0x08;
                 }
 
                 // TODO: Handle other waves
+
+                if self.irq_pending {
+                    ret |= 0x40;
+                }
+                self.irq_pending = false;
+
                 ret
             },
             _ => 0,
@@ -386,15 +388,15 @@ impl Apu {
                 self.pulses[index].envelope.looped = val & 0x20 != 0;
                 self.pulses[index].envelope.enabled = val & 0x10 == 0;
                 self.pulses[index].envelope.period = val & 0x0F;
-                self.pulses[index].constant_volume = val & 0x0F;
             },
             0x4001 | 0x4005 => {
                 let index = ((addr - 0x4000) / 4) as usize;
-                self.pulses[index].sweep_enabled = val & 0x80 != 0;
                 self.pulses[index].sweep_period = (val >> 4) & 0x07 + 1;
                 self.pulses[index].sweep_negated = val & 0x08 != 0;
                 self.pulses[index].sweep_shift = val & 0x07;
                 self.pulses[index].sweep_reset = true;
+                self.pulses[index].sweep_enabled =
+                    val & 0x80 != 0 && self.pulses[index].sweep_shift != 0;
             },
             0x4002 | 0x4006 => {
                 let index = ((addr - 0x4000) / 4) as usize;
@@ -407,7 +409,10 @@ impl Apu {
                 let timer_period_high = ((val as u16) & 0x07) << 8;
                 self.pulses[index].timer_period &= 0x00FF;
                 self.pulses[index].timer_period |= timer_period_high;
-                self.pulses[index].length_counter.val = LENGTH_COUNTER_TABLE[val as usize >> 3];
+                if self.pulses[index].enabled {
+                    self.pulses[index].length_counter.reload(val as usize >> 3);
+                }
+                self.pulses[index].timer_val = self.pulses[index].timer_period;
                 self.pulses[index].duty_val = 0;
                 self.pulses[index].envelope.reset = true;
             },
@@ -426,7 +431,9 @@ impl Apu {
                 let timer_period_high = ((val as u16) & 0x07) << 8;
                 self.triangle.timer_period &= 0x00FF;
                 self.triangle.timer_period |= timer_period_high;
-                self.triangle.length_counter.val = LENGTH_COUNTER_TABLE[val as usize >> 3];
+                if self.triangle.enabled {
+                    self.triangle.length_counter.reload(val as usize >> 3);
+                }
                 self.triangle.linear_counter_reset = true;
             },
             // Noise
@@ -435,14 +442,15 @@ impl Apu {
                 self.noise.envelope.looped = val & 0x20 != 0;
                 self.noise.envelope.enabled = val & 0x10 == 0;
                 self.noise.envelope.period = val & 0x0F;
-                self.noise.constant_volume = val & 0x0F;
             },
             0x400E => {
                 self.noise.mode = val & 0x80 != 0;
                 self.noise.timer_period = NOISE_PERIOD_TABLE[(val & 0x0F) as usize];
             },
             0x400F => {
-                self.noise.length_counter.val = LENGTH_COUNTER_TABLE[val as usize >> 3];
+                if self.noise.enabled {
+                    self.noise.length_counter.reload(val as usize >> 3);
+                }
                 self.noise.envelope.reset = true;
             },
             0x4015 => {
@@ -469,16 +477,18 @@ impl Apu {
             },
             0x4017 => {
                 self.frame_counter_mode = if val >> 7 == 0 {
+                    FrameCounterMode::FourStep
+                } else {
                     self.step_envelope();
                     self.triangle.step_linear_counter();
                     self.step_length_counter();
                     self.step_sweep();
-                    FrameCounterMode::FourStep
-                } else {
                     FrameCounterMode::FiveStep
                 };
-
-                self.inhibit_irq = (val >> 6) & 0x01 != 0;
+                self.irq_enabled = (val >> 6) & 0x01 == 0;
+                if !self.irq_enabled {
+                    self.irq_pending = false;
+                }
             },
             _ => {},
         }
@@ -561,7 +571,8 @@ impl Apu {
                             self.step_length_counter();
                             self.step_sweep();
                             // irq
-                            if !self.inhibit_irq {
+                            if self.irq_enabled {
+                                self.irq_pending = true;
                                 let cpu = self.bus().cpu();
                                 cpu.borrow_mut().trigger_interrupt(Interrupt::IRQ);
                             }

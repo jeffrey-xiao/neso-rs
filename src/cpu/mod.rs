@@ -72,7 +72,7 @@ impl Cpu {
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
-            println!("[CPU] Interrupt triggered: {:?}.", interrupt);
+            // println!("[CPU] Interrupt triggered: {:?}.", interrupt);
             self.interrupt_flags[interrupt as usize] = true;
         }
     }
@@ -170,7 +170,7 @@ impl Cpu {
                 }
             },
             0x4014 => {
-                println!("[CPU] Performing OAM DMA on address {:#06x}.", val);
+                // println!("[CPU] Performing OAM DMA on address {:#06x}.", val);
                 let cpu_addr = u16::from(val) << 8;
                 let ppu = self.bus().ppu();
                 for offset in 0..=0xFF {

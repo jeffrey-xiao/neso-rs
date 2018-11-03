@@ -22,7 +22,7 @@ impl LowPassFilter {
         LowPassFilter {
             prev_input_sample: 0.0,
             prev_output_sample: 0.0,
-            alpha: get_alpha(frequency, sample_rate)
+            alpha: get_alpha(frequency, sample_rate),
         }
     }
 }
@@ -49,7 +49,7 @@ impl HighPassFilter {
         HighPassFilter {
             prev_input_sample: 0.0,
             prev_output_sample: 0.0,
-            alpha: get_alpha(frequency, sample_rate)
+            alpha: get_alpha(frequency, sample_rate),
         }
     }
 }

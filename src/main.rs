@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/apu/1-len_ctr.nes").unwrap();
+    let buffer = fs::read("./tests/ppu/general/vbl_clear_time.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 

@@ -61,6 +61,18 @@ pub struct Ppu {
 
 impl Ppu {
     pub fn new() -> Ppu {
+        #[cfg_attr(rustfmt, rustfmt_skip)]
+        let palette_ram = [
+            0x09, 0x01, 0x00, 0x01,
+            0x00, 0x02, 0x02, 0x0D,
+            0x08, 0x10, 0x08, 0x24,
+            0x00, 0x00, 0x04, 0x2C,
+            0x09, 0x01, 0x34, 0x03,
+            0x00, 0x04, 0x00, 0x14,
+            0x08, 0x3A, 0x00, 0x02,
+            0x00, 0x20, 0x2C, 0x08,
+        ];
+
         Ppu {
             r: Registers::new(),
             image_index: 0,
@@ -69,7 +81,7 @@ impl Ppu {
             secondary_oam: [0; 0x20],
             is_sprite_0: [false; 8],
             vram: [0; 0x2000],
-            palette_ram: [0; 0x20],
+            palette_ram,
             bus: None,
             cycle: 0,
             scanline: 0,
@@ -167,7 +179,7 @@ impl Ppu {
                 if self.r.bus_address < 0x3F00 {
                     mem::swap(&mut ret, &mut self.r.buffer);
                 } else {
-                    self.read_byte(self.r.bus_address - 0x1000);
+                    self.r.buffer = self.read_byte(self.r.bus_address - 0x1000);
                 }
                 self.r.bus_address += self.r.vram_address_increment;
                 ret
@@ -443,7 +455,7 @@ impl Ppu {
                 let cpu = self.bus().cpu();
                 cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
             } else {
-                println!("[PPU] NMI is not enabled, so interrupt is skipped.");
+                // println!("[PPU] NMI is not enabled, so interrupt is skipped.");
             }
         }
 
