@@ -412,7 +412,6 @@ impl Apu {
                 if self.pulses[index].enabled {
                     self.pulses[index].length_counter.reload(val as usize >> 3);
                 }
-                self.pulses[index].timer_val = self.pulses[index].timer_period;
                 self.pulses[index].duty_val = 0;
                 self.pulses[index].envelope.reset = true;
             },
