@@ -584,6 +584,7 @@ impl Apu {
                     }
                 },
             }
+            self.frame_counter_val += 1;
         }
 
         // Output sample device is 44.1 kHz
