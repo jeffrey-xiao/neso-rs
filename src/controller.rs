@@ -1,5 +1,6 @@
 use std::cmp;
 
+#[derive(Default)]
 pub struct Controller {
     // A, B, Select, Start, Up, Down, Left, Right
     value: u8,
@@ -9,11 +10,7 @@ pub struct Controller {
 
 impl Controller {
     pub fn new() -> Self {
-        Controller {
-            value: 0,
-            index: 0,
-            strobe: false,
-        }
+        Controller::default()
     }
 
     pub fn write_strobe(&mut self, val: bool) {
@@ -38,11 +35,5 @@ impl Controller {
 
     pub fn release_button(&mut self, index: u8) {
         self.value &= !(1 << index);
-    }
-}
-
-impl Default for Controller {
-    fn default() -> Self {
-        Controller::new()
     }
 }

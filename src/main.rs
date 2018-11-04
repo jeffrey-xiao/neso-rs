@@ -141,7 +141,6 @@ pub fn main() {
         }
 
         let buffer_len = nes.apu.borrow().buffer_index;
-        println!("{}", buffer_len);
         device.queue(&nes.apu.borrow().buffer[0..buffer_len]);
 
         canvas.clear();
@@ -155,7 +154,7 @@ pub fn main() {
                 unsafe {
                     let ppu = nes.ppu.borrow();
                     ptr::copy_nonoverlapping(
-                        ppu.image.as_ptr(),
+                        ppu.buffer.as_ptr(),
                         buffer.as_mut_ptr(),
                         256 * 240 * 3,
                     );

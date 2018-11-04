@@ -23,10 +23,10 @@ impl Cpu {
         Cpu {
             cycle: 0,
             stall_cycle: 0,
-            controller: Controller::new(),
+            controller: Controller::default(),
             ram: [0; 0x800],
             interrupt_flags: [false; 2],
-            r: Registers::new(),
+            r: Registers::default(),
             bus: None,
         }
     }
@@ -50,6 +50,7 @@ impl Cpu {
     pub fn step(&mut self) {
         if self.stall_cycle > 0 {
             self.stall_cycle -= 1;
+            self.cycle += 1;
             return;
         }
 

@@ -46,8 +46,8 @@ const MIRRORING_MODE_TABLE: [usize; 20] = [
 
 pub struct Ppu {
     pub r: Registers,
-    pub image_index: usize,
-    pub image: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
+    pub buffer_index: usize,
+    pub buffer: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
     pub primary_oam: [u8; 0x100],
     pub secondary_oam: [u8; 0x20],
     pub is_sprite_0: [bool; 8],
@@ -75,8 +75,8 @@ impl Ppu {
 
         Ppu {
             r: Registers::new(),
-            image_index: 0,
-            image: [0; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
+            buffer_index: 0,
+            buffer: [0; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
             primary_oam: [0; 0x100],
             secondary_oam: [0; 0x20],
             is_sprite_0: [false; 8],
@@ -358,10 +358,10 @@ impl Ppu {
         };
 
         let color = PALETTE[self.read_byte(addr) as usize & 0x3F];
-        self.image[self.image_index] = ((color >> 16) & 0xFF) as u8;
-        self.image[self.image_index + 1] = ((color >> 8) & 0xFF) as u8;
-        self.image[self.image_index + 2] = (color & 0xFF) as u8;
-        self.image_index += 3;
+        self.buffer[self.buffer_index] = ((color >> 16) & 0xFF) as u8;
+        self.buffer[self.buffer_index + 1] = ((color >> 8) & 0xFF) as u8;
+        self.buffer[self.buffer_index + 2] = (color & 0xFF) as u8;
+        self.buffer_index += 3;
     }
 
     pub fn step(&mut self) {
@@ -372,7 +372,7 @@ impl Ppu {
             if self.scanline == 261 {
                 self.scanline = -1;
                 self.frame += 1;
-                self.image_index = 0;
+                self.buffer_index = 0;
             }
         }
 
