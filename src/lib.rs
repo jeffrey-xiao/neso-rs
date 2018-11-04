@@ -202,6 +202,11 @@ mod tests {
                 format!("./tests/cpu/instr_timing/{}", file_name)
             }
 
+            text_tests!(
+                test_01_instr_timing: test_path("01-instr_timing.nes"),
+                test_02_branch_timing: test_path("02-branch_timing.nes"),
+            );
+
             graphical_tests!(
                 test_cpu_timing_test: (test_path("timing_test.nes"), 612, 0x97F3FD46B6820231),
             );
@@ -213,6 +218,7 @@ mod tests {
             }
 
             graphical_tests!(
+                test_01_branch_basics: (test_path("01-branch_basics.nes"), 13, 0xE2BAFD2C2D103A12),
                 test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0x12A2_BBD5_3910_0F21),
                 test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0xE2D4_D5FD_FE05_A2FF),
             );

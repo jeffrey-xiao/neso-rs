@@ -16,10 +16,10 @@ pub const INSTRUCTION_TABLE: [fn(&mut Cpu, usize) -> (); 256] = [
     bvc, eor, inv, sre, dop, eor, lsr, sre, cli, eor, nop, sre, top, eor, lsr, sre, // 50
     rts, adc, inv, rra, dop, adc, ror, rra, pla, adc, ror, arr, jmp, adc, ror, rra, // 60
     bvs, adc, inv, rra, dop, adc, ror, rra, sei, adc, nop, rra, top, adc, ror, rra, // 70
-    dop, sta, dop, aax, sty, sta, stx, aax, dey, dop, txa, inv, sty, sta, stx, aax, // 80
-    bcc, sta, inv, inv, sty, sta, stx, aax, tya, sta, txs, inv, shy, sta, shx, inv, // 90
+    dop, sta, dop, aax, sty, sta, stx, aax, dey, dop, txa, xaa, sty, sta, stx, aax, // 80
+    bcc, sta, inv, axa, sty, sta, stx, aax, tya, sta, txs, tas, shy, sta, shx, axa, // 90
     ldy, lda, ldx, lax, ldy, lda, ldx, lax, tay, lda, tax, lax, ldy, lda, ldx, lax, // A0
-    bcs, lda, inv, lax, ldy, lda, ldx, lax, clv, lda, tsx, inv, ldy, lda, ldx, lax, // B0
+    bcs, lda, inv, lax, ldy, lda, ldx, lax, clv, lda, tsx, las, ldy, lda, ldx, lax, // B0
     cpy, cmp, dop, dcp, cpy, cmp, dec, dcp, iny, cmp, dex, axs, cpy, cmp, dec, dcp, // C0
     bne, cmp, inv, dcp, dop, cmp, dec, dcp, cld, cmp, nop, dcp, top, cmp, dec, dcp, // D0
     cpx, sbc, dop, isc, cpx, sbc, inc, isc, inx, sbc, nop, sbc, cpx, sbc, inc, isc, // E0
@@ -36,10 +36,10 @@ pub const CYCLE_TABLE: [u8; 256] = [
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // 50
     6, 6, 0, 8, 3, 3, 5, 5, 4, 2, 2, 2, 5, 4, 6, 6, // 60
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // 70
-    2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 0, 4, 4, 4, 4, // 80
-    2, 6, 0, 0, 4, 4, 4, 4, 2, 5, 2, 0, 5, 5, 5, 0, // 90
+    2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4, // 80
+    2, 6, 0, 6, 4, 4, 4, 4, 2, 5, 2, 5, 5, 5, 5, 5, // 90
     2, 6, 2, 6, 3, 3, 3, 3, 2, 2, 2, 2, 4, 4, 4, 4, // A0
-    2, 5, 0, 5, 4, 4, 4, 4, 2, 4, 2, 0, 4, 4, 4, 4, // B0
+    2, 5, 0, 5, 4, 4, 4, 4, 2, 4, 2, 4, 4, 4, 4, 4, // B0
     2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, // C0
     2, 5, 0, 8, 4, 4, 6, 6, 2, 4, 2, 7, 4, 4, 7, 7, // D0
     2, 6, 2, 8, 3, 3, 5, 5, 2, 2, 2, 2, 4, 4, 6, 6, // E0
@@ -56,18 +56,19 @@ pub const ADDRESSING_MODE_TABLE: [usize; 256] = [
     10,  9,  0,  9, 12, 12, 12, 12,  6,  3,  6,  3,  2,  2,  2,  2, // 50
      6,  8,  0,  8, 11, 11, 11, 11,  6,  5,  4,  5,  7,  1,  1,  1, // 60
     10,  9,  0,  9, 12, 12, 12, 12,  6,  3,  6,  3,  2,  2,  2,  2, // 70
-     5,  8,  5,  8, 11, 11, 11, 11,  6,  5,  6,  0,  1,  1,  1,  1, // 80
-    10,  9,  0,  0, 12, 12, 13, 13,  6,  3,  6,  0,  2,  2,  3,  0, // 90
+     5,  8,  5,  8, 11, 11, 11, 11,  6,  5,  6,  5,  1,  1,  1,  1, // 80
+    10,  9,  0,  9, 12, 12, 13, 13,  6,  3,  6,  3,  2,  2,  3,  3, // 90
      5,  8,  5,  8, 11, 11, 11, 11,  6,  5,  6,  5,  1,  1,  1,  1, // A0
-    10,  9,  0,  9, 12, 12, 13, 13,  6,  3,  6,  0,  2,  2,  3,  3, // B0
+    10,  9,  0,  9, 12, 12, 13, 13,  6,  3,  6,  3,  2,  2,  3,  3, // B0
      5,  8,  5,  8, 11, 11, 11, 11,  6,  5,  6,  5,  1,  1,  1,  1, // C0
     10,  9,  0,  9, 12, 12, 12, 12,  6,  3,  6,  3,  2,  2,  2,  2, // D0
      5,  8,  5,  8, 11, 11, 11, 11,  6,  5,  6,  5,  1,  1,  1,  1, // E0
     10,  9,  0,  9, 12, 12, 12, 12,  6,  3,  6,  3,  2,  2,  2,  2, // F0
 ];
 
-fn inv(_cpu: &mut Cpu, _addressing_mode: usize) {
-    panic!("[CPU] Invalid opcode.");
+fn inv(cpu: &mut Cpu, _addressing_mode: usize) {
+    let addr = cpu.r.pc - 1;
+    panic!("[CPU] Invalid opcode: {:#04x}.", cpu.read_byte(addr));
 }
 
 fn aax(cpu: &mut Cpu, addressing_mode: usize) {
@@ -168,6 +169,12 @@ fn asr(cpu: &mut Cpu, addressing_mode: usize) {
 
     and_impl(cpu, &operand);
     lsr(cpu, addressing_modes::ACCUMULATOR);
+}
+
+fn axa(cpu: &mut Cpu, addressing_mode: usize) {
+    let (addr, _page_crossing) = addressing_modes::FUNCTION_TABLE[addressing_mode](cpu);
+    let res = cpu.r.a & cpu.r.x & ((addr >> 8) as u8 + 1);
+    cpu.write_byte(addr, res);
 }
 
 fn axs(cpu: &mut Cpu, addressing_mode: usize) {
@@ -390,6 +397,19 @@ fn jsr(cpu: &mut Cpu, addressing_mode: usize) {
     let ret = cpu.r.pc - 1;
     cpu.r.pc = addr;
     cpu.push_word(ret);
+}
+
+fn las(cpu: &mut Cpu, addressing_mode: usize) {
+    let operand = cpu.get_operand(addressing_mode);
+    if operand.page_crossing {
+        cpu.cycle += 1;
+    }
+
+    let res = operand.val & cpu.r.sp;
+    cpu.r.a = res;
+    cpu.r.x = res;
+    cpu.r.sp = res;
+    cpu.r.update_nz_flags(res);
 }
 
 fn lax(cpu: &mut Cpu, addressing_mode: usize) {
@@ -648,6 +668,14 @@ fn sre(cpu: &mut Cpu, addressing_mode: usize) {
     eor_impl(cpu, &operand);
 }
 
+fn tas(cpu: &mut Cpu, addressing_mode: usize) {
+    let (addr, _page_crossing) = addressing_modes::FUNCTION_TABLE[addressing_mode](cpu);
+    let mut res = cpu.r.a & cpu.r.x;
+    cpu.r.sp = res;
+    res &= (addr >> 8) as u8 + 1;
+    cpu.write_byte(addr, res);
+}
+
 fn tax(cpu: &mut Cpu, _addressing_mode: usize) {
     let res = cpu.r.a;
     cpu.r.update_nz_flags(res);
@@ -687,5 +715,11 @@ fn txs(cpu: &mut Cpu, _addressing_mode: usize) {
 fn tya(cpu: &mut Cpu, _addressing_mode: usize) {
     let res = cpu.r.y;
     cpu.r.update_nz_flags(res);
+    cpu.r.a = res;
+}
+
+fn xaa(cpu: &mut Cpu, addressing_mode: usize) {
+    let operand = cpu.get_operand(addressing_mode);
+    let res = cpu.r.x & operand.val;
     cpu.r.a = res;
 }
