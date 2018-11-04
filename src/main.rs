@@ -24,7 +24,8 @@ pub fn main() {
     let audio_subsystem = sdl_context.audio().unwrap();
 
     let window = video_subsystem
-        .window("rust-sdl2 demo: Video", 1000, 800)
+        // .window("nes-rs", 1000, 800)
+        .window("nes-rs", 480, 512)
         .position_centered()
         .opengl()
         .build()
@@ -139,7 +140,9 @@ pub fn main() {
             nes.step_frame();
         }
 
-        device.queue(&nes.apu.borrow().buffer[0..735]);
+        let buffer_len = nes.apu.borrow().buffer_index;
+        println!("{}", buffer_len);
+        device.queue(&nes.apu.borrow().buffer[0..buffer_len]);
 
         canvas.clear();
 

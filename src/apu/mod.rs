@@ -38,7 +38,9 @@ const NOISE_PERIOD_TABLE: [u16; 16] = [
 
 const CLOCK_FREQ: u64 = 1_789_773;
 const SAMPLE_FREQ: u64 = 44_100;
-const BUFFER_SIZE: usize = 745;
+const FRAME_CYCLES: f64 = CLOCK_FREQ as f64 / 240.0;
+const SAMPLE_CYCLES: f64 = CLOCK_FREQ as f64 / SAMPLE_FREQ as f64;
+const BUFFER_SIZE: usize = 735;
 
 #[derive(Debug)]
 pub enum FrameCounterMode {
@@ -536,6 +538,8 @@ impl Apu {
 
     pub fn step(&mut self) {
         self.cycle += 1;
+        let curr_cycle = self.cycle as f64;
+        let next_cycle = (self.cycle + 1) as f64;
 
         self.triangle.step();
         if self.cycle % 2 == 0 {
@@ -545,7 +549,9 @@ impl Apu {
         }
 
         // Frame counter ticks at 240 Hz
-        if self.cycle % (CLOCK_FREQ / 240) == 0 {
+        let curr_frame = f64::floor(curr_cycle / FRAME_CYCLES) as u64;
+        let next_frame = f64::floor(next_cycle / FRAME_CYCLES) as u64;
+        if curr_frame != next_frame {
             match self.frame_counter_mode {
                 FrameCounterMode::FourStep => {
                     match self.frame_counter_val % 4 {
@@ -602,7 +608,9 @@ impl Apu {
         }
 
         // Output sample device is 44.1 kHz
-        if self.cycle % (CLOCK_FREQ / SAMPLE_FREQ) == 0 && self.buffer_index < self.buffer.len() {
+        let curr_sample = f64::floor(curr_cycle/ SAMPLE_CYCLES) as u64;
+        let next_sample = f64::floor(next_cycle as f64 / SAMPLE_CYCLES) as u64;
+        if curr_sample != next_sample {
             let mut sample = self.mixer.sample(
                 self.pulses[0].output(),
                 self.pulses[1].output(),
