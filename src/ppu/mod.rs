@@ -128,7 +128,7 @@ impl Ppu {
                 }
                 self.palette_ram[((addr - 0x3F00) % 0x20) as usize]
             },
-            _ => 0,
+            _ => panic!("[PPU] Invalid read with memory address: {:#06x}.", addr),
         }
     }
 
