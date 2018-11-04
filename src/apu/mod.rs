@@ -263,7 +263,6 @@ pub struct Dmc {
 
 impl Dmc {
     pub fn restart_sample(&mut self) {
-        println!("RESTARTING SAMPLE AT {} {}", self.sample_addr, self.sample_len);
         self.curr_addr = self.sample_addr;
         self.curr_len = self.sample_len;
     }
@@ -462,7 +461,6 @@ impl Apu {
             },
             // DMC
             0x4010 => {
-                println!("WRITE TO DMC CONTROL");
                 self.dmc.irq_enabled = val & 0x80 != 0;
                 if !self.dmc.irq_enabled {
                     self.dmc.irq_pending = false;
@@ -470,18 +468,9 @@ impl Apu {
                 self.dmc.looped = val & 0x40 != 0;
                 self.dmc.timer_period = DMC_PERIOD_TABLE[(val & 0x0F) as usize];
             },
-            0x4011 => {
-                self.dmc.volume = val & 0x7F;
-                println!("WRITE TO VOLUME {}", self.dmc.volume);
-            },
-            0x4012 => {
-                self.dmc.sample_addr = 0xC000 | ((val as u16) << 6);
-                println!("WRITE TO VOLUME {:x}", self.dmc.sample_addr);
-            },
-            0x4013 => {
-                self.dmc.sample_len = 1 | ((val as u16) << 4);
-                println!("WRITE TO SAMPLE LEN {}", self.dmc.sample_len);
-            },
+            0x4011 => self.dmc.volume = val & 0x7F,
+            0x4012 => self.dmc.sample_addr = 0xC000 | ((val as u16) << 6),
+            0x4013 => self.dmc.sample_len = 1 | ((val as u16) << 4),
             // All
             0x4015 => {
                 self.pulses[0].enabled = val & 0x01 != 0;
@@ -489,10 +478,6 @@ impl Apu {
                 self.triangle.enabled = val & 0x04 != 0;
                 self.noise.enabled = val & 0x08 != 0;
                 self.dmc.enabled = val & 0x10 != 0;
-                println!("WRITE CONTROL {:08b}", val);
-                if self.dmc.enabled {
-                    println!("DMC IS ENABLED");
-                }
                 self.dmc.irq_pending = false;
 
                 for pulse in &mut self.pulses {

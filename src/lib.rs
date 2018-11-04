@@ -93,6 +93,9 @@ mod tests {
             $(
                 #[test]
                 fn $test_name() {
+                    use std::fs;
+                    use Nes;
+
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
                     let mut nes = Nes::new();
                     nes.load_rom(&buffer);
@@ -101,14 +104,14 @@ mod tests {
                     let mut addr = 0x6000;
                     let mut byte = nes.cpu.borrow_mut().read_byte(addr);
                     while byte != 0x80 {
-                        nes.step();
+                        nes.step_frame();
                         byte = nes.cpu.borrow_mut().read_byte(addr);
                     }
 
                     // Run until test status is finished by polling $6000.
                     byte = nes.cpu.borrow_mut().read_byte(addr);
                     while byte == 0x80 {
-                        nes.step();
+                        nes.step_frame();
                         byte = nes.cpu.borrow_mut().read_byte(addr);
                     }
 
@@ -134,6 +137,11 @@ mod tests {
             $(
                 #[test]
                 fn $test_name() {
+                    use std::collections::hash_map::DefaultHasher;
+                    use std::fs;
+                    use std::hash::Hasher;
+                    use Nes;
+
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
                     let mut nes = Nes::new();
                     nes.load_rom(&buffer);
@@ -145,7 +153,7 @@ mod tests {
                     let mut hasher = DefaultHasher::new();
 
                     let ppu = nes.ppu.borrow();
-                    for val in ppu.image.iter() {
+                    for val in ppu.buffer.iter() {
                         hasher.write_u8(*val);
                     }
 
@@ -157,9 +165,6 @@ mod tests {
 
     mod cpu {
         mod instr_tests {
-            use std::fs;
-            use Nes;
-
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/instr_test/{}", file_name)
             }
@@ -182,9 +187,6 @@ mod tests {
         }
 
         mod instr_misc {
-            use std::fs;
-            use Nes;
-
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/instr_misc/{}", file_name)
             }
@@ -196,11 +198,6 @@ mod tests {
         }
 
         mod instr_timing {
-            use std::collections::hash_map::DefaultHasher;
-            use std::fs;
-            use std::hash::Hasher;
-            use Nes;
-
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/instr_timing/{}", file_name)
             }
@@ -211,11 +208,6 @@ mod tests {
         }
 
         mod branch_timing {
-            use std::collections::hash_map::DefaultHasher;
-            use std::fs;
-            use std::hash::Hasher;
-            use Nes;
-
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/branch_timing/{}", file_name)
             }
@@ -229,11 +221,6 @@ mod tests {
 
     mod ppu {
         mod general {
-            use std::collections::hash_map::DefaultHasher;
-            use std::fs;
-            use std::hash::Hasher;
-            use Nes;
-
             fn test_path(file_name: &str) -> String {
                 format!("./tests/ppu/general/{}", file_name)
             }
@@ -243,6 +230,19 @@ mod tests {
                 test_power_up_palette: (test_path("power_up_palette.nes"), 18, 0xAC82_B330_9FFC_8614),
                 test_sprite_ram: (test_path("sprite_ram.nes"), 18, 0xAC82_B330_9FFC_8614),
                 test_vram_access: (test_path("vram_access.nes"), 18, 0xAC82_B330_9FFC_8614),
+            );
+        }
+    }
+
+    mod apu {
+        mod general {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/apu/general/{}", file_name)
+            }
+
+            text_tests!(
+                test_01_len_ctr: test_path("01-len_ctr.nes"),
+                test_07_dmc_basics: test_path("07-dmc_basics.nes"),
             );
         }
     }
