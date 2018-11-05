@@ -398,7 +398,7 @@ impl Apu {
             },
             0x4001 | 0x4005 => {
                 let index = ((addr - 0x4000) / 4) as usize;
-                self.pulses[index].sweep_period = (val >> 4) & 0x07 + 1;
+                self.pulses[index].sweep_period = ((val >> 4) & 0x07) + 1;
                 self.pulses[index].sweep_negated = val & 0x08 != 0;
                 self.pulses[index].sweep_shift = val & 0x07;
                 self.pulses[index].sweep_reset = true;
@@ -419,6 +419,7 @@ impl Apu {
                 if self.pulses[index].enabled {
                     self.pulses[index].length_counter.reload(val as usize >> 3);
                 }
+                self.pulses[index].timer_val = self.pulses[index].timer_period;
                 self.pulses[index].duty_val = 0;
                 self.pulses[index].envelope.reset = true;
             },
@@ -537,25 +538,27 @@ impl Apu {
     fn step_sweep(&mut self) {
         // TODO: Modularize
         for (index, pulse) in self.pulses.iter_mut().enumerate() {
-            if pulse.sweep_val == 0 && pulse.sweep_enabled {
-                let mut change_amount = pulse.timer_period >> pulse.sweep_shift;
-                let target_timer_period = if pulse.sweep_negated {
-                    pulse.timer_period - change_amount + index as u16 - 1
-                } else {
-                    pulse.timer_period + change_amount
-                };
-
-                // Change period if not muted
-                if 0x0008 <= target_timer_period && target_timer_period < 0x07FF {
-                    pulse.timer_period = target_timer_period;
-                }
-            }
-
-            if pulse.sweep_val == 0 || pulse.sweep_reset {
+            if pulse.sweep_reset {
                 pulse.sweep_reset = false;
                 pulse.sweep_val = pulse.sweep_period;
-            } else {
+            } else if pulse.sweep_val > 0 {
                 pulse.sweep_val -= 1;
+            } else {
+                pulse.sweep_val = pulse.sweep_period;
+                if pulse.sweep_enabled {
+                    let mut change_amount = pulse.timer_period >> pulse.sweep_shift;
+                    let target_timer_period = if pulse.sweep_negated {
+                        pulse.timer_period - change_amount + index as u16 - 1
+                    } else {
+                        pulse.timer_period + change_amount
+                    };
+
+                    // TODO: `target_timer_period` should be continuously computed which affects if
+                    // the sweep unit mutes the channel.
+                    if 0x08 <= target_timer_period && target_timer_period < 0x07FF {
+                        pulse.timer_period = target_timer_period;
+                    }
+                }
             }
         }
     }
