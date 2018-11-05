@@ -2,43 +2,50 @@
 
 ## CPU
 
-  - kevtris's `nestest`: Pass
-  - blargg's `instr_misc`: (2/4)
-    - `01-abs_x_wrap.nes`: Pass
-    - `02-branch_wrap.nes`: Pass
-    - `03-dummy_reads.nes`: Fail
-    - `04-dummy_reads_apu.nes`: Fail
-  - blargg's `instr_test`: (16/16)
-    - `01-basics.nes`: Pass
-    - `02-implied.nes`: Pass
-    - `03-immediate.nes`: Pass
-    - `04-zero_page.nes`: Pass
-    - `05-zp_xy.nes`: Pass
-    - `06-absolute.nes`: Pass
-    - `07-abs_xy.nes`: Pass
-    - `08-ind_x.nes`: Pass
-    - `09-ind_y.nes`: Pass
-    - `10-branches.nes`: Pass
-    - `11-stack.nes`: Pass
-    - `12-jmp_jsr.nes`: Pass
-    - `13-rts.nes`: Pass
-    - `14-rti.nes`: Pass
-    - `15-brk.nes`: Pass
-    - `16-special.nes`: Pass
-  - blargg's `instr_timing`: (2/2)
-    - `01-instr_timing.nes`: Pass
-    - `02-branch_timing.nes`: Pass
-  - blargg's `interrupts`: (0/5)
+  - blargg's `branch_timing_tests`: (3/3)
+    - `01-branch_basics`: Pass
+    - `02-backward_branch`: Pass
+    - `03-forward_branch`: Pass
+  - blargg's `cpu_dummy_reads`: Fail
+  - bisqwit's `cpu_dummy_writes`: (0/2)
+    - `cpu_dummy_writes_oam`: Fail
+    - `cpu_dummy_writes_ppumem`: Fail
+  - bisqwit's `cpu_exec_space`: (0/2)
+    - `test_cpu_exec_space_apu`: Fail
+    - `test_cpu_exec_space_ppuio`: Fail
+  - blargg's `cpu_interrupts_v2`: (0/5)
     - `01-cli_latency`: Fail
     - `02-nmi_and_brk`: Fail
     - `03-nmi_and_irq`: Fail
     - `04-irq_and_dma`: Fail
     - `05-branch_delays_irq`: Fail
-  - blargg's `branch_timing_tests`: (3/3)
-    - `01-branch_basics.nes`: Pass
-    - `02-backward_branch.nes`: Pass
-    - `03-forward_branch.nes`: Pass
-  - blargg's `cpu_timing_test`: Pass
+  - blargg's `cpu_timing_test6`: Pass
+  - blargg's `instr_misc`: (2/4)
+    - `01-abs_x_wrap`: Pass
+    - `02-branch_wrap`: Pass
+    - `03-dummy_reads`: Fail
+    - `04-dummy_reads_apu`: Fail
+  - blargg's `instr_test_v5`: (16/16)
+    - `01-basics`: Pass
+    - `02-implied`: Pass
+    - `03-immediate`: Pass
+    - `04-zero_page`: Pass
+    - `05-zp_xy`: Pass
+    - `06-absolute`: Pass
+    - `07-abs_xy`: Pass
+    - `08-ind_x`: Pass
+    - `09-ind_y`: Pass
+    - `10-branches`: Pass
+    - `11-stack`: Pass
+    - `12-jmp_jsr`: Pass
+    - `13-rts`: Pass
+    - `14-rti`: Pass
+    - `15-brk`: Pass
+    - `16-special`: Pass
+  - blargg's `instr_timing`: (2/2)
+    - `01-instr_timing`: Pass
+    - `02-branch_timing`: Pass
+  - kevtris's `nestest`: Pass
 
 ## PPU
 
@@ -52,12 +59,12 @@
 ## APU
 
  - blargg's `apu_test`: (2/8)
-   - `01-len_ctr.nes`: Pass
-   - `02-len_table.nes`: Fail
-   - `03-irq_flag.nes`: Fail
-   - `04-jitter.nes`: Fail
-   - `05-len_timing.nes`: Fail
-   - `06-irq_flag_timing.nes`: Fail
-   - `07-dmc_basics.nes`: Pass
-   - `08-dmc_rates.nes`: Fail
+   - `01-len_ctr`: Pass
+   - `02-len_table`: Fail
+   - `03-irq_flag`: Fail
+   - `04-jitter`: Fail
+   - `05-len_timing`: Fail
+   - `06-irq_flag_timing`: Fail
+   - `07-dmc_basics`: Pass
+   - `08-dmc_rates`: Fail
  - Rahsennor's `apu_phase_reset`: Pass

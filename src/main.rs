@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
 
-    let buffer = fs::read("./tests/cpu/branch_timing/01-branch_basics.nes").unwrap();
+    let buffer = fs::read("./tests/games/0/super_mario_bros.nes").unwrap();
     let mut nes = Nes::new();
     nes.load_rom(&buffer);
 
@@ -48,10 +48,6 @@ pub fn main() {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
     let mut step_scanline = false;
-
-    for _ in 0..13 {
-        nes.step_frame();
-    }
 
     'running: loop {
         let start = Instant::now();
@@ -138,11 +134,11 @@ pub fn main() {
             }
         }
 
-        // if step_scanline {
-        //     nes.step_scanline();
-        // } else {
-        //     nes.step_frame();
-        // }
+        if step_scanline {
+            nes.step_scanline();
+        } else {
+            nes.step_frame();
+        }
 
         let buffer_len = nes.apu.borrow().buffer_index;
         device.queue(&nes.apu.borrow().buffer[0..buffer_len]);

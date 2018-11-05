@@ -27,8 +27,11 @@ impl Cartridge {
         }
 
         let prg_rom_len = buffer[4] as usize * 0x4000;
+        println!("[CARTRIDGE] PRG ROM length: {} bytes.", prg_rom_len);
         let chr_rom_len = buffer[5] as usize * 0x2000;
+        println!("[CARTRIDGE] CHR ROM length: {} bytes.", chr_rom_len);
         let mut prg_ram_len = buffer[8] as usize * 0x2000;
+        println!("[CARTRIDGE] PRG RAM length: {} bytes.", prg_ram_len);
 
         if prg_ram_len == 0 {
             prg_ram_len = 0x4000;
@@ -36,12 +39,13 @@ impl Cartridge {
 
         let flags_6 = buffer[6];
         let flags_7 = if is_zero { buffer[7] } else { 0 };
-        let flags_9 = buffer[9];
-        let flags_10 = buffer[10];
+        let _flags_9 = buffer[9];
+        let _flags_10 = buffer[10];
 
         buffer = buffer.split_at(16).1;
 
         if flags_6 & 0x04 != 0 {
+            println!("[CARTRIDGE] Trainer present.");
             buffer = buffer.split_at(512).1;
         }
 

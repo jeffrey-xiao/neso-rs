@@ -379,9 +379,9 @@ impl Ppu {
         let visible_scanline = 0 <= self.scanline && self.scanline <= 239;
         let visible_cycle = 1 <= self.cycle && self.cycle <= 256;
         let prefetch_cycle = 321 <= self.cycle && self.cycle <= 336;
-        let sprite_clear_cycle = 1 <= self.cycle && self.cycle <= 64;
-        let sprite_evaluation_cycle = 65 <= self.cycle && self.cycle <= 256;
-        let sprite_fetch_cycle = 257 <= self.cycle && self.cycle <= 320;
+        let _sprite_clear_cycle = 1 <= self.cycle && self.cycle <= 64;
+        let _sprite_evaluation_cycle = 65 <= self.cycle && self.cycle <= 256;
+        let _sprite_fetch_cycle = 257 <= self.cycle && self.cycle <= 320;
 
         if visible_scanline || self.scanline == -1 {
             if visible_scanline && visible_cycle {

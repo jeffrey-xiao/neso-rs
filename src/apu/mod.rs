@@ -660,7 +660,7 @@ impl Apu {
         }
 
         // Output sample device is 44.1 kHz
-        let curr_sample = f64::floor(curr_cycle/ SAMPLE_CYCLES) as u64;
+        let curr_sample = f64::floor(curr_cycle / SAMPLE_CYCLES) as u64;
         let next_sample = f64::floor(next_cycle as f64 / SAMPLE_CYCLES) as u64;
         if curr_sample != next_sample {
             let mut sample = self.mixer.sample(
