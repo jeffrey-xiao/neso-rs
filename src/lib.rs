@@ -22,10 +22,10 @@ use std::rc::Rc;
 
 // TODO: Leave better error messages for panics that should never happen.
 pub struct Nes {
-    pub apu: Rc<RefCell<Apu>>,
-    pub cpu: Rc<RefCell<Cpu>>,
-    pub ppu: Rc<RefCell<Ppu>>,
-    pub mapper: Option<Rc<RefCell<Box<Mapper>>>>,
+    apu: Rc<RefCell<Apu>>,
+    cpu: Rc<RefCell<Cpu>>,
+    ppu: Rc<RefCell<Ppu>>,
+    mapper: Option<Rc<RefCell<Box<Mapper>>>>,
 }
 
 impl Nes {
@@ -58,16 +58,9 @@ impl Nes {
         self.cpu.borrow_mut().step();
         for _ in 0..3 {
             self.ppu.borrow_mut().step();
-            self.mapper.as_ref().unwrap().borrow_mut().step();
+            self.mapper.as_ref().expect("[NES] No ROM loaded.").borrow_mut().step();
         }
         self.apu.borrow_mut().step();
-    }
-
-    pub fn step_scanline(&mut self) {
-        let scanline = self.ppu.borrow().scanline;
-        while self.ppu.borrow().scanline == scanline {
-            self.step();
-        }
     }
 
     pub fn step_frame(&mut self) {
@@ -76,6 +69,26 @@ impl Nes {
         while self.ppu.borrow().frame == frame {
             self.step();
         }
+    }
+
+    pub fn image_buffer(&self) -> *const u8 {
+        self.ppu.borrow().buffer.as_ptr()
+    }
+
+    pub fn audio_buffer(&self) -> *const f32 {
+        self.apu.borrow().buffer.as_ptr()
+    }
+
+    pub fn audio_buffer_len(&self) -> usize {
+        self.apu.borrow().buffer_index
+    }
+
+    pub fn press_button(&mut self, controller_index: usize, button_index: u8) {
+        self.cpu.borrow_mut().controllers[controller_index].press_button(button_index);
+    }
+
+    pub fn release_button(&mut self, controller_index: usize, button_index: u8) {
+        self.cpu.borrow_mut().controllers[controller_index].release_button(button_index);
     }
 }
 

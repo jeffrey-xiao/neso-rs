@@ -2,6 +2,7 @@ extern crate nes_wasm;
 extern crate sdl2;
 
 use nes_wasm::Nes;
+use std::slice;
 use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -11,6 +12,17 @@ use std::fs;
 use std::ptr;
 use std::thread;
 use std::time::{Duration, Instant};
+
+const KEYS: [Keycode; 8] = [
+    Keycode::Q,
+    Keycode::W,
+    Keycode::E,
+    Keycode::R,
+    Keycode::Up,
+    Keycode::Down,
+    Keycode::Left,
+    Keycode::Right,
+];
 
 pub fn main() {
     let mus_per_frame = Duration::from_micros((1.0f64 / 60.0 * 1e6).round() as u64);
@@ -47,101 +59,35 @@ pub fn main() {
     canvas.present();
 
     let mut event_pump = sdl_context.event_pump().unwrap();
-    let mut step_scanline = false;
 
     'running: loop {
         let start = Instant::now();
         for event in event_pump.poll_iter() {
             match event {
-                Event::Quit { .. }
-                | Event::KeyDown {
+                Event::Quit { .. } | Event::KeyDown {
                     keycode: Some(Keycode::Escape),
                     ..
                 } => break 'running,
-                Event::KeyDown {
-                    keycode: Some(Keycode::Q),
-                    ..
-                } => nes.cpu.borrow_mut().controller.press_button(0),
-                Event::KeyDown {
-                    keycode: Some(Keycode::W),
-                    ..
-                } => nes.cpu.borrow_mut().controller.press_button(1),
-                Event::KeyDown {
-                    keycode: Some(Keycode::E),
-                    ..
-                } => nes.cpu.borrow_mut().controller.press_button(2),
-                Event::KeyDown {
-                    keycode: Some(Keycode::R),
-                    ..
-                } => nes.cpu.borrow_mut().controller.press_button(3),
-                Event::KeyDown {
-                    keycode: Some(Keycode::Up),
-                    ..
-                } => nes.cpu.borrow_mut().controller.press_button(4),
-                Event::KeyDown {
-                    keycode: Some(Keycode::Down),
-                    ..
-                } => nes.cpu.borrow_mut().controller.press_button(5),
-                Event::KeyDown {
-                    keycode: Some(Keycode::Left),
-                    ..
-                } => nes.cpu.borrow_mut().controller.press_button(6),
-                Event::KeyDown {
-                    keycode: Some(Keycode::Right),
-                    ..
-                } => nes.cpu.borrow_mut().controller.press_button(7),
-                Event::KeyDown {
-                    keycode: Some(Keycode::Space),
-                    ..
-                } => step_scanline = true,
-                Event::KeyUp {
-                    keycode: Some(Keycode::Q),
-                    ..
-                } => nes.cpu.borrow_mut().controller.release_button(0),
-                Event::KeyUp {
-                    keycode: Some(Keycode::W),
-                    ..
-                } => nes.cpu.borrow_mut().controller.release_button(1),
-                Event::KeyUp {
-                    keycode: Some(Keycode::E),
-                    ..
-                } => nes.cpu.borrow_mut().controller.release_button(2),
-                Event::KeyUp {
-                    keycode: Some(Keycode::R),
-                    ..
-                } => nes.cpu.borrow_mut().controller.release_button(3),
-                Event::KeyUp {
-                    keycode: Some(Keycode::Up),
-                    ..
-                } => nes.cpu.borrow_mut().controller.release_button(4),
-                Event::KeyUp {
-                    keycode: Some(Keycode::Down),
-                    ..
-                } => nes.cpu.borrow_mut().controller.release_button(5),
-                Event::KeyUp {
-                    keycode: Some(Keycode::Left),
-                    ..
-                } => nes.cpu.borrow_mut().controller.release_button(6),
-                Event::KeyUp {
-                    keycode: Some(Keycode::Right),
-                    ..
-                } => nes.cpu.borrow_mut().controller.release_button(7),
-                Event::KeyUp {
-                    keycode: Some(Keycode::Space),
-                    ..
-                } => step_scanline = false,
+                Event::KeyDown { keycode: Some(keycode), .. } => {
+                    if let Some(index) = KEYS.iter().position(|key| *key == keycode) {
+                        nes.press_button(0, index as u8);
+                        nes.press_button(1, index as u8);
+                    }
+                },
+                Event::KeyUp { keycode: Some(keycode), .. } => {
+                    if let Some(index) = KEYS.iter().position(|key| *key == keycode) {
+                        nes.release_button(0, index as u8);
+                        nes.release_button(1, index as u8);
+                    }
+                },
                 _ => {},
             }
         }
 
-        if step_scanline {
-            nes.step_scanline();
-        } else {
-            nes.step_frame();
-        }
-
-        let buffer_len = nes.apu.borrow().buffer_index;
-        device.queue(&nes.apu.borrow().buffer[0..buffer_len]);
+        nes.step_frame();
+        let buffer_len = nes.audio_buffer_len();
+        let slice = unsafe { slice::from_raw_parts(nes.audio_buffer(), buffer_len) };
+        device.queue(&slice[0..buffer_len]);
 
         canvas.clear();
 
@@ -152,9 +98,8 @@ pub fn main() {
         texture
             .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
                 unsafe {
-                    let ppu = nes.ppu.borrow();
                     ptr::copy_nonoverlapping(
-                        ppu.buffer.as_ptr(),
+                        nes.image_buffer(),
                         buffer.as_mut_ptr(),
                         256 * 240 * 3,
                     );

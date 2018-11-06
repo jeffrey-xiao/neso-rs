@@ -29,18 +29,18 @@ impl Bus {
     }
 
     pub fn apu(&self) -> Rc<RefCell<Apu>> {
-        self.apu.upgrade().unwrap()
+        self.apu.upgrade().expect("Expected APU to exist on bus.")
     }
 
     pub fn cpu(&self) -> Rc<RefCell<Cpu>> {
-        self.cpu.upgrade().unwrap()
+        self.cpu.upgrade().expect("Expected CPU to exist on bus.")
     }
 
     pub fn ppu(&self) -> Rc<RefCell<Ppu>> {
-        self.ppu.upgrade().unwrap()
+        self.ppu.upgrade().expect("Expected PPU to exist on bus.")
     }
 
     pub fn mapper(&self) -> Rc<RefCell<Box<Mapper>>> {
-        self.mapper.upgrade().unwrap()
+        self.mapper.upgrade().expect("Expected mapper to exist on bus.")
     }
 }

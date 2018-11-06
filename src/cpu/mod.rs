@@ -11,7 +11,7 @@ const STACK_START: u16 = 0x100;
 pub struct Cpu {
     pub cycle: u64,
     pub stall_cycle: u64,
-    pub controller: Controller,
+    pub controllers: [Controller; 2],
     pub ram: [u8; 0x800],
     pub interrupt_flags: [bool; 2],
     pub r: Registers,
@@ -23,7 +23,7 @@ impl Cpu {
         Cpu {
             cycle: 0,
             stall_cycle: 0,
-            controller: Controller::default(),
+            controllers: [Controller::default(), Controller::default()],
             ram: [0; 0x800],
             interrupt_flags: [false; 2],
             r: Registers::default(),
@@ -136,9 +136,9 @@ impl Cpu {
                 let ret = ppu.borrow_mut().read_register(addr);
                 ret
             },
-            // TODO: Add support for second controller at 0x4017
-            0x4016 => self.controller.read_value(),
-            0x4000..=0x4017 => {
+            0x4016 => self.controllers[0].read_value(),
+            0x4017 => self.controllers[1].read_value(),
+            0x4000..=0x4015 => {
                 let apu = self.bus().apu();
                 let ret = apu.borrow_mut().read_register(addr);
                 ret
@@ -187,7 +187,10 @@ impl Cpu {
                     self.stall_cycle += 513;
                 }
             },
-            0x4016 => self.controller.write_strobe(val & 0x01 != 0),
+            0x4016 => {
+                self.controllers[0].write_strobe(val & 0x01 != 0);
+                self.controllers[1].write_strobe(val & 0x01 != 0);
+            },
             0x4000..=0x4017 => {
                 let apu = self.bus().apu();
                 apu.borrow_mut().write_register(addr, val);
