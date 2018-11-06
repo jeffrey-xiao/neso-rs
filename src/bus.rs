@@ -41,6 +41,8 @@ impl Bus {
     }
 
     pub fn mapper(&self) -> Rc<RefCell<Box<Mapper>>> {
-        self.mapper.upgrade().expect("Expected mapper to exist on bus.")
+        self.mapper
+            .upgrade()
+            .expect("Expected mapper to exist on bus.")
     }
 }

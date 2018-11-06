@@ -9,7 +9,7 @@ const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;
 
 // http://www.thealmightyguru.com/Games/Hacking/Wiki/index.php/NES_Palette
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const PALETTE: [u32; 64] = [
     0x007C_7C7C, 0x0000_00FC, 0x0000_00BC, 0x0044_28BC, 0x0094_0084, 0x00A8_0020, 0x00A8_1000, 0x0088_1400, //
     0x0050_3000, 0x0000_7800, 0x0000_6800, 0x0000_5800, 0x0000_4058, 0x0000_0000, 0x0000_0000, 0x0000_0000, //
@@ -61,7 +61,7 @@ pub struct Ppu {
 
 impl Ppu {
     pub fn new() -> Ppu {
-        #[cfg_attr(rustfmt, rustfmt_skip)]
+        #[rustfmt::skip]
         let palette_ram = [
             0x09, 0x01, 0x00, 0x01,
             0x00, 0x02, 0x02, 0x0D,
@@ -431,7 +431,8 @@ impl Ppu {
                     let y = i16::from(self.primary_oam[i * 4]) + 1;
                     let lo = y;
                     let hi = y + i16::from(self.r.sprite_size.1) - 1;
-                    if !(lo <= self.scanline + 1 && self.scanline + 1 <= hi) {
+                    let curr = self.scanline + 1;
+                    if !(lo <= curr && curr <= hi) {
                         continue;
                     }
 

@@ -7,14 +7,14 @@ use bus::Bus;
 use cpu::Interrupt;
 
 // https://wiki.nesdev.com/w/index.php/APU_Length_Counter
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const LENGTH_COUNTER_TABLE: [u8; 32] = [
     10, 254, 20,  2, 40,  4, 80,  6, 160,  8, 60, 10, 14, 12, 26, 14,
     12,  16, 24, 18, 48, 20, 96, 22, 192, 24, 72, 26, 16, 28, 32, 30,
 ];
 
 // https://wiki.nesdev.com/w/index.php/APU_Pulse
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const PULSE_TABLE: [u8; 32] = [
   0, 1, 0, 0, 0, 0, 0, 0,
   0, 1, 1, 0, 0, 0, 0, 0,
@@ -23,21 +23,21 @@ const PULSE_TABLE: [u8; 32] = [
 ];
 
 // https://wiki.nesdev.com/w/index.php/APU_Triangle
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const TRIANGLE_TABLE: [u8; 32] = [
     15, 14, 13, 12, 11, 10,  9,  8,  7,  6,  5,  4,  3,  2,  1,  0,
      0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15,
 ];
 
 // https://wiki.nesdev.com/w/index.php/APU_Noise
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const NOISE_PERIOD_TABLE: [u16; 16] = [
       4,   8,  16,  32,  64,   96,  128,  160,
     202, 254, 380, 508, 762, 1016, 2034, 4068,
 ];
 
 // https://wiki.nesdev.com/w/index.php/APU_DMC
-#[cfg_attr(rustfmt, rustfmt_skip)]
+#[rustfmt::skip]
 const DMC_PERIOD_TABLE: [u16; 16] = [
     428, 380, 340, 320, 286, 254, 226, 214,
     190, 160, 142, 128, 106,  84,  72,  54,
@@ -283,10 +283,8 @@ impl Dmc {
                 if self.volume >= 2 {
                     self.volume -= 2;
                 }
-            } else {
-                if self.volume <= 125 {
-                    self.volume += 2;
-                }
+            } else if self.volume <= 125 {
+                self.volume += 2;
             }
             self.shift_register >>= 1;
         }
@@ -407,13 +405,13 @@ impl Apu {
             },
             0x4002 | 0x4006 => {
                 let index = ((addr - 0x4000) / 4) as usize;
-                let timer_period_low = val as u16;
+                let timer_period_low = u16::from(val);
                 self.pulses[index].timer_period &= 0xFF00;
                 self.pulses[index].timer_period |= timer_period_low;
             },
             0x4003 | 0x4007 => {
                 let index = ((addr - 0x4000) / 4) as usize;
-                let timer_period_high = ((val as u16) & 0x07) << 8;
+                let timer_period_high = (u16::from(val) & 0x07) << 8;
                 self.pulses[index].timer_period &= 0x00FF;
                 self.pulses[index].timer_period |= timer_period_high;
                 if self.pulses[index].enabled {
@@ -430,12 +428,12 @@ impl Apu {
                 self.triangle.linear_counter_period = val & 0x7F;
             },
             0x400A => {
-                let timer_period_low = val as u16;
+                let timer_period_low = u16::from(val);
                 self.triangle.timer_period &= 0xFF00;
                 self.triangle.timer_period |= timer_period_low;
             },
             0x400B => {
-                let timer_period_high = ((val as u16) & 0x07) << 8;
+                let timer_period_high = (u16::from(val) & 0x07) << 8;
                 self.triangle.timer_period &= 0x00FF;
                 self.triangle.timer_period |= timer_period_high;
                 if self.triangle.enabled {
@@ -470,8 +468,8 @@ impl Apu {
                 self.dmc.timer_period = DMC_PERIOD_TABLE[(val & 0x0F) as usize];
             },
             0x4011 => self.dmc.volume = val & 0x7F,
-            0x4012 => self.dmc.sample_addr = 0xC000 | ((val as u16) << 6),
-            0x4013 => self.dmc.sample_len = 1 | ((val as u16) << 4),
+            0x4012 => self.dmc.sample_addr = 0xC000 | (u16::from(val) << 6),
+            0x4013 => self.dmc.sample_len = 1 | (u16::from(val) << 4),
             // All
             0x4015 => {
                 self.pulses[0].enabled = val & 0x01 != 0;

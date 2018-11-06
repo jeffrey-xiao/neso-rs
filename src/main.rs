@@ -2,7 +2,6 @@ extern crate nes_wasm;
 extern crate sdl2;
 
 use nes_wasm::Nes;
-use std::slice;
 use sdl2::audio::AudioSpecDesired;
 use sdl2::event::Event;
 use sdl2::keyboard::Keycode;
@@ -10,6 +9,7 @@ use sdl2::pixels::PixelFormatEnum;
 use sdl2::rect::Rect;
 use std::fs;
 use std::ptr;
+use std::slice;
 use std::thread;
 use std::time::{Duration, Instant};
 

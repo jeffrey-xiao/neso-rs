@@ -1,5 +1,4 @@
 extern crate cfg_if;
-extern crate js_sys;
 extern crate wasm_bindgen;
 
 mod apu;
@@ -19,8 +18,9 @@ use mapper::Mapper;
 use ppu::Ppu;
 use std::cell::RefCell;
 use std::rc::Rc;
+use wasm_bindgen::prelude::*;
 
-// TODO: Leave better error messages for panics that should never happen.
+#[wasm_bindgen]
 pub struct Nes {
     apu: Rc<RefCell<Apu>>,
     cpu: Rc<RefCell<Cpu>>,
@@ -28,8 +28,10 @@ pub struct Nes {
     mapper: Option<Rc<RefCell<Box<Mapper>>>>,
 }
 
+#[wasm_bindgen]
 impl Nes {
     pub fn new() -> Self {
+        utils::set_panic_hook();
         let apu = Rc::new(RefCell::new(Apu::new()));
         let cpu = Rc::new(RefCell::new(Cpu::new()));
         let ppu = Rc::new(RefCell::new(Ppu::new()));
@@ -58,7 +60,11 @@ impl Nes {
         self.cpu.borrow_mut().step();
         for _ in 0..3 {
             self.ppu.borrow_mut().step();
-            self.mapper.as_ref().expect("[NES] No ROM loaded.").borrow_mut().step();
+            self.mapper
+                .as_ref()
+                .expect("[NES] No ROM loaded.")
+                .borrow_mut()
+                .step();
         }
         self.apu.borrow_mut().step();
     }
@@ -159,7 +165,7 @@ mod tests {
                     let mut nes = Nes::new();
                     nes.load_rom(&buffer);
 
-                    for i in 0..$frames {
+                    for _ in 0..$frames {
                         nes.step_frame();
                     }
 
@@ -221,7 +227,7 @@ mod tests {
             );
 
             graphical_tests!(
-                test_cpu_timing_test: (test_path("timing_test.nes"), 612, 0x97F3FD46B6820231),
+                test_cpu_timing_test: (test_path("timing_test.nes"), 612, 0x97F3_FD46_B682_0231),
             );
         }
 
@@ -231,7 +237,7 @@ mod tests {
             }
 
             graphical_tests!(
-                test_01_branch_basics: (test_path("01-branch_basics.nes"), 13, 0xE2BAFD2C2D103A12),
+                test_01_branch_basics: (test_path("01-branch_basics.nes"), 13, 0xE2BA_FD2C_2D10_3A12),
                 test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0x12A2_BBD5_3910_0F21),
                 test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0xE2D4_D5FD_FE05_A2FF),
             );
