@@ -11,23 +11,27 @@ An NES emulator written in Rust that compiles to WebAssembly.
 
  - Instruction-cycle accurate MOS 6502 CPU with unofficial instructions.
  - Mostly cycle accurate PPU.
+ - Mostly functional APU.
 
 ## Compatibility
 
 The following mappers are implemented:
- - `000`: NROM
- - `001`: MMC1
- - `002`: UNROM
- - `003`: CNROM
- - `004`: MMC3
- - `007`: AxROM
- - `011`: ColorDreams
- - `094`: UN1ROM
- - `180`: _Crazy Climber_
+ - `000`: [NROM](http://bootgod.dyndns.org:7777/search.php?ines=0)
+ - `001`: [MMC1](http://bootgod.dyndns.org:7777/search.php?ines=1)
+ - `002`: [UNROM](http://bootgod.dyndns.org:7777/search.php?ines=2)
+ - `003`: [CNROM](http://bootgod.dyndns.org:7777/search.php?ines=3)
+ - `004`: [MMC3](http://bootgod.dyndns.org:7777/search.php?ines=4)
+ - `007`: [AxROM](http://bootgod.dyndns.org:7777/search.php?ines=7)
+ - `011`: [ColorDreams](http://bootgod.dyndns.org:7777/search.php?ines=11)
+ - `094`: [UN1ROM](http://bootgod.dyndns.org:7777/search.php?ines=94)
+ - `180`: [_Crazy Climber_](http://bootgod.dyndns.org:7777/search.php?ines=180)
 
-## Test Coverage
+These mappers provide support for approximately 89% (1417/1591) games listed in this 
+[comprehensive mapper list](http://tuxnes.sourceforge.net/nesmapper.txt).
 
-See [TEST_COVERAGE](TEST_COVERAGE.md) for more details.
+## Test Rom Coverage
+
+See [TEST_ROM_COVERAGE](TEST_ROM_COVERAGE.md) for more details.
 
 ## References
 
