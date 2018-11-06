@@ -27,7 +27,7 @@ before_script:
   - rustup component add rustfmt-preview --toolchain nightly
 
 script:
-  - cargo +nightly clippy --all-targets
+  - cargo +nightly clippy --all-targets --features sdl2
   - cargo +nightly fmt --verbose --all -- --check
   - cargo build --verbose --lib
   - cargo test --verbose --lib
