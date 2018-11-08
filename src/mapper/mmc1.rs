@@ -241,6 +241,24 @@ impl Mapper for MMC1 {
         }
     }
 
+    fn chr_bank(&self, mut index: usize) -> *const u8 {
+        index = if index < 4 {
+            let bank = match self.r.chr_rom_bank_mode {
+                ChrRomBankMode::Switch8K => self.r.chr_rom_bank_0 as usize & !0x01,
+                ChrRomBankMode::Switch4K => self.r.chr_rom_bank_0 as usize,
+            };
+            bank as usize * 4 + index
+        } else {
+            let bank = match self.r.chr_rom_bank_mode {
+                ChrRomBankMode::Switch8K => self.r.chr_rom_bank_0 as usize | 0x01,
+                ChrRomBankMode::Switch4K => self.r.chr_rom_bank_1 as usize,
+            };
+            bank as usize * 4 + index - 4
+        };
+
+        self.cartridge.chr_bank(index)
+    }
+
     fn mirroring_mode(&self) -> MirroringMode {
         self.r.mirroring_mode
     }

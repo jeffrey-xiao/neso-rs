@@ -50,6 +50,10 @@ impl Mapper for AxROM {
         }
     }
 
+    fn chr_bank(&self, index: usize) -> *const u8 {
+        self.cartridge.chr_bank(index)
+    }
+
     fn mirroring_mode(&self) -> MirroringMode {
         self.mirroring_mode
     }

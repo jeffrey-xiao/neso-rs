@@ -114,4 +114,8 @@ impl Cartridge {
     pub fn write_prg_ram(&mut self, addr: usize, val: u8) {
         self.prg_ram[addr] = val;
     }
+
+    pub fn chr_bank(&self, offset: usize) -> *const u8 {
+        unsafe { self.chr_rom.as_ptr().add(offset * 0x400) }
+    }
 }

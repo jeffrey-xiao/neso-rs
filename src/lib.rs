@@ -24,7 +24,7 @@ use wasm_bindgen::prelude::*;
 pub struct Nes {
     apu: Rc<RefCell<Apu>>,
     cpu: Rc<RefCell<Cpu>>,
-    pub ppu: Rc<RefCell<Ppu>>,
+    ppu: Rc<RefCell<Ppu>>,
     mapper: Option<Rc<RefCell<Box<Mapper>>>>,
 }
 
@@ -87,6 +87,24 @@ impl Nes {
 
     pub fn audio_buffer_len(&self) -> usize {
         self.apu.borrow().buffer_index
+    }
+
+    pub fn chr_bank(&self, index: usize) -> *const u8 {
+        assert!(index < 8);
+        self.mapper
+            .as_ref()
+            .expect("[NES] No ROM loaded.")
+            .borrow()
+            .chr_bank(index)
+    }
+
+    pub fn nametable_bank(&self, index: usize) -> *const u8 {
+        assert!(index < 8);
+        self.ppu.borrow().nametable_bank(index)
+    }
+
+    pub fn background_chr_bank(&self) -> usize {
+        if self.ppu.borrow().r.background_pattern_table_address == 0x1000 { 4 } else { 0 }
     }
 
     pub fn press_button(&mut self, controller_index: usize, button_index: u8) {

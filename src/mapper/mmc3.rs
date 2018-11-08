@@ -223,6 +223,35 @@ impl Mapper for MMC3 {
         }
     }
 
+    fn chr_bank(&self, mut index: usize) -> *const u8 {
+        index = match self.r.chr_rom_bank_mode {
+            ChrRomBankMode::Two2KFour1K => match index {
+                0 => self.r.bank_data[0] as usize & !0x01,
+                1 => self.r.bank_data[0] as usize | 0x01,
+                2 => self.r.bank_data[1] as usize & !0x01,
+                3 => self.r.bank_data[1] as usize | 0x01,
+                4 => self.r.bank_data[2] as usize,
+                5 => self.r.bank_data[3] as usize,
+                6 => self.r.bank_data[4] as usize,
+                7 => self.r.bank_data[5] as usize,
+                _ => panic!("Expected index < 8."),
+            },
+            ChrRomBankMode::Four1KTwo2K => match index {
+                0 => self.r.bank_data[2] as usize,
+                1 => self.r.bank_data[3] as usize,
+                2 => self.r.bank_data[4] as usize,
+                3 => self.r.bank_data[5] as usize,
+                4 => self.r.bank_data[0] as usize & !0x01,
+                5 => self.r.bank_data[0] as usize | 0x01,
+                6 => self.r.bank_data[1] as usize & !0x01,
+                7 => self.r.bank_data[1] as usize | 0x01,
+                _ => panic!("Expected index < 8."),
+            },
+        };
+
+        self.cartridge.chr_bank(index)
+    }
+
     fn mirroring_mode(&self) -> MirroringMode {
         if self.cartridge.mirroring_mode == MirroringMode::None {
             MirroringMode::None

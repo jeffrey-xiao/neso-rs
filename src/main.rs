@@ -143,43 +143,39 @@ pub fn main() {
         if debug_enabled {
             let mut pattern_table = Vec::with_capacity(512);
 
-            for i in 0..512 {
-                let mut tile = [0; 64];
+            for i in 0..8 {
+                let chr_bank = unsafe { slice::from_raw_parts(nes.chr_bank(i), 0x400) };
+                for j in 0..64 {
+                    let mut tile = [0; 64];
 
-                for index in 0..8 {
-                    let byte = nes.ppu.borrow().read_byte(index + i * 16);
-                    for y in 0..8 {
-                        tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 1 } else { 0 };
+                    for index in 0..8 {
+                        let byte = chr_bank[j * 16 + index];
+                        for y in 0..8 {
+                            tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 1 } else { 0 };
+                        }
                     }
-                }
 
-                for index in 0..8 {
-                    let byte = nes.ppu.borrow().read_byte(index + 8 + i * 16);
-                    for y in 0..8 {
-                        tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 2 } else { 0 };
+                    for index in 0..8 {
+                        let byte = chr_bank[j * 16 + index + 8];
+                        for y in 0..8 {
+                            tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 2 } else { 0 };
+                        }
                     }
+                    pattern_table.push(tile);
                 }
-
-                pattern_table.push(tile);
             }
 
-            for (nametable, offset) in [0x2000, 0x2400, 0x2800, 0x2C00].iter().enumerate() {
+            for nametable in 0..4 {
+                let nametable_bank = unsafe { slice::from_raw_parts(nes.nametable_bank(nametable), 0x800) };
                 let mut texture = texture_creator
-                    .create_texture_streaming(PixelFormatEnum::ABGR8888, 256, 240)
+                    .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
                     .unwrap();
 
                 texture
                     .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
                         for i in 0..30usize {
                             for j in 0..32usize {
-                                let mut index = nes
-                                    .ppu
-                                    .borrow()
-                                    .read_byte(offset + i as u16 * 32 + j as u16)
-                                    as usize;
-                                if nes.ppu.borrow().r.background_pattern_table_address == 0x1000 {
-                                    index += 256;
-                                }
+                                let mut index = nametable_bank[i * 32 + j] as usize + nes.background_chr_bank() * 64;
                                 for x in 0..8usize {
                                     for y in 0..8usize {
                                         let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;
@@ -199,7 +195,6 @@ pub fn main() {
                         }
                     })
                     .unwrap();
-
                 canvas
                     .copy(
                         &texture,

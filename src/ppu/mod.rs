@@ -157,6 +157,13 @@ impl Ppu {
         }
     }
 
+    pub fn nametable_bank(&self, index: usize) -> *const u8 {
+        let mapper = self.bus().mapper();
+        let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
+        let offset = MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400;
+        unsafe { self.vram.as_ptr().add(offset) }
+    }
+
     pub fn read_register(&mut self, addr: u16) -> u8 {
         match addr {
             // PPUCTRL

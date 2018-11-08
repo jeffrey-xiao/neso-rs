@@ -62,6 +62,10 @@ impl Mapper for UxROM {
         }
     }
 
+    fn chr_bank(&self, index: usize) -> *const u8 {
+        self.cartridge.chr_bank(index)
+    }
+
     fn mirroring_mode(&self) -> MirroringMode {
         self.cartridge.mirroring_mode
     }
