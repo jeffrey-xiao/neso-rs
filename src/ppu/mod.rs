@@ -47,14 +47,14 @@ const MIRRORING_MODE_TABLE: [usize; 20] = [
 pub struct Ppu {
     pub r: Registers,
     pub buffer_index: usize,
-    pub buffer: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
+    pub buffer: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 4],
     pub primary_oam: [u8; 0x100],
     pub secondary_oam: [u8; 0x20],
     pub is_sprite_0: [bool; 8],
     pub vram: [u8; 0x2000],
     pub palette_ram: [u8; 0x20],
-    pub cycle: u16,    // [0, 340]
-    pub scanline: i16, // [-1, 260]
+    pub cycle: u16,   // [0, 340]
+    pub scanline: u16, // [0, 261]
     pub frame: u64,
     pub bus: Option<Bus>,
 }
@@ -76,7 +76,7 @@ impl Ppu {
         Ppu {
             r: Registers::new(),
             buffer_index: 0,
-            buffer: [0; SCREEN_WIDTH * SCREEN_HEIGHT * 3],
+            buffer: [0; SCREEN_WIDTH * SCREEN_HEIGHT * 4],
             primary_oam: [0; 0x100],
             secondary_oam: [0; 0x20],
             is_sprite_0: [false; 8],
@@ -94,7 +94,7 @@ impl Ppu {
         self.r.write_ppu_mask(0);
         self.r.oam_addr = 0;
         self.cycle = 0;
-        self.scanline = -1;
+        self.scanline = 261;
         self.frame = 0;
     }
 
@@ -361,7 +361,8 @@ impl Ppu {
         self.buffer[self.buffer_index] = ((color >> 16) & 0xFF) as u8;
         self.buffer[self.buffer_index + 1] = ((color >> 8) & 0xFF) as u8;
         self.buffer[self.buffer_index + 2] = (color & 0xFF) as u8;
-        self.buffer_index += 3;
+        self.buffer[self.buffer_index + 3] = 0xFF;
+        self.buffer_index += 4;
     }
 
     pub fn step(&mut self) {
@@ -369,26 +370,26 @@ impl Ppu {
         if self.cycle == 341 {
             self.cycle = 0;
             self.scanline += 1;
-            if self.scanline == 261 {
-                self.scanline = -1;
+            if self.scanline == 262 {
+                self.scanline = 0;
                 self.frame += 1;
                 self.buffer_index = 0;
             }
         }
 
-        let visible_scanline = 0 <= self.scanline && self.scanline <= 239;
+        let visible_scanline = self.scanline <= 239;
         let visible_cycle = 1 <= self.cycle && self.cycle <= 256;
         let prefetch_cycle = 321 <= self.cycle && self.cycle <= 336;
         let _sprite_clear_cycle = 1 <= self.cycle && self.cycle <= 64;
         let _sprite_evaluation_cycle = 65 <= self.cycle && self.cycle <= 256;
         let _sprite_fetch_cycle = 257 <= self.cycle && self.cycle <= 320;
 
-        if visible_scanline || self.scanline == -1 {
+        if visible_scanline || self.scanline == 261 {
             if visible_scanline && visible_cycle {
                 self.draw_pixel();
             }
 
-            if self.scanline == -1 && 280 <= self.cycle && self.cycle <= 304 {
+            if self.scanline == 261 && 280 <= self.cycle && self.cycle <= 304 {
                 self.r.copy_scroll_y();
             }
 
@@ -431,7 +432,7 @@ impl Ppu {
                     let y = i16::from(self.primary_oam[i * 4]) + 1;
                     let lo = y;
                     let hi = y + i16::from(self.r.sprite_size.1) - 1;
-                    let curr = self.scanline + 1;
+                    let curr = self.scanline as i16 + 1;
                     if !(lo <= curr && curr <= hi) {
                         continue;
                     }
@@ -460,7 +461,7 @@ impl Ppu {
             }
         }
 
-        if self.scanline == -1 && self.cycle == 1 {
+        if self.scanline == 261 && self.cycle == 1 {
             self.r.v_blank_started = false;
             self.r.sprite_0_hit = false;
             self.r.sprite_overflow = false;

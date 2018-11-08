@@ -24,7 +24,7 @@ use wasm_bindgen::prelude::*;
 pub struct Nes {
     apu: Rc<RefCell<Apu>>,
     cpu: Rc<RefCell<Cpu>>,
-    ppu: Rc<RefCell<Ppu>>,
+    pub ppu: Rc<RefCell<Ppu>>,
     mapper: Option<Rc<RefCell<Box<Mapper>>>>,
 }
 

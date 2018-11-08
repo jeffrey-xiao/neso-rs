@@ -23,10 +23,11 @@ path = "src/lib.rs"
 
 [dependencies]
 cfg-if = "0.1.2"
+clap = { version = "2.32", optional = true }
 console_error_panic_hook = "0.1.1"
 js-sys = "0.2"
-wasm-bindgen = "0.2"
 sdl2 = { version = "0.31.0", optional = true }
+wasm-bindgen = "0.2"
 
 [profile.release]
 debug = false
@@ -36,3 +37,4 @@ opt-level = 'z'
 [[bin]]
 name = "nes-sdl2"
 path = "src/main.rs"
+required-features = ["clap", "sdl2"]
