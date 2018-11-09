@@ -98,7 +98,11 @@ impl Nes {
     }
 
     pub fn background_chr_bank(&self) -> usize {
-        if self.ppu.r.background_pattern_table_address == 0x1000 { 4 } else { 0 }
+        if self.ppu.r.background_pattern_table_address == 0x1000 {
+            4
+        } else {
+            0
+        }
     }
 
     pub fn press_button(&mut self, controller_index: usize, button_index: u8) {
@@ -119,7 +123,9 @@ impl Default for Nes {
 impl Drop for Nes {
     fn drop(&mut self) {
         if let Some(mapper) = self.mapper {
-            unsafe { Box::from_raw(mapper); }
+            unsafe {
+                Box::from_raw(mapper);
+            }
         }
     }
 }

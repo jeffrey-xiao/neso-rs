@@ -12,12 +12,7 @@ pub struct Bus {
 }
 
 impl Bus {
-    pub fn new(
-        apu: &mut Apu,
-        cpu: &mut Cpu,
-        ppu: &mut Ppu,
-        mapper: Box<Mapper>,
-    ) -> Self {
+    pub fn new(apu: &mut Apu, cpu: &mut Cpu, ppu: &mut Ppu, mapper: Box<Mapper>) -> Self {
         Bus {
             apu: apu as *mut Apu,
             cpu: cpu as *mut Cpu,

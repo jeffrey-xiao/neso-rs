@@ -53,7 +53,7 @@ pub struct Ppu {
     pub is_sprite_0: [bool; 8],
     pub vram: [u8; 0x2000],
     pub palette_ram: [u8; 0x20],
-    pub cycle: u16,   // [0, 340]
+    pub cycle: u16,    // [0, 340]
     pub scanline: u16, // [0, 261]
     pub frame: u64,
     pub bus: Option<Bus>,

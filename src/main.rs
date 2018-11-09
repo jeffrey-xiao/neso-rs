@@ -151,14 +151,16 @@ pub fn main() {
                     for index in 0..8 {
                         let byte = chr_bank[j * 16 + index];
                         for y in 0..8 {
-                            tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 1 } else { 0 };
+                            tile[index as usize * 8 + 7 - y] |=
+                                if byte & 1 << y != 0 { 1 } else { 0 };
                         }
                     }
 
                     for index in 0..8 {
                         let byte = chr_bank[j * 16 + index + 8];
                         for y in 0..8 {
-                            tile[index as usize * 8 + 7 - y] |= if byte & 1 << y != 0 { 2 } else { 0 };
+                            tile[index as usize * 8 + 7 - y] |=
+                                if byte & 1 << y != 0 { 2 } else { 0 };
                         }
                     }
                     pattern_table.push(tile);
@@ -166,7 +168,8 @@ pub fn main() {
             }
 
             for nametable in 0..4 {
-                let nametable_bank = unsafe { slice::from_raw_parts(nes.nametable_bank(nametable), 0x800) };
+                let nametable_bank =
+                    unsafe { slice::from_raw_parts(nes.nametable_bank(nametable), 0x800) };
                 let mut texture = texture_creator
                     .create_texture_streaming(PixelFormatEnum::RGB24, 256, 240)
                     .unwrap();
@@ -175,7 +178,8 @@ pub fn main() {
                     .with_lock(None, |buffer: &mut [u8], _pitch: usize| {
                         for i in 0..30usize {
                             for j in 0..32usize {
-                                let mut index = nametable_bank[i * 32 + j] as usize + nes.background_chr_bank() * 64;
+                                let mut index = nametable_bank[i * 32 + j] as usize
+                                    + nes.background_chr_bank() * 64;
                                 for x in 0..8usize {
                                     for y in 0..8usize {
                                         let offset = ((i * 8 + x) * 256 + j * 8 + y) * 3;

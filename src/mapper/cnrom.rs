@@ -44,7 +44,8 @@ impl Mapper for CNROM {
     }
 
     fn chr_bank(&self, index: usize) -> *const u8 {
-        self.cartridge.chr_bank(self.chr_rom_bank as usize * 8 + index)
+        self.cartridge
+            .chr_bank(self.chr_rom_bank as usize * 8 + index)
     }
 
     fn mirroring_mode(&self) -> MirroringMode {
