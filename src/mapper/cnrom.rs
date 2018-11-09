@@ -34,12 +34,9 @@ impl Mapper for CNROM {
 
     fn write_byte(&mut self, addr: u16, val: u8) {
         let addr = addr as usize;
-        match addr {
-            0x8000..=0xFFFF => {
-                self.chr_rom_bank = val & 0x03;
-                println!("[CNROM] Write chr rom bank: {}.", self.chr_rom_bank);
-            },
-            _ => {},
+        if let 0x8000..=0xFFFF = addr {
+            self.chr_rom_bank = val & 0x03;
+            println!("[CNROM] Write chr rom bank: {}.", self.chr_rom_bank);
         }
     }
 

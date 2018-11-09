@@ -181,6 +181,10 @@ impl MMC3 {
     fn bus(&self) -> &Bus {
         self.bus.as_ref().expect("[MMC3] No bus attached.")
     }
+
+    fn bus_mut(&mut self) -> &mut Bus {
+        self.bus.as_mut().expect("[MMC3] No bus attached.")
+    }
 }
 
 impl Mapper for MMC3 {
@@ -284,7 +288,7 @@ impl Mapper for MMC3 {
             self.r.irq_counter -= 1;
             if self.r.irq_counter == 0 && self.r.irq_enabled {
                 println!("[MM3] Triggered interrupt.");
-                let cpu = self.bus().cpu();
+                let cpu = self.bus_mut().cpu_mut();
                 cpu.trigger_interrupt(Interrupt::IRQ);
             }
         }

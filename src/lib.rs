@@ -48,12 +48,13 @@ impl Nes {
     pub fn load_rom(&mut self, buffer: &[u8]) {
         let cartridge = Cartridge::from_buffer(buffer);
         let mapper = mapper::from_cartridge(cartridge);
-        let bus = Bus::new(&mut self.apu, &mut self.cpu, &mut self.ppu, mapper);
+        let mut bus = Bus::new(&mut self.apu, &mut self.cpu, &mut self.ppu, mapper);
         self.apu.attach_bus(bus.clone());
         self.cpu.attach_bus(bus.clone());
         self.ppu.attach_bus(bus.clone());
-        bus.mapper().attach_bus(bus.clone());
-        self.mapper = Some(bus.mapper());
+        let bus_clone = bus.clone();
+        bus.mapper_mut().attach_bus(bus_clone);
+        self.mapper = Some(bus.mapper);
     }
 
     pub fn step(&mut self) {

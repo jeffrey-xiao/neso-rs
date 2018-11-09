@@ -47,6 +47,10 @@ impl Cpu {
         self.bus.as_ref().expect("[CPU] No bus attached.")
     }
 
+    fn bus_mut(&mut self) -> &mut Bus {
+        self.bus.as_mut().expect("[CPU] No bus attached.")
+    }
+
     pub fn step(&mut self) {
         if self.stall_cycle > 0 {
             self.stall_cycle -= 1;
@@ -131,14 +135,14 @@ impl Cpu {
         match addr {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize],
             0x2000..=0x3FFF => {
-                let ppu = self.bus().ppu();
+                let ppu = self.bus_mut().ppu_mut();
                 let addr = (addr - 0x2000) % 8 + 0x2000;
                 ppu.read_register(addr)
             },
             0x4016 => self.controllers[0].read_value(),
             0x4017 => self.controllers[1].read_value(),
             0x4000..=0x4015 => {
-                let apu = self.bus().apu();
+                let apu = self.bus_mut().apu_mut();
                 apu.read_register(addr)
             },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
@@ -158,7 +162,7 @@ impl Cpu {
         match addr {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = val,
             0x2000..=0x3FFF => {
-                let ppu = self.bus().ppu();
+                let ppu = self.bus_mut().ppu_mut();
                 let old_nmi_enabled = ppu.r.nmi_enabled;
                 let addr = (addr - 0x2000) % 8 + 0x2000;
                 ppu.write_register(addr, val);
@@ -174,7 +178,7 @@ impl Cpu {
                 for offset in 0..=0xFF {
                     let cpu_addr = cpu_addr + offset;
                     let cpu_val = self.read_byte(cpu_addr);
-                    let ppu = self.bus().ppu();
+                    let ppu = self.bus_mut().ppu_mut();
                     let oam_addr = ppu.r.oam_addr;
                     ppu.primary_oam[oam_addr as usize] = cpu_val;
                     ppu.r.oam_addr = oam_addr.wrapping_add(1);
@@ -191,12 +195,12 @@ impl Cpu {
                 self.controllers[1].write_strobe(val & 0x01 != 0);
             },
             0x4000..=0x4017 => {
-                let apu = self.bus().apu();
+                let apu = self.bus_mut().apu_mut();
                 apu.write_register(addr, val);
             },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFF => {
-                let mapper = self.bus().mapper();
+                let mapper = self.bus_mut().mapper_mut();
                 mapper.write_byte(addr, val);
             },
             _ => panic!("[CPU] Invalid write with memory address: {:#06x}.", addr),

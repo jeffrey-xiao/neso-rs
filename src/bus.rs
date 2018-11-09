@@ -21,19 +21,35 @@ impl Bus {
         }
     }
 
-    pub fn apu(&self) -> &mut Apu {
+    pub fn apu(&self) -> &Apu {
+        unsafe { &(*self.apu) }
+    }
+
+    pub fn apu_mut(&mut self) -> &mut Apu {
         unsafe { &mut (*self.apu) }
     }
 
-    pub fn cpu(&self) -> &mut Cpu {
+    pub fn cpu(&self) -> &Cpu {
+        unsafe { &(*self.cpu) }
+    }
+
+    pub fn cpu_mut(&mut self) -> &mut Cpu {
         unsafe { &mut (*self.cpu) }
     }
 
-    pub fn ppu(&self) -> &mut Ppu {
+    pub fn ppu(&self) -> &Ppu {
+        unsafe { &(*self.ppu) }
+    }
+
+    pub fn ppu_mut(&mut self) -> &mut Ppu {
         unsafe { &mut (*self.ppu) }
     }
 
-    pub fn mapper(&self) -> &mut Mapper {
+    pub fn mapper(&self) -> &Mapper {
+        unsafe { &(*self.mapper) }
+    }
+
+    pub fn mapper_mut(&mut self) -> &mut Mapper {
         unsafe { &mut (*self.mapper) }
     }
 }

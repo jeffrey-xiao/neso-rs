@@ -346,6 +346,10 @@ impl Apu {
         self.bus.as_ref().expect("[APU] No bus attached.")
     }
 
+    fn bus_mut(&mut self) -> &mut Bus {
+        self.bus.as_mut().expect("[APU] No bus attached.")
+    }
+
     pub fn read_register(&mut self, addr: u16) -> u8 {
         match addr {
             0x4015 => {
@@ -570,7 +574,7 @@ impl Apu {
         // TODO: Pause for 2 cycles if OAM DMA is in progress.
         let addr = self.dmc.curr_addr;
         let val = {
-            let cpu = self.bus().cpu();
+            let cpu = self.bus_mut().cpu_mut();
             cpu.stall_cycle += 4;
             cpu.read_byte(addr)
         };
@@ -584,7 +588,7 @@ impl Apu {
                 self.dmc.restart_sample();
             } else if self.dmc.irq_enabled {
                 self.dmc.irq_pending = true;
-                self.bus().cpu().trigger_interrupt(Interrupt::IRQ);
+                self.bus_mut().cpu_mut().trigger_interrupt(Interrupt::IRQ);
             }
         }
     }
@@ -635,7 +639,7 @@ impl Apu {
                             // irq
                             if self.irq_enabled {
                                 self.irq_pending = true;
-                                let cpu = self.bus().cpu();
+                                let cpu = self.bus_mut().cpu_mut();
                                 cpu.trigger_interrupt(Interrupt::IRQ);
                             }
                         },

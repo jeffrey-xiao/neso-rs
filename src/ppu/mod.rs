@@ -106,13 +106,16 @@ impl Ppu {
         self.bus.as_ref().expect("[PPU] No bus attached.")
     }
 
+    fn bus_mut(&mut self) -> &mut Bus {
+        self.bus.as_mut().expect("[PPU] No bus attached.")
+    }
+
     // memory map related functions
     pub fn read_byte(&self, mut addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => {
                 let mapper = self.bus().mapper();
-                let ret = mapper.read_byte(addr);
-                ret
+                mapper.read_byte(addr)
             },
             0x2000..=0x3EFF => {
                 let mapper = self.bus().mapper();
@@ -135,7 +138,7 @@ impl Ppu {
     pub fn write_byte(&mut self, mut addr: u16, val: u8) {
         match addr {
             0x0000..=0x1FFF => {
-                let mapper = self.bus().mapper();
+                let mapper = self.bus_mut().mapper_mut();
                 mapper.write_byte(addr, val);
             },
             0x2000..=0x3EFF => {
@@ -461,7 +464,7 @@ impl Ppu {
         if self.scanline == 241 && self.cycle == 1 {
             self.r.v_blank_started = true;
             if self.r.nmi_enabled {
-                let cpu = self.bus().cpu();
+                let cpu = self.bus_mut().cpu_mut();
                 cpu.trigger_interrupt(Interrupt::NMI);
             } else {
                 // println!("[PPU] NMI is not enabled, so interrupt is skipped.");
