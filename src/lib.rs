@@ -1,3 +1,5 @@
+#![feature(nll)]
+
 extern crate cfg_if;
 extern crate wasm_bindgen;
 
@@ -16,25 +18,23 @@ use cartridge::Cartridge;
 use cpu::Cpu;
 use mapper::Mapper;
 use ppu::Ppu;
-use std::cell::RefCell;
-use std::rc::Rc;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
 pub struct Nes {
-    apu: Rc<RefCell<Apu>>,
-    cpu: Rc<RefCell<Cpu>>,
-    ppu: Rc<RefCell<Ppu>>,
-    mapper: Option<Rc<RefCell<Box<Mapper>>>>,
+    apu: Apu,
+    cpu: Cpu,
+    ppu: Ppu,
+    mapper: Option<*mut Mapper>,
 }
 
 #[wasm_bindgen]
 impl Nes {
     pub fn new() -> Self {
         utils::set_panic_hook();
-        let apu = Rc::new(RefCell::new(Apu::new()));
-        let cpu = Rc::new(RefCell::new(Cpu::new()));
-        let ppu = Rc::new(RefCell::new(Ppu::new()));
+        let apu = Apu::new();
+        let cpu = Cpu::new();
+        let ppu = Ppu::new();
         let mapper = None;
 
         Nes {
@@ -47,78 +47,80 @@ impl Nes {
 
     pub fn load_rom(&mut self, buffer: &[u8]) {
         let cartridge = Cartridge::from_buffer(buffer);
-        let mapper = Rc::new(RefCell::new(mapper::from_cartridge(cartridge)));
-        let bus = Bus::new(&self.apu, &self.cpu, &self.ppu, &mapper);
-        self.apu.borrow_mut().attach_bus(bus.clone());
-        self.cpu.borrow_mut().attach_bus(bus.clone());
-        self.ppu.borrow_mut().attach_bus(bus.clone());
-        mapper.borrow_mut().attach_bus(bus);
-        self.mapper = Some(mapper);
+        let mapper = mapper::from_cartridge(cartridge);
+        let bus = Bus::new(&mut self.apu, &mut self.cpu, &mut self.ppu, mapper);
+        self.apu.attach_bus(bus.clone());
+        self.cpu.attach_bus(bus.clone());
+        self.ppu.attach_bus(bus.clone());
+        bus.mapper().attach_bus(bus.clone());
+        self.mapper = Some(bus.mapper());
     }
 
     pub fn step(&mut self) {
-        self.cpu.borrow_mut().step();
+        self.cpu.step();
+        let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
         for _ in 0..3 {
-            self.ppu.borrow_mut().step();
-            self.mapper
-                .as_ref()
-                .expect("[NES] No ROM loaded.")
-                .borrow_mut()
-                .step();
+            self.ppu.step();
+            mapper.step();
         }
-        self.apu.borrow_mut().step();
+        self.apu.step();
     }
 
     pub fn step_frame(&mut self) {
-        self.apu.borrow_mut().buffer_index = 0;
-        let frame = self.ppu.borrow().frame;
-        while self.ppu.borrow().frame == frame {
+        self.apu.buffer_index = 0;
+        let frame = self.ppu.frame;
+        while self.ppu.frame == frame {
             self.step();
         }
     }
 
     pub fn image_buffer(&self) -> *const u8 {
-        self.ppu.borrow().buffer.as_ptr()
+        self.ppu.buffer.as_ptr()
     }
 
     pub fn audio_buffer(&self) -> *const f32 {
-        self.apu.borrow().buffer.as_ptr()
+        self.apu.buffer.as_ptr()
     }
 
     pub fn audio_buffer_len(&self) -> usize {
-        self.apu.borrow().buffer_index
+        self.apu.buffer_index
     }
 
     pub fn chr_bank(&self, index: usize) -> *const u8 {
         assert!(index < 8);
-        self.mapper
-            .as_ref()
-            .expect("[NES] No ROM loaded.")
-            .borrow()
-            .chr_bank(index)
+        let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
+        mapper.chr_bank(index)
     }
 
     pub fn nametable_bank(&self, index: usize) -> *const u8 {
         assert!(index < 8);
-        self.ppu.borrow().nametable_bank(index)
+        self.ppu.nametable_bank(index)
     }
 
     pub fn background_chr_bank(&self) -> usize {
-        if self.ppu.borrow().r.background_pattern_table_address == 0x1000 { 4 } else { 0 }
+        if self.ppu.r.background_pattern_table_address == 0x1000 { 4 } else { 0 }
     }
 
     pub fn press_button(&mut self, controller_index: usize, button_index: u8) {
-        self.cpu.borrow_mut().controllers[controller_index].press_button(button_index);
+        self.cpu.controllers[controller_index].press_button(button_index);
     }
 
     pub fn release_button(&mut self, controller_index: usize, button_index: u8) {
-        self.cpu.borrow_mut().controllers[controller_index].release_button(button_index);
+        self.cpu.controllers[controller_index].release_button(button_index);
     }
 }
 
 impl Default for Nes {
     fn default() -> Self {
         Nes::new()
+    }
+}
+
+impl Drop for Nes {
+    fn drop(&mut self) {
+        if let Some(mapper) = self.mapper {
+            unsafe { Box::from_raw(mapper); }
+        }
     }
 }
 
@@ -139,27 +141,27 @@ mod tests {
 
                     // Run until test status is running by polling $6000.
                     let mut addr = 0x6000;
-                    let mut byte = nes.cpu.borrow_mut().read_byte(addr);
+                    let mut byte = nes.cpu.read_byte(addr);
                     while byte != 0x80 {
                         nes.step_frame();
-                        byte = nes.cpu.borrow_mut().read_byte(addr);
+                        byte = nes.cpu.read_byte(addr);
                     }
 
                     // Run until test status is finished by polling $6000.
-                    byte = nes.cpu.borrow_mut().read_byte(addr);
+                    byte = nes.cpu.read_byte(addr);
                     while byte == 0x80 {
                         nes.step_frame();
-                        byte = nes.cpu.borrow_mut().read_byte(addr);
+                        byte = nes.cpu.read_byte(addr);
                     }
 
                     // Read output at $6004.
                     let mut output = Vec::new();
                     addr = 0x6004;
-                    byte = nes.cpu.borrow_mut().read_byte(addr);
+                    byte = nes.cpu.read_byte(addr);
                     while byte != '\0' as u8 {
                         output.push(byte);
                         addr += 1;
-                        byte = nes.cpu.borrow_mut().read_byte(addr);
+                        byte = nes.cpu.read_byte(addr);
                     }
 
                     assert!(String::from_utf8_lossy(&output).contains("Passed"));
@@ -189,8 +191,7 @@ mod tests {
 
                     let mut hasher = DefaultHasher::new();
 
-                    let ppu = nes.ppu.borrow();
-                    for val in ppu.buffer.iter() {
+                    for val in nes.ppu.buffer.iter() {
                         hasher.write_u8(*val);
                     }
 
@@ -245,7 +246,7 @@ mod tests {
             );
 
             graphical_tests!(
-                test_cpu_timing_test: (test_path("timing_test.nes"), 612, 0x97F3_FD46_B682_0231),
+                test_cpu_timing_test: (test_path("timing_test.nes"), 612, 0x2F89_29CE_711F_FBD4),
             );
         }
 
@@ -255,9 +256,9 @@ mod tests {
             }
 
             graphical_tests!(
-                test_01_branch_basics: (test_path("01-branch_basics.nes"), 13, 0xE2BA_FD2C_2D10_3A12),
-                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0x12A2_BBD5_3910_0F21),
-                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0xE2D4_D5FD_FE05_A2FF),
+                test_01_branch_basics: (test_path("01-branch_basics.nes"), 13, 0xDB8E_7124_029B_C022),
+                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0xDF84_2558_1C2B_C9A7),
+                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0x528E_9396_828A_8125),
             );
         }
     }
@@ -269,10 +270,10 @@ mod tests {
             }
 
             graphical_tests!(
-                test_palette_ram: (test_path("palette_ram.nes"), 18, 0xAC82_B330_9FFC_8614),
-                test_power_up_palette: (test_path("power_up_palette.nes"), 18, 0xAC82_B330_9FFC_8614),
-                test_sprite_ram: (test_path("sprite_ram.nes"), 18, 0xAC82_B330_9FFC_8614),
-                test_vram_access: (test_path("vram_access.nes"), 18, 0xAC82_B330_9FFC_8614),
+                test_palette_ram: (test_path("palette_ram.nes"), 18, 0x657D_9167_290E_F938),
+                test_power_up_palette: (test_path("power_up_palette.nes"), 18, 0x657D_9167_290E_F938),
+                test_sprite_ram: (test_path("sprite_ram.nes"), 18, 0x657D_9167_290E_F938),
+                test_vram_access: (test_path("vram_access.nes"), 18, 0x657D_9167_290E_F938),
             );
         }
     }

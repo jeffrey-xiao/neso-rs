@@ -2,47 +2,43 @@ use apu::Apu;
 use cpu::Cpu;
 use mapper::Mapper;
 use ppu::Ppu;
-use std::cell::RefCell;
-use std::rc::{Rc, Weak};
 
 #[derive(Clone)]
 pub struct Bus {
-    pub apu: Weak<RefCell<Apu>>,
-    pub cpu: Weak<RefCell<Cpu>>,
-    pub ppu: Weak<RefCell<Ppu>>,
-    pub mapper: Weak<RefCell<Box<Mapper>>>,
+    pub apu: *mut Apu,
+    pub cpu: *mut Cpu,
+    pub ppu: *mut Ppu,
+    pub mapper: *mut Mapper,
 }
 
 impl Bus {
     pub fn new(
-        apu: &Rc<RefCell<Apu>>,
-        cpu: &Rc<RefCell<Cpu>>,
-        ppu: &Rc<RefCell<Ppu>>,
-        mapper: &Rc<RefCell<Box<Mapper>>>,
+        apu: &mut Apu,
+        cpu: &mut Cpu,
+        ppu: &mut Ppu,
+        mapper: Box<Mapper>,
     ) -> Self {
         Bus {
-            apu: Rc::downgrade(apu),
-            cpu: Rc::downgrade(cpu),
-            ppu: Rc::downgrade(ppu),
-            mapper: Rc::downgrade(mapper),
+            apu: apu as *mut Apu,
+            cpu: cpu as *mut Cpu,
+            ppu: ppu as *mut Ppu,
+            mapper: Box::into_raw(mapper),
         }
     }
 
-    pub fn apu(&self) -> Rc<RefCell<Apu>> {
-        self.apu.upgrade().expect("Expected APU to exist on bus.")
+    pub fn apu(&self) -> &mut Apu {
+        unsafe { &mut (*self.apu) }
     }
 
-    pub fn cpu(&self) -> Rc<RefCell<Cpu>> {
-        self.cpu.upgrade().expect("Expected CPU to exist on bus.")
+    pub fn cpu(&self) -> &mut Cpu {
+        unsafe { &mut (*self.cpu) }
     }
 
-    pub fn ppu(&self) -> Rc<RefCell<Ppu>> {
-        self.ppu.upgrade().expect("Expected PPU to exist on bus.")
+    pub fn ppu(&self) -> &mut Ppu {
+        unsafe { &mut (*self.ppu) }
     }
 
-    pub fn mapper(&self) -> Rc<RefCell<Box<Mapper>>> {
-        self.mapper
-            .upgrade()
-            .expect("Expected mapper to exist on bus.")
+    pub fn mapper(&self) -> &mut Mapper {
+        unsafe { &mut (*self.mapper) }
     }
 }

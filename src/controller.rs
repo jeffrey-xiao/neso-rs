@@ -9,10 +9,6 @@ pub struct Controller {
 }
 
 impl Controller {
-    pub fn new() -> Self {
-        Controller::default()
-    }
-
     pub fn write_strobe(&mut self, val: bool) {
         self.strobe = val;
         if self.strobe {

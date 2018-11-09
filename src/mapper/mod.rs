@@ -35,7 +35,7 @@ pub fn from_cartridge(cartridge: Cartridge) -> Box<dyn Mapper> {
 pub trait Mapper {
     fn read_byte(&self, addr: u16) -> u8;
     fn write_byte(&mut self, addr: u16, val: u8);
-    fn chr_bank(&self, index: usize) -> *const u8; 
+    fn chr_bank(&self, index: usize) -> *const u8;
     fn mirroring_mode(&self) -> MirroringMode;
     fn attach_bus(&mut self, _bus: Bus) {}
     fn step(&mut self) {}

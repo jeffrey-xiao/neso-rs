@@ -133,21 +133,18 @@ impl Cpu {
             0x2000..=0x3FFF => {
                 let ppu = self.bus().ppu();
                 let addr = (addr - 0x2000) % 8 + 0x2000;
-                let ret = ppu.borrow_mut().read_register(addr);
-                ret
+                ppu.read_register(addr)
             },
             0x4016 => self.controllers[0].read_value(),
             0x4017 => self.controllers[1].read_value(),
             0x4000..=0x4015 => {
                 let apu = self.bus().apu();
-                let ret = apu.borrow_mut().read_register(addr);
-                ret
+                apu.read_register(addr)
             },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFF => {
                 let mapper = self.bus().mapper();
-                let ret = mapper.borrow().read_byte(addr);
-                ret
+                mapper.read_byte(addr)
             },
             _ => panic!("[CPU] Invalid read with memory address: {:#06x}.", addr),
         }
@@ -162,23 +159,25 @@ impl Cpu {
             0x0000..=0x1FFF => self.ram[(addr % 0x0800) as usize] = val,
             0x2000..=0x3FFF => {
                 let ppu = self.bus().ppu();
-                let old_nmi_enabled = ppu.borrow().r.nmi_enabled;
+                let old_nmi_enabled = ppu.r.nmi_enabled;
                 let addr = (addr - 0x2000) % 8 + 0x2000;
-                ppu.borrow_mut().write_register(addr, val);
-                let nmi_enabled_toggled = !old_nmi_enabled && ppu.borrow().r.nmi_enabled;
-                if nmi_enabled_toggled && ppu.borrow().r.v_blank_started {
+                ppu.write_register(addr, val);
+                let nmi_enabled_toggled = !old_nmi_enabled && ppu.r.nmi_enabled;
+
+                if nmi_enabled_toggled && ppu.r.v_blank_started {
                     self.trigger_interrupt(Interrupt::NMI);
                 }
             },
             0x4014 => {
                 // println!("[CPU] Performing OAM DMA on address {:#06x}.", val);
                 let cpu_addr = u16::from(val) << 8;
-                let ppu = self.bus().ppu();
                 for offset in 0..=0xFF {
-                    let oam_addr = ppu.borrow().r.oam_addr;
                     let cpu_addr = cpu_addr + offset;
-                    ppu.borrow_mut().primary_oam[oam_addr as usize] = self.read_byte(cpu_addr);
-                    ppu.borrow_mut().r.oam_addr = oam_addr.wrapping_add(1);
+                    let cpu_val = self.read_byte(cpu_addr);
+                    let ppu = self.bus().ppu();
+                    let oam_addr = ppu.r.oam_addr;
+                    ppu.primary_oam[oam_addr as usize] = cpu_val;
+                    ppu.r.oam_addr = oam_addr.wrapping_add(1);
                 }
 
                 if self.cycle % 2 == 1 {
@@ -193,12 +192,12 @@ impl Cpu {
             },
             0x4000..=0x4017 => {
                 let apu = self.bus().apu();
-                apu.borrow_mut().write_register(addr, val);
+                apu.write_register(addr, val);
             },
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFF => {
                 let mapper = self.bus().mapper();
-                mapper.borrow_mut().write_byte(addr, val);
+                mapper.write_byte(addr, val);
             },
             _ => panic!("[CPU] Invalid write with memory address: {:#06x}.", addr),
         }
@@ -206,7 +205,7 @@ impl Cpu {
 
     fn execute_opcode(&mut self, opcode: u8) {
         // let ppu = self.bus().ppu();
-        // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.borrow().scanline);
+        // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.scanline);
         let addressing_mode = opcodes::ADDRESSING_MODE_TABLE[opcode as usize];
         opcodes::INSTRUCTION_TABLE[opcode as usize](self, addressing_mode);
         self.cycle += u64::from(opcodes::CYCLE_TABLE[opcode as usize]);

@@ -544,7 +544,7 @@ impl Apu {
             } else {
                 pulse.sweep_val = pulse.sweep_period;
                 if pulse.sweep_enabled {
-                    let mut change_amount = pulse.timer_period >> pulse.sweep_shift;
+                    let change_amount = pulse.timer_period >> pulse.sweep_shift;
                     let target_timer_period = if pulse.sweep_negated {
                         pulse.timer_period - change_amount + index as u16 - 1
                     } else {
@@ -568,9 +568,13 @@ impl Apu {
         }
         self.dmc.bits_remaining = 8;
         // TODO: Pause for 2 cycles if OAM DMA is in progress.
-        let cpu = self.bus().cpu();
-        cpu.borrow_mut().stall_cycle += 4;
-        self.dmc.shift_register = cpu.borrow_mut().read_byte(self.dmc.curr_addr);
+        let addr = self.dmc.curr_addr;
+        let val = {
+            let cpu = self.bus().cpu();
+            cpu.stall_cycle += 4;
+            cpu.read_byte(addr)
+        };
+        self.dmc.shift_register = val;
         let (next_addr, overflow) = self.dmc.curr_addr.overflowing_add(1);
         self.dmc.curr_addr = if overflow { 0x8000 } else { next_addr };
         self.dmc.curr_len -= 1;
@@ -580,7 +584,7 @@ impl Apu {
                 self.dmc.restart_sample();
             } else if self.dmc.irq_enabled {
                 self.dmc.irq_pending = true;
-                cpu.borrow_mut().trigger_interrupt(Interrupt::IRQ);
+                self.bus().cpu().trigger_interrupt(Interrupt::IRQ);
             }
         }
     }
@@ -632,7 +636,7 @@ impl Apu {
                             if self.irq_enabled {
                                 self.irq_pending = true;
                                 let cpu = self.bus().cpu();
-                                cpu.borrow_mut().trigger_interrupt(Interrupt::IRQ);
+                                cpu.trigger_interrupt(Interrupt::IRQ);
                             }
                         },
                         _ => {},

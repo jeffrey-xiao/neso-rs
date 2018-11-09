@@ -266,9 +266,9 @@ impl Mapper for MMC3 {
 
     fn step(&mut self) {
         let ppu = self.bus().ppu();
-        let cycle = ppu.borrow().cycle;
-        let scanline = ppu.borrow().scanline;
-        let rendering_enabled = ppu.borrow().r.show_sprites || ppu.borrow().r.show_background;
+        let cycle = ppu.cycle;
+        let scanline = ppu.scanline;
+        let rendering_enabled = ppu.r.show_sprites || ppu.r.show_background;
 
         if cycle != 260 || scanline >= 240 || !rendering_enabled {
             return;
@@ -281,7 +281,7 @@ impl Mapper for MMC3 {
             if self.r.irq_counter == 0 && self.r.irq_enabled {
                 println!("[MM3] Triggered interrupt.");
                 let cpu = self.bus().cpu();
-                cpu.borrow_mut().trigger_interrupt(Interrupt::IRQ);
+                cpu.trigger_interrupt(Interrupt::IRQ);
             }
         }
     }

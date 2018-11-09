@@ -111,7 +111,7 @@ impl Ppu {
         match addr {
             0x0000..=0x1FFF => {
                 let mapper = self.bus().mapper();
-                let ret = mapper.borrow().read_byte(addr);
+                let ret = mapper.read_byte(addr);
                 ret
             },
             0x2000..=0x3EFF => {
@@ -119,7 +119,7 @@ impl Ppu {
                 let addr = (addr - 0x2000) % 0x1000;
                 let index = (addr / 0x400) as usize;
                 let offset = (addr % 0x400) as usize;
-                let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
+                let mirroring_mode = mapper.mirroring_mode() as usize;
                 self.vram[MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400 + offset]
             },
             0x3F00..=0x3FFF => {
@@ -136,14 +136,14 @@ impl Ppu {
         match addr {
             0x0000..=0x1FFF => {
                 let mapper = self.bus().mapper();
-                mapper.borrow_mut().write_byte(addr, val);
+                mapper.write_byte(addr, val);
             },
             0x2000..=0x3EFF => {
                 let mapper = self.bus().mapper();
                 let addr = (addr - 0x2000) % 0x1000;
                 let index = (addr / 0x400) as usize;
                 let offset = (addr % 0x400) as usize;
-                let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
+                let mirroring_mode = mapper.mirroring_mode() as usize;
                 self.vram[MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400 + offset] = val;
             },
 
@@ -159,7 +159,7 @@ impl Ppu {
 
     pub fn nametable_bank(&self, index: usize) -> *const u8 {
         let mapper = self.bus().mapper();
-        let mirroring_mode = mapper.borrow().mirroring_mode() as usize;
+        let mirroring_mode = mapper.mirroring_mode() as usize;
         let offset = MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400;
         unsafe { self.vram.as_ptr().add(offset) }
     }
@@ -462,7 +462,7 @@ impl Ppu {
             self.r.v_blank_started = true;
             if self.r.nmi_enabled {
                 let cpu = self.bus().cpu();
-                cpu.borrow_mut().trigger_interrupt(Interrupt::NMI);
+                cpu.trigger_interrupt(Interrupt::NMI);
             } else {
                 // println!("[PPU] NMI is not enabled, so interrupt is skipped.");
             }
