@@ -92,7 +92,6 @@ pub fn main() {
     let mut event_pump = sdl_context.event_pump().unwrap();
 
     if let Some(frames) = matches.value_of("frames") {
-        println!("HERE");
         for _ in 0..frames.parse().unwrap() {
             nes.step_frame();
         }

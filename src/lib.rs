@@ -76,6 +76,8 @@ impl Nes {
     }
 
     pub fn reset(&mut self) {
+        self.ppu.buffer_index = 0;
+        self.apu.buffer_index = 0;
         self.cpu.reset();
         self.ppu.reset();
         self.apu.reset();
@@ -263,8 +265,8 @@ mod tests {
             }
 
             reset_text_tests!(
-                test_ram_after_reset: (test_path("ram_after_reset.nes"), 136),
-                test_registers: (test_path("registers.nes"), 138),
+                test_ram_after_reset: (test_path("ram_after_reset.nes"), 135),
+                test_registers: (test_path("registers.nes"), 137),
             );
         }
 
