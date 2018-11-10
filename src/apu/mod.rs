@@ -313,6 +313,7 @@ pub struct Apu {
     pub frame_counter_phase: u8,
     pub irq_enabled: bool,
     pub irq_pending: bool,
+    pub last_written_byte: u8,
     pub cycle: u64,
     pub bus: Option<Bus>,
 }
@@ -337,6 +338,7 @@ impl Apu {
             frame_counter_phase: 0,
             irq_enabled: false,
             irq_pending: false,
+            last_written_byte: 0,
             cycle: 0,
             bus: None,
         }
@@ -348,11 +350,20 @@ impl Apu {
         for addr in 0x4000..=0x400F {
             self.write_register(addr, 0);
         }
+        // Delay after power on.
+        for _ in 0..12 {
+            self.step();
+        }
     }
 
     pub fn reset(&mut self) {
         self.write_register(0x4015, 0);
-        self.irq_enabled = false;
+        self.irq_pending = false;
+        self.write_register(0x4017, self.last_written_byte);
+        // Delay after reset.
+        for _ in 0..12 {
+            self.step();
+        }
     }
 
     pub fn attach_bus(&mut self, bus: Bus) {
@@ -522,11 +533,14 @@ impl Apu {
                 }
             },
             0x4017 => {
+                self.last_written_byte = val;
                 // Special timings for writing to 0x4017.
                 self.frame_counter_mode = if val >> 7 == 0 {
+                    // TODO: This is not exactly right.
                     self.frame_counter_val = 7458;
                     FrameCounterMode::FourStep
                 } else {
+                    // TODO: Handle jitter.
                     self.frame_counter_val = 0;
                     FrameCounterMode::FiveStep
                 };

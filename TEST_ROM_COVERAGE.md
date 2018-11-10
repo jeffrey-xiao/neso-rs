@@ -61,12 +61,19 @@
 
 ## APU
 
- - blargg's `apu_mixer` (4/4)
+ - blargg's `apu_mixer`: (4/4)
    - `dmc`: Pass
    - `noise`: Pass
    - `square`: Pass
    - `triangle`: Pass
  - Rahsennor's `apu_phase_reset`: (1/1)
+ - blargg's `apu_reset`: (4/6)
+   - `4015_cleared`: Pass
+   - `4017_timing`: Pass
+   - `4017_written`: Fail
+   - `irq_flag_cleared`: Pass
+   - `len_ctrs_enabled`: Pass
+   - `works_immediately`: Fail
  - blargg's `apu_test`: (4/8)
    - `01-len_ctr`: Pass
    - `02-len_table`: Pass

@@ -335,6 +335,19 @@ mod tests {
     }
 
     mod apu {
+        mod reset {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/apu/reset/{}", file_name)
+            }
+
+            reset_text_tests!(
+                test_4015_cleared: (test_path("4015_cleared.nes"), 10),
+                test_4017_timing: (test_path("4017_timing.nes"), 18),
+                test_irq_flag_cleared: (test_path("irq_flag_cleared.nes"), 10),
+                test_len_ctrs_enabled: (test_path("len_ctrs_enabled.nes"), 13),
+            );
+        }
+
         mod general {
             fn test_path(file_name: &str) -> String {
                 format!("./tests/apu/general/{}", file_name)
