@@ -89,7 +89,7 @@ impl Ppu {
         }
     }
 
-    pub fn reset(&mut self) {
+    pub fn initialize(&mut self) {
         self.r.write_ppu_ctrl(0);
         self.r.write_ppu_mask(0);
         self.r.oam_addr = 0;
@@ -98,8 +98,13 @@ impl Ppu {
         self.frame = 0;
     }
 
+    pub fn reset(&mut self) {
+        self.initialize();
+    }
+
     pub fn attach_bus(&mut self, bus: Bus) {
         self.bus = Some(bus);
+        self.initialize();
     }
 
     fn bus(&self) -> &Bus {

@@ -6,7 +6,7 @@
     - `01-branch_basics`: Pass
     - `02-backward_branch`: Pass
     - `03-forward_branch`: Pass
-  - blargg's `cpu_dummy_reads`: Fail
+  - blargg's `cpu_dummy_reads`: (0/1)
   - bisqwit's `cpu_dummy_writes`: (0/2)
     - `cpu_dummy_writes_oam`: Fail
     - `cpu_dummy_writes_ppumem`: Fail
@@ -19,7 +19,10 @@
     - `03-nmi_and_irq`: Fail
     - `04-irq_and_dma`: Fail
     - `05-branch_delays_irq`: Fail
-  - blargg's `cpu_timing_test6`: Pass
+  - blargg's `cpu_reset`: (2/2)
+    - `ram_after_reset`: Pass
+    - `registers`: Pass
+  - blargg's `cpu_timing_test6`: (1/1)
   - blargg's `instr_misc`: (2/4)
     - `01-abs_x_wrap`: Pass
     - `02-branch_wrap`: Pass
@@ -45,7 +48,7 @@
   - blargg's `instr_timing`: (2/2)
     - `01-instr_timing`: Pass
     - `02-branch_timing`: Pass
-  - kevtris's `nestest`: Pass
+  - kevtris's `nestest`: (1/1)
 
 ## PPU
 
@@ -58,13 +61,18 @@
 
 ## APU
 
- - blargg's `apu_test`: (2/8)
+ - blargg's `apu_mixer` (4/4)
+   - `dmc`: Pass
+   - `noise`: Pass
+   - `square`: Pass
+   - `triangle`: Pass
+ - Rahsennor's `apu_phase_reset`: (1/1)
+ - blargg's `apu_test`: (4/8)
    - `01-len_ctr`: Pass
-   - `02-len_table`: Fail
-   - `03-irq_flag`: Fail
+   - `02-len_table`: Pass
+   - `03-irq_flag`: Pass
    - `04-jitter`: Fail
    - `05-len_timing`: Fail
    - `06-irq_flag_timing`: Fail
    - `07-dmc_basics`: Pass
    - `08-dmc_rates`: Fail
- - Rahsennor's `apu_phase_reset`: Pass

@@ -75,6 +75,12 @@ impl Nes {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.cpu.reset();
+        self.ppu.reset();
+        self.apu.reset();
+    }
+
     pub fn image_buffer(&self) -> *const u8 {
         self.ppu.buffer.as_ptr()
     }
@@ -133,6 +139,37 @@ impl Drop for Nes {
 
 #[cfg(test)]
 mod tests {
+    use Nes;
+
+    fn run_text_test(nes: &mut Nes) {
+        // Run until test status is running by polling $6000.
+        let mut addr = 0x6000;
+        let mut byte = nes.cpu.read_byte(addr);
+        while byte != 0x80 {
+            nes.step_frame();
+            byte = nes.cpu.read_byte(addr);
+        }
+
+        // Run until test status is finished by polling $6000.
+        byte = nes.cpu.read_byte(addr);
+        while byte == 0x80 {
+            nes.step_frame();
+            byte = nes.cpu.read_byte(addr);
+        }
+
+        // Read output at $6004.
+        let mut output = Vec::new();
+        addr = 0x6004;
+        byte = nes.cpu.read_byte(addr);
+        while byte != '\0' as u8 {
+            output.push(byte);
+            addr += 1;
+            byte = nes.cpu.read_byte(addr);
+        }
+
+        assert!(String::from_utf8_lossy(&output).contains("Passed"));
+    }
+
     // Test output is at $6004.
     macro_rules! text_tests {
         ($($test_name:ident: $path:expr$(,)*)*) => {
@@ -141,37 +178,36 @@ mod tests {
                 fn $test_name() {
                     use std::fs;
                     use Nes;
+                    use tests::run_text_test;
+
+                    let buffer = fs::read($path).expect("Expected test rom to exist.");
+                    let mut nes = Nes::new();
+                    nes.load_rom(&buffer);
+                    run_text_test(&mut nes);
+                }
+            )*
+        }
+    }
+
+    macro_rules! reset_text_tests {
+        ($($test_name:ident: ($path:expr, $frames:expr)$(,)*)*) => {
+            $(
+                #[test]
+                fn $test_name() {
+                    use std::fs;
+                    use Nes;
+                    use tests::run_text_test;
 
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
                     let mut nes = Nes::new();
                     nes.load_rom(&buffer);
 
-                    // Run until test status is running by polling $6000.
-                    let mut addr = 0x6000;
-                    let mut byte = nes.cpu.read_byte(addr);
-                    while byte != 0x80 {
+                    for _ in 0..$frames {
                         nes.step_frame();
-                        byte = nes.cpu.read_byte(addr);
                     }
 
-                    // Run until test status is finished by polling $6000.
-                    byte = nes.cpu.read_byte(addr);
-                    while byte == 0x80 {
-                        nes.step_frame();
-                        byte = nes.cpu.read_byte(addr);
-                    }
-
-                    // Read output at $6004.
-                    let mut output = Vec::new();
-                    addr = 0x6004;
-                    byte = nes.cpu.read_byte(addr);
-                    while byte != '\0' as u8 {
-                        output.push(byte);
-                        addr += 1;
-                        byte = nes.cpu.read_byte(addr);
-                    }
-
-                    assert!(String::from_utf8_lossy(&output).contains("Passed"));
+                    nes.reset();
+                    run_text_test(&mut nes);
                 }
             )*
         }
@@ -209,6 +245,55 @@ mod tests {
     }
 
     mod cpu {
+        mod branch_timing {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/cpu/branch_timing/{}", file_name)
+            }
+
+            graphical_tests!(
+                test_01_branch_basics: (test_path("01-branch_basics.nes"), 13, 0xDB8E_7124_029B_C022),
+                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0xDF84_2558_1C2B_C9A7),
+                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0x528E_9396_828A_8125),
+            );
+        }
+
+        mod reset {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/cpu/reset/{}", file_name)
+            }
+
+            reset_text_tests!(
+                test_ram_after_reset: (test_path("ram_after_reset.nes"), 136),
+                test_registers: (test_path("registers.nes"), 138),
+            );
+        }
+
+        mod instr_timing {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/cpu/instr_timing/{}", file_name)
+            }
+
+            text_tests!(
+                test_01_instr_timing: test_path("01-instr_timing.nes"),
+                test_02_branch_timing: test_path("02-branch_timing.nes"),
+            );
+
+            graphical_tests!(
+                test_cpu_timing_test: (test_path("timing_test.nes"), 612, 0x2F89_29CE_711F_FBD4),
+            );
+        }
+
+        mod instr_misc {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/cpu/instr_misc/{}", file_name)
+            }
+
+            text_tests!(
+                test_01_abs_x_wrap: test_path("01-abs_x_wrap.nes"),
+                test_02_branch_wrap: test_path("02-branch_wrap.nes"),
+            );
+        }
+
         mod instr_tests {
             fn test_path(file_name: &str) -> String {
                 format!("./tests/cpu/instr_test/{}", file_name)
@@ -228,44 +313,6 @@ mod tests {
                 test_11_stack: test_path("11-stack.nes"),
                 test_12_jmp_jsr: test_path("12-jmp_jsr.nes"),
                 test_13_rts: test_path("13-rts.nes"),
-            );
-        }
-
-        mod instr_misc {
-            fn test_path(file_name: &str) -> String {
-                format!("./tests/cpu/instr_misc/{}", file_name)
-            }
-
-            text_tests!(
-                test_01_abs_x_wrap: test_path("01-abs_x_wrap.nes"),
-                test_02_branch_wrap: test_path("02-branch_wrap.nes"),
-            );
-        }
-
-        mod instr_timing {
-            fn test_path(file_name: &str) -> String {
-                format!("./tests/cpu/instr_timing/{}", file_name)
-            }
-
-            text_tests!(
-                test_01_instr_timing: test_path("01-instr_timing.nes"),
-                test_02_branch_timing: test_path("02-branch_timing.nes"),
-            );
-
-            graphical_tests!(
-                test_cpu_timing_test: (test_path("timing_test.nes"), 612, 0x2F89_29CE_711F_FBD4),
-            );
-        }
-
-        mod branch_timing {
-            fn test_path(file_name: &str) -> String {
-                format!("./tests/cpu/branch_timing/{}", file_name)
-            }
-
-            graphical_tests!(
-                test_01_branch_basics: (test_path("01-branch_basics.nes"), 13, 0xDB8E_7124_029B_C022),
-                test_02_backward_branch: (test_path("02-backward_branch.nes"), 15, 0xDF84_2558_1C2B_C9A7),
-                test_03_forward_branch: (test_path("03-forward_branch.nes"), 15, 0x528E_9396_828A_8125),
             );
         }
     }
@@ -293,6 +340,8 @@ mod tests {
 
             text_tests!(
                 test_01_len_ctr: test_path("01-len_ctr.nes"),
+                test_02_len_table: test_path("02-len_table.nes"),
+                test_03_irq_flag: test_path("03-irq_flag.nes"),
                 test_07_dmc_basics: test_path("07-dmc_basics.nes"),
             );
         }

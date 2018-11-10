@@ -31,16 +31,23 @@ impl Cpu {
         }
     }
 
-    // TODO: This should be initialize. Handle RESET interrupt.
-    pub fn reset(&mut self) {
+    pub fn initialize(&mut self) {
         self.r.pc = self.read_word(0xFFFC);
         self.r.sp = 0xFD;
         self.r.p = 0x24;
     }
+    
+    pub fn reset(&mut self) {
+        self.r.pc = self.read_word(0xFFFC);
+        self.r.sp -= 3;
+        self.r.set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
+        self.cycle = 0;
+        self.stall_cycle = 0;
+    }
 
     pub fn attach_bus(&mut self, bus: Bus) {
         self.bus = Some(bus);
-        self.reset()
+        self.initialize()
     }
 
     fn bus(&self) -> &Bus {
@@ -54,7 +61,6 @@ impl Cpu {
     pub fn step(&mut self) {
         if self.stall_cycle > 0 {
             self.stall_cycle -= 1;
-            self.cycle += 1;
             return;
         }
 

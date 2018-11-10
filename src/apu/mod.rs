@@ -43,9 +43,11 @@ const DMC_PERIOD_TABLE: [u16; 16] = [
     190, 160, 142, 128, 106,  84,  72,  54,
 ];
 
+const FOUR_STEP_FRAME_COUNTER_CYCLES: [u16; 4] = [7456, 7458, 7458, 7458];
+const FIVE_STEP_FRAME_COUNTER_CYCLES: [u16; 5] = [7458, 7456, 7458, 7458, 7452];
+
 const CLOCK_FREQ: u64 = 1_789_773;
 const SAMPLE_FREQ: u64 = 44_100;
-const FRAME_CYCLES: f64 = CLOCK_FREQ as f64 / 240.0;
 const SAMPLE_CYCLES: f64 = CLOCK_FREQ as f64 / SAMPLE_FREQ as f64;
 const BUFFER_SIZE: usize = 735;
 
@@ -307,7 +309,8 @@ pub struct Apu {
     pub buffer_index: usize,
     pub buffer: [f32; BUFFER_SIZE],
     pub frame_counter_mode: FrameCounterMode,
-    pub frame_counter_val: u64,
+    pub frame_counter_val: u16,
+    pub frame_counter_phase: u8,
     pub irq_enabled: bool,
     pub irq_pending: bool,
     pub cycle: u64,
@@ -330,7 +333,8 @@ impl Apu {
             buffer_index: 0,
             buffer: [0.0; BUFFER_SIZE],
             frame_counter_mode: FrameCounterMode::FourStep,
-            frame_counter_val: 0,
+            frame_counter_val: FOUR_STEP_FRAME_COUNTER_CYCLES[0],
+            frame_counter_phase: 0,
             irq_enabled: false,
             irq_pending: false,
             cycle: 0,
@@ -338,8 +342,22 @@ impl Apu {
         }
     }
 
+    pub fn initialize(&mut self) {
+        self.write_register(0x4015, 0);
+        self.write_register(0x4017, 0);
+        for addr in 0x4000..=0x400F {
+            self.write_register(addr, 0);
+        }
+    }
+
+    pub fn reset(&mut self) {
+        self.write_register(0x4015, 0);
+        self.irq_enabled = false;
+    }
+
     pub fn attach_bus(&mut self, bus: Bus) {
         self.bus = Some(bus);
+        self.initialize();
     }
 
     fn bus(&self) -> &Bus {
@@ -421,7 +439,7 @@ impl Apu {
                 if self.pulses[index].enabled {
                     self.pulses[index].length_counter.reload(val as usize >> 3);
                 }
-                self.pulses[index].timer_val = self.pulses[index].timer_period;
+                // Timer should _not_ be reset according to the APU Phase Reset Test ROM.
                 self.pulses[index].duty_val = 0;
                 self.pulses[index].envelope.reset = true;
             },
@@ -504,19 +522,19 @@ impl Apu {
                 }
             },
             0x4017 => {
+                // Special timings for writing to 0x4017.
                 self.frame_counter_mode = if val >> 7 == 0 {
+                    self.frame_counter_val = 7458;
                     FrameCounterMode::FourStep
                 } else {
-                    self.step_envelope();
-                    self.triangle.step_linear_counter();
-                    self.step_length_counter();
-                    self.step_sweep();
+                    self.frame_counter_val = 0;
                     FrameCounterMode::FiveStep
                 };
                 self.irq_enabled = (val >> 6) & 0x01 == 0;
                 if !self.irq_enabled {
                     self.irq_pending = false;
                 }
+                self.frame_counter_phase = 0;
             },
             _ => {},
         }
@@ -609,17 +627,19 @@ impl Apu {
             self.noise.step();
         }
 
-        // Frame counter ticks at 240 Hz
-        let curr_frame = f64::floor(curr_cycle / FRAME_CYCLES) as u64;
-        let next_frame = f64::floor(next_cycle / FRAME_CYCLES) as u64;
-        if curr_frame != next_frame {
+        if self.frame_counter_val > 0 {
+            self.frame_counter_val -= 1;
+        } else {
             match self.frame_counter_mode {
                 FrameCounterMode::FourStep => {
-                    match self.frame_counter_val % 4 {
+                    let index = self.frame_counter_phase as usize;
+                    self.frame_counter_val = FOUR_STEP_FRAME_COUNTER_CYCLES[index] - 1;
+                    match self.frame_counter_phase {
                         0 | 2 => {
                             // envelope
                             self.step_envelope();
                             self.triangle.step_linear_counter();
+                            self.frame_counter_phase += 1;
                         },
                         1 => {
                             // envelope
@@ -628,6 +648,7 @@ impl Apu {
                             // length counter and sweep
                             self.step_length_counter();
                             self.step_sweep();
+                            self.frame_counter_phase += 1;
                         },
                         3 => {
                             // envelope
@@ -642,12 +663,15 @@ impl Apu {
                                 let cpu = self.bus_mut().cpu_mut();
                                 cpu.trigger_interrupt(Interrupt::IRQ);
                             }
+                            self.frame_counter_phase = 0;
                         },
-                        _ => {},
+                        _ => panic!("[APU] Invalid frame counter phase."),
                     }
                 },
                 FrameCounterMode::FiveStep => {
-                    match self.frame_counter_val % 5 {
+                    let index = self.frame_counter_phase as usize;
+                    self.frame_counter_val = FIVE_STEP_FRAME_COUNTER_CYCLES[index] - 1;
+                    match self.frame_counter_phase {
                         0 | 2 => {
                             // envelope
                             self.step_envelope();
@@ -655,17 +679,24 @@ impl Apu {
                             // length counter
                             self.step_length_counter();
                             self.step_sweep();
+                            self.frame_counter_phase += 1;
                         },
-                        1 | 3 => {
+                        1 => {
                             // envelope
                             self.step_envelope();
                             self.triangle.step_linear_counter();
+                            self.frame_counter_phase += 1;
                         },
-                        _ => {},
+                        3 => {
+                            // envelope
+                            self.step_envelope();
+                            self.triangle.step_linear_counter();
+                            self.frame_counter_phase = 0;
+                        },
+                        _ => panic!("[APU] Invalid frame counter phase."),
                     }
                 },
             }
-            self.frame_counter_val += 1;
         }
 
         // Output sample device is 44.1 kHz

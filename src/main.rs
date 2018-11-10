@@ -43,6 +43,13 @@ pub fn main() {
                 .short("d")
                 .long("debug"),
         )
+        .arg(
+            Arg::with_name("frames")
+                .help("Number of frames to run.")
+                .short("f")
+                .long("frames")
+                .takes_value(true),
+        )
         .get_matches();
 
     let debug_enabled = matches.is_present("debug");
@@ -84,6 +91,13 @@ pub fn main() {
 
     let mut event_pump = sdl_context.event_pump().unwrap();
 
+    if let Some(frames) = matches.value_of("frames") {
+        println!("HERE");
+        for _ in 0..frames.parse().unwrap() {
+            nes.step_frame();
+        }
+    }
+
     'running: loop {
         let start = Instant::now();
         for event in event_pump.poll_iter() {
@@ -100,6 +114,8 @@ pub fn main() {
                     if let Some(index) = KEYS.iter().position(|key| *key == keycode) {
                         nes.press_button(0, index as u8);
                         nes.press_button(1, index as u8);
+                    } else if keycode == Keycode::T {
+                        nes.reset();
                     }
                 },
                 Event::KeyUp {
@@ -115,7 +131,10 @@ pub fn main() {
             }
         }
 
-        nes.step_frame();
+        if matches.value_of("frames").is_none() {
+            nes.step_frame();
+        }
+
         let buffer_len = nes.audio_buffer_len();
         let slice = unsafe { slice::from_raw_parts(nes.audio_buffer(), buffer_len) };
         device.queue(&slice[0..buffer_len]);
