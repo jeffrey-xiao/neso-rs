@@ -36,11 +36,12 @@ impl Cpu {
         self.r.sp = 0xFD;
         self.r.p = 0x24;
     }
-    
+
     pub fn reset(&mut self) {
         self.r.pc = self.read_word(0xFFFC);
         self.r.sp -= 3;
-        self.r.set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
+        self.r
+            .set_status_flag(registers::INTERRUPT_DISABLE_MASK, true);
         self.cycle = 0;
         self.stall_cycle = 0;
     }
