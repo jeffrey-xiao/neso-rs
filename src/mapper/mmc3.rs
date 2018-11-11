@@ -197,8 +197,9 @@ impl Mapper for MMC3 {
                 let addr = self.r.get_chr_rom_address(addr);
                 self.cartridge.read_chr_rom(addr)
             },
-            // TODO: Handle prg ram related flags
-            0x6000..=0x7FFF => self.cartridge.read_prg_ram(addr - 0x6000),
+            0x6000..=0x7FFF if self.r.prg_ram_enabled => {
+                self.cartridge.read_prg_ram(addr - 0x6000)
+            },
             0x8000..=0xFFFF => {
                 let prg_rom_banks = self.cartridge.prg_rom_len() / 0x2000;
                 let addr = self.r.get_prg_rom_address(addr, prg_rom_banks);
@@ -215,8 +216,9 @@ impl Mapper for MMC3 {
                 let addr = self.r.get_chr_rom_address(addr);
                 self.cartridge.write_chr_rom(addr, val);
             },
-            // TODO: Handle prg ram related flags
-            0x6000..=0x7FFF => self.cartridge.write_prg_ram(addr - 0x6000, val),
+            0x6000..=0x7FFF if self.r.prg_ram_writes_enabled => {
+                self.cartridge.write_prg_ram(addr - 0x6000, val)
+            }
             0x8000..=0x9FFF if addr & 0x01 == 0 => self.r.write_bank_select(val),
             0x8000..=0x9FFF => self.r.write_bank_data(val),
             0xA000..=0xBFFF if addr & 0x01 == 0 => self.r.write_mirroring_mode(val),

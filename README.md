@@ -2,6 +2,7 @@
 
 [![NPM version](https://img.shields.io/npm/v/neso.svg?style=flat)](https://www.npmjs.com/package/neso)
 [![neso](http://meritbadge.herokuapp.com/neso)](https://crates.io/crates/neso)
+[![Documentation](https://docs.rs/neso/badge.svg)](https://docs.rs/neso)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Build Status](https://travis-ci.org/jeffrey-xiao/neso-rs.svg?branch=master)](https://travis-ci.org/jeffrey-xiao/neso-rs)
@@ -9,6 +10,15 @@
 
 NES Oxidized (NESO) is a Nintendo Entertainment System emulator written in Rust that can compile to
 WebAssembly.
+
+## Usage
+
+Install `neso` from [npm](https://www.npmjs.com/):
+```
+$ npm install neso
+```
+
+Example usage: [`neso-web`](https://gitlab.com/jeffrey-xiao/neso-web).
 
 ## Features
 

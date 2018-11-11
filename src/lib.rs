@@ -79,6 +79,12 @@ impl Nes {
         self.ppu.attach_bus(bus.clone());
         let bus_clone = bus.clone();
         bus.mapper_mut().attach_bus(bus_clone);
+
+        if let Some(mapper) = self.mapper.take() {
+            unsafe {
+                Box::from_raw(mapper);
+            }
+        }
         self.mapper = Some(bus.mapper);
     }
 

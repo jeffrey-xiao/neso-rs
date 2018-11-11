@@ -8,6 +8,7 @@ pub struct Cartridge {
     prg_rom: Vec<u8>,
     chr_rom: Vec<u8>,
     prg_ram: Vec<u8>,
+    pub has_battery: bool,
     pub mapper: u8,
     pub mirroring_mode: MirroringMode,
 }
@@ -41,8 +42,6 @@ impl Cartridge {
 
         let flags_6 = buffer[6];
         let flags_7 = if is_zero { buffer[7] } else { 0 };
-        let _flags_9 = buffer[9];
-        let _flags_10 = buffer[10];
 
         buffer = buffer.split_at(16).1;
 
@@ -60,6 +59,9 @@ impl Cartridge {
         } else {
             vec![0; 0x2000]
         };
+
+        let has_battery = flags_6 & 0x10 != 0;
+        debug!("[CARTRIDGE] Has battery: {}.", has_battery);
 
         let mapper = (flags_7 & 0xF0) | (flags_6 >> 4);
         debug!("[CARTRIDGE] Mapper: {}.", mapper);
@@ -79,6 +81,7 @@ impl Cartridge {
             prg_rom,
             chr_rom,
             prg_ram: vec![0; prg_ram_len],
+            has_battery,
             mapper,
             mirroring_mode,
         }
@@ -89,7 +92,8 @@ impl Cartridge {
     }
 
     pub fn read_prg_rom(&self, addr: usize) -> u8 {
-        self.prg_rom[addr]
+        let len = self.prg_rom_len();
+        self.prg_rom[addr % len]
     }
 
     pub fn chr_rom_len(&self) -> usize {
@@ -97,12 +101,14 @@ impl Cartridge {
     }
 
     pub fn read_chr_rom(&self, addr: usize) -> u8 {
-        self.chr_rom[addr]
+        let len = self.chr_rom_len();
+        self.chr_rom[addr % len]
     }
 
     // chr_rom is ram if the size reported in the header is 0.
     pub fn write_chr_rom(&mut self, addr: usize, val: u8) {
-        self.chr_rom[addr] = val;
+        let len = self.chr_rom_len();
+        self.chr_rom[addr % len] = val;
     }
 
     pub fn prg_ram_len(&self) -> usize {
