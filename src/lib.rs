@@ -18,7 +18,7 @@ use bus::Bus;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use mapper::Mapper;
-use ppu::{COLORS, Ppu};
+use ppu::{Ppu, COLORS};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
