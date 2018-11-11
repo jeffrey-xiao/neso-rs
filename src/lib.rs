@@ -2,7 +2,7 @@
 
 #[macro_use]
 extern crate cfg_if;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", console_error_panic_hook))]
 extern crate console_error_panic_hook;
 #[cfg(target_arch = "wasm32")]
 extern crate wasm_bindgen;
@@ -35,7 +35,7 @@ mod ppu;
 use apu::Apu;
 use bus::Bus;
 use cartridge::Cartridge;
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", console_error_panic_hook))]
 use console_error_panic_hook::set_once;
 use cpu::Cpu;
 use mapper::Mapper;
@@ -54,7 +54,7 @@ pub struct Nes {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Nes {
     pub fn new() -> Self {
-        #[cfg(target_arch = "wasm32")]
+        #[cfg(all(target_arch = "wasm32", console_error_panic_hook))]
         set_once();
 
         let apu = Apu::new();

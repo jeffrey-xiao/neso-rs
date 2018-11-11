@@ -57,6 +57,7 @@ impl Cartridge {
             let (chr_rom_buffer, _) = buffer.split_at(chr_rom_len);
             chr_rom_buffer.to_vec()
         } else {
+            debug!("[CARTRIDGE] Using CHR RAM.");
             vec![0; 0x2000]
         };
 
