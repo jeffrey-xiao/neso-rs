@@ -43,13 +43,13 @@ after_success:
     make install DESTDIR=../../kcov-build &&
     cd ../.. &&
     rm -rf kcov-master &&
-    for file in target/debug/nes_wasm-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
+    for file in target/debug/neso-*[^\.d]; do mkdir -p "target/cov/$(basename $file)"; ./kcov-build/usr/local/bin/kcov --exclude-pattern=/.cargo,/usr/lib --verify "target/cov/$(basename $file)" "$file"; done &&
     bash <(curl -s https://codecov.io/bash) &&
     echo "Uploaded code coverage"
   - |
     if [[ "$TRAVIS_OS_NAME" == "linux" && "$TRAVIS_RUST_VERSION" == "nightly" && "$TRAVIS_PULL_REQUEST" = "false" && "$TRAVIS_BRANCH" == "master" ]]; then
       cargo doc --all --no-deps --verbose &&
-      echo "<meta http-equiv=refresh content=0;url=nes_wasm/index.html>" > target/doc/index.html &&
+      echo "<meta http-equiv=refresh content=0;url=neso/index.html>" > target/doc/index.html &&
       git clone https://github.com/davisp/ghp-import.git &&
       ./ghp-import/ghp_import.py -n -p -f -m "Documentation upload" -r https://"$GH_TOKEN"@github.com/"$TRAVIS_REPO_SLUG.git" target/doc &&
       echo "Uploaded documentation"

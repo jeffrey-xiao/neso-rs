@@ -1,6 +1,7 @@
 #![feature(nll)]
 
 extern crate cfg_if;
+#[cfg(target_arch = "wasm32")]
 extern crate wasm_bindgen;
 
 mod apu;
@@ -17,10 +18,11 @@ use bus::Bus;
 use cartridge::Cartridge;
 use cpu::Cpu;
 use mapper::Mapper;
-use ppu::Ppu;
+use ppu::{COLORS, Ppu};
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct Nes {
     apu: Apu,
     cpu: Cpu,
@@ -28,7 +30,7 @@ pub struct Nes {
     mapper: Option<*mut Mapper>,
 }
 
-#[wasm_bindgen]
+#[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Nes {
     pub fn new() -> Self {
         utils::set_panic_hook();
@@ -93,6 +95,14 @@ impl Nes {
 
     pub fn audio_buffer_len(&self) -> usize {
         self.apu.buffer_index
+    }
+
+    pub fn colors(&self) -> *const u32 {
+        COLORS.as_ptr()
+    }
+
+    pub fn palettes(&self) -> *const u8 {
+        self.ppu.palettes()
     }
 
     pub fn chr_bank(&self, index: usize) -> *const u8 {

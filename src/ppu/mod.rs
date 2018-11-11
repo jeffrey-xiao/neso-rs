@@ -10,7 +10,7 @@ const SCREEN_HEIGHT: usize = 240;
 
 // http://www.thealmightyguru.com/Games/Hacking/Wiki/index.php/NES_Palette
 #[rustfmt::skip]
-const PALETTE: [u32; 64] = [
+pub const COLORS: [u32; 64] = [
     0x007C_7C7C, 0x0000_00FC, 0x0000_00BC, 0x0044_28BC, 0x0094_0084, 0x00A8_0020, 0x00A8_1000, 0x0088_1400, //
     0x0050_3000, 0x0000_7800, 0x0000_6800, 0x0000_5800, 0x0000_4058, 0x0000_0000, 0x0000_0000, 0x0000_0000, //
     0x00BC_BCBC, 0x0000_78F8, 0x0000_58F8, 0x0068_44FC, 0x00D8_00CC, 0x00E4_0058, 0x00F8_3800, 0x00E4_5C10, //
@@ -48,15 +48,15 @@ pub struct Ppu {
     pub r: Registers,
     pub buffer_index: usize,
     pub buffer: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 4],
-    pub primary_oam: [u8; 0x100],
-    pub secondary_oam: [u8; 0x20],
-    pub is_sprite_0: [bool; 8],
-    pub vram: [u8; 0x2000],
-    pub palette_ram: [u8; 0x20],
     pub cycle: u16,    // [0, 340]
     pub scanline: u16, // [0, 261]
     pub frame: u64,
-    pub bus: Option<Bus>,
+    pub primary_oam: [u8; 0x100],
+    secondary_oam: [u8; 0x20],
+    is_sprite_0: [bool; 8],
+    vram: [u8; 0x2000],
+    palette_ram: [u8; 0x20],
+    bus: Option<Bus>,
 }
 
 impl Ppu {
@@ -77,15 +77,15 @@ impl Ppu {
             r: Registers::new(),
             buffer_index: 0,
             buffer: [0; SCREEN_WIDTH * SCREEN_HEIGHT * 4],
+            cycle: 0,
+            scanline: 0,
+            frame: 0,
             primary_oam: [0; 0x100],
             secondary_oam: [0; 0x20],
             is_sprite_0: [false; 8],
             vram: [0; 0x2000],
             palette_ram,
             bus: None,
-            cycle: 0,
-            scanline: 0,
-            frame: 0,
         }
     }
 
@@ -163,6 +163,10 @@ impl Ppu {
             },
             _ => panic!("[PPU] Invalid write with memory address: {:#06x}.", addr),
         }
+    }
+
+    pub fn palettes(&self) -> *const u8 {
+        self.palette_ram.as_ptr()
     }
 
     pub fn nametable_bank(&self, index: usize) -> *const u8 {
@@ -372,7 +376,7 @@ impl Ppu {
             },
         };
 
-        let color = PALETTE[self.read_byte(addr) as usize & 0x3F];
+        let color = COLORS[self.read_byte(addr) as usize & 0x3F];
         self.buffer[self.buffer_index] = ((color >> 16) & 0xFF) as u8;
         self.buffer[self.buffer_index + 1] = ((color >> 8) & 0xFF) as u8;
         self.buffer[self.buffer_index + 2] = (color & 0xFF) as u8;

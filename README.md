@@ -1,17 +1,18 @@
-# nes-rs
+# neso-rs
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Build Status](https://travis-ci.org/jeffrey-xiao/nes-rs.svg?branch=master)](https://travis-ci.org/jeffrey-xiao/nes-rs)
 [![codecov](https://codecov.io/gh/jeffrey-xiao/nes-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/jeffrey-xiao/nes-rs)
 
-An NES emulator written in Rust that compiles to WebAssembly.
+NES Oxidized (NESO) is a Nintendo Entertainment System emulator written in Rust that compiles to
+WebAssembly.
 
 ## Features
 
  - Instruction-cycle accurate MOS 6502 CPU with unofficial instructions.
  - Mostly cycle accurate PPU.
- - Mostly functional APU.
+ - Mostly accurate APU.
 
 ## Compatibility
 

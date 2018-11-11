@@ -1,11 +1,11 @@
 [package]
-name = "nes-wasm"
+name = "neso"
 version = "0.1.0"
 authors = ["Jeffrey Xiao <jeffrey.xiao1998@gmail.com>"]
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-repository = "https://gitlab.com/jeffrey-xiao/nes-rs"
-documentation = "https://docs.rs/nes-rs"
+repository = "https://gitlab.com/jeffrey-xiao/neso-rs"
+documentation = "https://docs.rs/neso-rs"
 description = """
 An NES emulator.
 """
@@ -14,26 +14,17 @@ keywords = ["nes", "emulator"]
 include = ["src/**/*", "Cargo.toml"]
 
 [badges]
-travis-ci = { repository = "jeffrey-xiao/nes-rs", branch = "master" }
+travis-ci = { repository = "jeffrey-xiao/neso-rs", branch = "master" }
 
 [lib]
-crate-type = ["cdylib", "rlib"]
-name = "nes_wasm"
-path = "src/lib.rs"
+crate-type = ["cdylib", "dylib", "rlib"]
 
 [dependencies]
 cfg-if = "0.1.2"
-clap = { version = "2.32", optional = true }
 console_error_panic_hook = "0.1.1"
-js-sys = "0.2"
-sdl2 = { version = "0.31.0", optional = true }
+[target.'cfg(target_arch = "wasm32")'.dependencies]
 wasm-bindgen = "0.2"
 
 [profile.release]
 debug = false
 lto = true
-
-[[bin]]
-name = "nes-sdl2"
-path = "src/main.rs"
-required-features = ["clap", "sdl2"]

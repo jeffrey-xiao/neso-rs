@@ -12,10 +12,10 @@ pub struct Cpu {
     pub cycle: u64,
     pub stall_cycle: u64,
     pub controllers: [Controller; 2],
-    pub ram: [u8; 0x800],
-    pub interrupt_flags: [bool; 2],
-    pub r: Registers,
-    pub bus: Option<Bus>,
+    ram: [u8; 0x800],
+    interrupt_flags: [bool; 2],
+    r: Registers,
+    bus: Option<Bus>,
 }
 
 impl Cpu {

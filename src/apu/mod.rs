@@ -77,12 +77,12 @@ impl LengthCounter {
 
 #[derive(Default)]
 pub struct Envelope {
-    pub enabled: bool,
-    pub looped: bool,
-    pub reset: bool,
-    pub period: u8,
-    pub val: u8,
-    pub volume: u8,
+    enabled: bool,
+    looped: bool,
+    reset: bool,
+    period: u8,
+    val: u8,
+    volume: u8,
 }
 
 impl Envelope {
@@ -300,27 +300,30 @@ impl Dmc {
 }
 
 pub struct Apu {
-    pub pulses: [Pulse; 2],
-    pub triangle: Triangle,
-    pub noise: Noise,
-    pub dmc: Dmc,
-    pub filters: [Box<FirstOrderFilter>; 3],
-    pub mixer: Mixer,
     pub buffer_index: usize,
     pub buffer: [f32; BUFFER_SIZE],
-    pub frame_counter_mode: FrameCounterMode,
-    pub frame_counter_val: u16,
-    pub frame_counter_phase: u8,
-    pub irq_enabled: bool,
-    pub irq_pending: bool,
-    pub last_written_byte: u8,
     pub cycle: u64,
-    pub bus: Option<Bus>,
+    pulses: [Pulse; 2],
+    triangle: Triangle,
+    noise: Noise,
+    dmc: Dmc,
+    filters: [Box<FirstOrderFilter>; 3],
+    mixer: Mixer,
+    frame_counter_mode: FrameCounterMode,
+    frame_counter_val: u16,
+    frame_counter_phase: u8,
+    irq_enabled: bool,
+    irq_pending: bool,
+    last_written_byte: u8,
+    bus: Option<Bus>,
 }
 
 impl Apu {
     pub fn new() -> Self {
         Apu {
+            buffer_index: 0,
+            buffer: [0.0; BUFFER_SIZE],
+            cycle: 0,
             pulses: [Pulse::default(), Pulse::default()],
             triangle: Triangle::default(),
             noise: Noise::default(),
@@ -331,15 +334,12 @@ impl Apu {
                 Box::new(LowPassFilter::new(14000, SAMPLE_FREQ)),
             ],
             mixer: Mixer::new(),
-            buffer_index: 0,
-            buffer: [0.0; BUFFER_SIZE],
             frame_counter_mode: FrameCounterMode::FourStep,
             frame_counter_val: FOUR_STEP_FRAME_COUNTER_CYCLES[0],
             frame_counter_phase: 0,
             irq_enabled: false,
             irq_pending: false,
             last_written_byte: 0,
-            cycle: 0,
             bus: None,
         }
     }
