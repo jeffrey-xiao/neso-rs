@@ -1,4 +1,6 @@
 use cartridge::Cartridge;
+#[cfg(target_arch = "wasm32")]
+use debug;
 use mapper::Mapper;
 use ppu::MirroringMode;
 
@@ -36,7 +38,7 @@ impl Mapper for CNROM {
         let addr = addr as usize;
         if let 0x8000..=0xFFFF = addr {
             self.chr_rom_bank = val & 0x03;
-            println!("[CNROM] Write chr rom bank: {}.", self.chr_rom_bank);
+            debug!("[CNROM] Write chr rom bank: {}.", self.chr_rom_bank);
         }
     }
 

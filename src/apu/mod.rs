@@ -5,6 +5,8 @@ use self::filter::{FirstOrderFilter, HighPassFilter, LowPassFilter};
 use self::mixer::Mixer;
 use bus::Bus;
 use cpu::Interrupt;
+#[cfg(target_arch = "wasm32")]
+use debug;
 
 // https://wiki.nesdev.com/w/index.php/APU_Length_Counter
 #[rustfmt::skip]

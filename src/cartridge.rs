@@ -1,3 +1,5 @@
+#[cfg(target_arch = "wasm32")]
+use debug;
 use ppu::MirroringMode;
 
 const CARTRIDGE_HEADER: u32 = 0x1A53_454E;
@@ -27,11 +29,11 @@ impl Cartridge {
         }
 
         let prg_rom_len = buffer[4] as usize * 0x4000;
-        println!("[CARTRIDGE] PRG ROM length: {} bytes.", prg_rom_len);
+        debug!("[CARTRIDGE] PRG ROM length: {} bytes.", prg_rom_len);
         let chr_rom_len = buffer[5] as usize * 0x2000;
-        println!("[CARTRIDGE] CHR ROM length: {} bytes.", chr_rom_len);
+        debug!("[CARTRIDGE] CHR ROM length: {} bytes.", chr_rom_len);
         let mut prg_ram_len = buffer[8] as usize * 0x2000;
-        println!("[CARTRIDGE] PRG RAM length: {} bytes.", prg_ram_len);
+        debug!("[CARTRIDGE] PRG RAM length: {} bytes.", prg_ram_len);
 
         if prg_ram_len == 0 {
             prg_ram_len = 0x4000;
@@ -45,7 +47,7 @@ impl Cartridge {
         buffer = buffer.split_at(16).1;
 
         if flags_6 & 0x04 != 0 {
-            println!("[CARTRIDGE] Trainer present.");
+            debug!("[CARTRIDGE] Trainer present.");
             buffer = buffer.split_at(512).1;
         }
 
@@ -60,7 +62,7 @@ impl Cartridge {
         };
 
         let mapper = (flags_7 & 0xF0) | (flags_6 >> 4);
-        println!("[CARTRIDGE] Mapper: {}.", mapper);
+        debug!("[CARTRIDGE] Mapper: {}.", mapper);
 
         let mirroring_mode = {
             if flags_6 & 0x08 != 0 {
@@ -71,7 +73,7 @@ impl Cartridge {
                 MirroringMode::Horizontal
             }
         };
-        println!("[CARTRIDGE] Mirroring mode: {:?}.", mirroring_mode);
+        debug!("[CARTRIDGE] Mirroring mode: {:?}.", mirroring_mode);
 
         Cartridge {
             prg_rom,

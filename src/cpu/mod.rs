@@ -5,6 +5,8 @@ mod registers;
 use self::registers::Registers;
 use bus::Bus;
 use controller::Controller;
+#[cfg(target_arch = "wasm32")]
+use debug;
 
 const STACK_START: u16 = 0x100;
 
@@ -84,7 +86,7 @@ impl Cpu {
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
-            // println!("[CPU] Interrupt triggered: {:?}.", interrupt);
+            // debug!("[CPU] Interrupt triggered: {:?}.", interrupt);
             self.interrupt_flags[interrupt as usize] = true;
         }
     }
@@ -180,7 +182,7 @@ impl Cpu {
                 }
             },
             0x4014 => {
-                // println!("[CPU] Performing OAM DMA on address {:#06x}.", val);
+                // debug!("[CPU] Performing OAM DMA on address {:#06x}.", val);
                 let cpu_addr = u16::from(val) << 8;
                 for offset in 0..=0xFF {
                     let cpu_addr = cpu_addr + offset;
@@ -215,8 +217,6 @@ impl Cpu {
     }
 
     fn execute_opcode(&mut self, opcode: u8) {
-        // let ppu = self.bus().ppu();
-        // println!("A:{:02X} X:{:02X} Y:{:02X} P:{:02X} SP:{:02X} CYC:{:3} SL:{}", self.r.a, self.r.x, self.r.y, self.r.p, self.r.sp, (self.cycle * 3) % 341, ppu.scanline);
         let addressing_mode = opcodes::ADDRESSING_MODE_TABLE[opcode as usize];
         opcodes::INSTRUCTION_TABLE[opcode as usize](self, addressing_mode);
         self.cycle += u64::from(opcodes::CYCLE_TABLE[opcode as usize]);

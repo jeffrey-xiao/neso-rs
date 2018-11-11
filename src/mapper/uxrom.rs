@@ -1,4 +1,6 @@
 use cartridge::Cartridge;
+#[cfg(target_arch = "wasm32")]
+use debug;
 use mapper::Mapper;
 use ppu::MirroringMode;
 
@@ -56,7 +58,7 @@ impl Mapper for UxROM {
                     Variant::UNROM | Variant::Mapper180 => self.prg_rom_bank = val & 0x07,
                     Variant::UN1ROM => self.prg_rom_bank = (val >> 2) & 0x07,
                 }
-                println!("[UxROM] Write prg rom bank: {}.", self.prg_rom_bank);
+                debug!("[UxROM] Write prg rom bank: {}.", self.prg_rom_bank);
             },
             _ => {},
         }

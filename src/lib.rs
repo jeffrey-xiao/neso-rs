@@ -1,8 +1,28 @@
 #![feature(nll)]
 
+#[macro_use]
 extern crate cfg_if;
 #[cfg(target_arch = "wasm32")]
+extern crate console_error_panic_hook;
+#[cfg(target_arch = "wasm32")]
 extern crate wasm_bindgen;
+
+cfg_if! {
+    if #[cfg(target_arch = "wasm32")] {
+        #[wasm_bindgen]
+        extern "C" {
+            #[wasm_bindgen(js_namespace = console)]
+            fn debug(s: &str);
+        }
+
+        macro_rules! debug {
+            ($($t:tt)*) => (debug(&format_args!($($t)*).to_string()))
+        }
+    } else {
+        #[macro_use]
+        extern crate log;
+    }
+}
 
 mod apu;
 mod bus;
@@ -11,11 +31,12 @@ mod controller;
 mod cpu;
 mod mapper;
 mod ppu;
-mod utils;
 
 use apu::Apu;
 use bus::Bus;
 use cartridge::Cartridge;
+#[cfg(target_arch = "wasm32")]
+use console_error_panic_hook::set_once;
 use cpu::Cpu;
 use mapper::Mapper;
 use ppu::{Ppu, COLORS};
@@ -33,7 +54,9 @@ pub struct Nes {
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Nes {
     pub fn new() -> Self {
-        utils::set_panic_hook();
+        #[cfg(target_arch = "wasm32")]
+        set_once();
+
         let apu = Apu::new();
         let cpu = Cpu::new();
         let ppu = Ppu::new();

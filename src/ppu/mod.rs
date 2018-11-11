@@ -3,6 +3,8 @@ mod registers;
 use self::registers::Registers;
 use bus::Bus;
 use cpu::Interrupt;
+#[cfg(target_arch = "wasm32")]
+use debug;
 use std::mem;
 
 const SCREEN_WIDTH: usize = 256;
@@ -476,7 +478,7 @@ impl Ppu {
                 let cpu = self.bus_mut().cpu_mut();
                 cpu.trigger_interrupt(Interrupt::NMI);
             } else {
-                // println!("[PPU] NMI is not enabled, so interrupt is skipped.");
+                // debug!("[PPU] NMI is not enabled, so interrupt is skipped.");
             }
         }
 

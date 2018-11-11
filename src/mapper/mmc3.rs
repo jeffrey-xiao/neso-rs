@@ -1,6 +1,8 @@
 use bus::Bus;
 use cartridge::Cartridge;
 use cpu::Interrupt;
+#[cfg(target_arch = "wasm32")]
+use debug;
 use mapper::Mapper;
 use ppu::MirroringMode;
 
@@ -68,7 +70,7 @@ impl Registers {
         } else {
             PrgRomBankMode::FixTwoSwitchFix
         };
-        println!(
+        debug!(
             "[MMC3] Write prg rom bank mode: {:?}.",
             self.prg_rom_bank_mode
         );
@@ -78,18 +80,18 @@ impl Registers {
         } else {
             ChrRomBankMode::Four1KTwo2K
         };
-        println!(
+        debug!(
             "[MMC3] Write chr rom bank mode: {:?}.",
             self.chr_rom_bank_mode
         );
 
         self.current_bank = val & 0x07;
-        println!("[MMC3] Write current bank: {}.", self.current_bank);
+        debug!("[MMC3] Write current bank: {}.", self.current_bank);
     }
 
     pub fn write_bank_data(&mut self, val: u8) {
         self.bank_data[self.current_bank as usize] = val;
-        println!("[MMC3] Write bank data: {}.", val);
+        debug!("[MMC3] Write bank data: {}.", val);
     }
 
     pub fn write_mirroring_mode(&mut self, val: u8) {
@@ -98,7 +100,7 @@ impl Registers {
         } else {
             MirroringMode::Horizontal
         };
-        println!("[MMC3] Write mirroring mode: {:?}.", self.mirroring_mode);
+        debug!("[MMC3] Write mirroring mode: {:?}.", self.mirroring_mode);
     }
 
     pub fn write_prg_ram_protect(&mut self, val: u8) {
@@ -287,7 +289,7 @@ impl Mapper for MMC3 {
         } else {
             self.r.irq_counter -= 1;
             if self.r.irq_counter == 0 && self.r.irq_enabled {
-                println!("[MM3] Triggered interrupt.");
+                debug!("[MM3] Triggered interrupt.");
                 let cpu = self.bus_mut().cpu_mut();
                 cpu.trigger_interrupt(Interrupt::IRQ);
             }

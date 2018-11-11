@@ -1,4 +1,6 @@
 use cartridge::Cartridge;
+#[cfg(target_arch = "wasm32")]
+use debug;
 use mapper::Mapper;
 use ppu::MirroringMode;
 
@@ -43,9 +45,9 @@ impl Mapper for ColorDreams {
             },
             0x8000..=0xFFFF => {
                 self.prg_rom_bank = val & 0x03;
-                println!("[ColorDreams] Write prg rom bank: {}.", self.prg_rom_bank);
+                debug!("[ColorDreams] Write prg rom bank: {}.", self.prg_rom_bank);
                 self.chr_rom_bank = (val >> 4) & 0x0F;
-                println!("[ColorDreams] Write chr rom bank: {}.", self.chr_rom_bank);
+                debug!("[ColorDreams] Write chr rom bank: {}.", self.chr_rom_bank);
             },
             _ => {},
         }

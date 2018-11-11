@@ -1,4 +1,6 @@
 use cartridge::Cartridge;
+#[cfg(target_arch = "wasm32")]
+use debug;
 use mapper::Mapper;
 use ppu::MirroringMode;
 
@@ -41,10 +43,10 @@ impl Mapper for AxROM {
                 } else {
                     MirroringMode::Upper
                 };
-                println!("[AxROM] Write mirroring mode: {:?}.", self.mirroring_mode);
+                debug!("[AxROM] Write mirroring mode: {:?}.", self.mirroring_mode);
 
                 self.prg_rom_bank = val & 0x07;
-                println!("[AxROM] Write prg rom bank: {}.", self.prg_rom_bank);
+                debug!("[AxROM] Write prg rom bank: {}.", self.prg_rom_bank);
             },
             _ => {},
         }

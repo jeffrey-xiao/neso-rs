@@ -1,4 +1,6 @@
 use cartridge::Cartridge;
+#[cfg(target_arch = "wasm32")]
+use debug;
 use mapper::Mapper;
 use ppu::MirroringMode;
 use std::mem;
@@ -59,13 +61,13 @@ impl Registers {
     }
 
     pub fn push_val(&mut self, val: u8) -> Option<u8> {
-        println!("[MMC1] Push shift register.");
+        debug!("[MMC1] Push shift register.");
         let is_full = self.sr & 0x01 == 1;
 
         // Clear sr to original state
         if val & 0x80 != 0 {
             self.sr = 0x10;
-            println!("[MMC1] Clear shift register.");
+            debug!("[MMC1] Clear shift register.");
             return None;
         }
         // Shift bit 0 of val to sr
@@ -88,7 +90,7 @@ impl Registers {
             0x03 => MirroringMode::Horizontal,
             _ => panic!("[MMC1] Invalid mirroring mode."),
         };
-        println!("[MMC1] Write mirroring mode: {:?}.", self.mirroring_mode);
+        debug!("[MMC1] Write mirroring mode: {:?}.", self.mirroring_mode);
     }
 
     pub fn write_prg_rom_bank_mode(&mut self, val: u8) {
@@ -98,7 +100,7 @@ impl Registers {
             0x03 => PrgRomBankMode::FixLastBank,
             _ => panic!("[MMC1] Invalid prg rom bank mode."),
         };
-        println!(
+        debug!(
             "[MMC1] Write prg rom bank mode: {:?}.",
             self.prg_rom_bank_mode
         );
@@ -110,7 +112,7 @@ impl Registers {
             0x01 => ChrRomBankMode::Switch4K,
             _ => panic!("[MMC1] Invalid chr rom bank mode."),
         };
-        println!(
+        debug!(
             "[MMC1] Write chr rom bank mode: {:?}.",
             self.chr_rom_bank_mode
         );
@@ -124,9 +126,9 @@ impl Registers {
 
     pub fn write_prg_bank(&mut self, val: u8) {
         self.prg_rom_bank = val & 0x0F;
-        println!("[MMC1] Write prg rom bank: {}.", self.prg_rom_bank);
+        debug!("[MMC1] Write prg rom bank: {}.", self.prg_rom_bank);
         self.prg_ram_enabled = val & 0x10 == 0;
-        println!("[MMC1] Write prg ram enabled: {}.", self.prg_ram_enabled);
+        debug!("[MMC1] Write prg ram enabled: {}.", self.prg_ram_enabled);
     }
 }
 
@@ -227,11 +229,11 @@ impl Mapper for MMC1 {
                     0x8000..=0x9FFF => self.r.write_control(val),
                     0xA000..=0xBFFF => {
                         self.r.chr_rom_bank_0 = val;
-                        println!("[MMC1] Write chr rom bank 0: {}.", self.r.chr_rom_bank_0);
+                        debug!("[MMC1] Write chr rom bank 0: {}.", self.r.chr_rom_bank_0);
                     },
                     0xC000..=0xDFFF => {
                         self.r.chr_rom_bank_1 = val;
-                        println!("[MMC1] Write chr rom bank 1: {}.", self.r.chr_rom_bank_1);
+                        debug!("[MMC1] Write chr rom bank 1: {}.", self.r.chr_rom_bank_1);
                     },
                     0xE000..=0xFFFF => self.r.write_prg_bank(val),
                     _ => {},
