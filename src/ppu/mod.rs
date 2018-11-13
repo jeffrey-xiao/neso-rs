@@ -305,7 +305,7 @@ impl Ppu {
                 break;
             }
 
-            if !(sprite_x <= x && x < sprite_x.wrapping_add(8)) {
+            if !(sprite_x <= x && x <= sprite_x.saturating_add(7)) {
                 continue;
             }
 
@@ -366,7 +366,7 @@ impl Ppu {
             (false, true) => 0x3F10 + sprite_pixel,
             (true, false) => 0x3F00 + background_pixel,
             (true, true) => {
-                if self.cycle != 256 && is_sprite_0 {
+                if self.cycle < 256 && is_sprite_0 {
                     self.r.sprite_0_hit = true;
                 }
 
@@ -454,7 +454,7 @@ impl Ppu {
                     let lo = y;
                     let hi = y + i16::from(self.r.sprite_size.1) - 1;
                     let curr = self.scanline as i16 + 1;
-                    if !(lo <= curr && curr <= hi) {
+                    if !(lo <= curr && curr <= hi) || y >= 241 {
                         continue;
                     }
 
@@ -465,7 +465,7 @@ impl Ppu {
                         self.secondary_oam[secondary_oam_index + 3] = self.primary_oam[i * 4 + 3];
                         self.is_sprite_0[secondary_oam_index / 4] = i == 0;
                         secondary_oam_index += 4;
-                    } else {
+                    } else if self.r.show_sprites || self.r.show_background {
                         self.r.sprite_overflow = true;
                     }
                 }

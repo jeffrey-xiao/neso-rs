@@ -52,12 +52,49 @@
 
 ## PPU
 
+  - rainwarrior's `color_test`: (1/1)
   - blargg's `ppu_tests`: (4/5)
     - `palette_ram`: Pass
     - `power_up_palette`: Pass
     - `sprite_ram`: Pass
     - `vbl_clear_time`: Fail
     - `vram_access`: Pass
+  - blargg's `full_palette`: (0/1)
+  - blargg's `nmi_sync`: (0/1)
+  - blargg's `oam_read`: (1/1)
+  - blargg's `oam_stress`: (0/1)
+  - rainwarrior's `palette`: (0/1)
+  - blargg's `ppu_open_bus`: (0/1)
+  - bisqwit's `ppu_read_buffer`: (0/1)
+  - blargg's `ppu_sprite_hit`: (9/10)
+    - `01-basics`: Pass
+    - `02-alignment`: Pass
+    - `03-corners`: Pass
+    - `04-flip`: Pass
+    - `05-left_clip`: Pass
+    - `06-right_edge`: Pass
+    - `07-screen_bottom`: Pass
+    - `08-double_height`: Pass
+    - `09-timing`: Fail
+    - `10-timing_order`: Pass
+  - blargg's `ppu_sprite_overflow`: (3/5)
+    - `01-basics`: Pass
+    - `02-details`: Pass
+    - `03-timing`: Fail
+    - `04-obscure`: Fail
+    - `05-emulator`: Pass
+  - blargg's `ppu_vbl_nmi`:
+    - `01-vbl_basics`: Pass
+    - `02-vbl_set_time`: Fail
+    - `03-vbl_clear_time`: Pass
+    - `04-nmi_control`: Fail
+    - `05-nmi_timing`: Fail
+    - `06-suppression`: Fail
+    - `07-nmi_on_timing`: Fail
+    - `08-nmi_off_timing`: Fail
+    - `09-even_odd_frames`: Fail
+    - `10-even_odd_timing`: Fail
+  - Quietust's `scanline`: (0/1)
 
 ## APU
 

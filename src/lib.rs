@@ -254,7 +254,7 @@ mod tests {
         }
     }
 
-    // Compare hash of nametables after specified frames for no text output tests.
+    // Compare hash of nametables after specified frames for graphical output tests.
     macro_rules! graphical_tests {
         ($($test_name:ident: ($path:expr, $frames:expr, $hash:expr)$(,)*)*) => {
             $(
@@ -359,6 +359,14 @@ mod tests {
     }
 
     mod ppu {
+        fn test_path(file_name: &str) -> String {
+            format!("./tests/ppu/{}", file_name)
+        }
+
+        text_tests!(
+            test_oam_read: test_path("oam_read.nes"),
+        );
+
         mod general {
             fn test_path(file_name: &str) -> String {
                 format!("./tests/ppu/general/{}", file_name)
@@ -369,6 +377,47 @@ mod tests {
                 test_power_up_palette: (test_path("power_up_palette.nes"), 18, 0x657D_9167_290E_F938),
                 test_sprite_ram: (test_path("sprite_ram.nes"), 18, 0x657D_9167_290E_F938),
                 test_vram_access: (test_path("vram_access.nes"), 18, 0x657D_9167_290E_F938),
+            );
+        }
+
+        mod sprite_hit {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/ppu/sprite_hit/{}", file_name)
+            }
+
+            text_tests!(
+                test_01_basics: test_path("01-basics.nes"),
+                test_02_alignment: test_path("02-alignment.nes"),
+                test_03_corners: test_path("03-corners.nes"),
+                test_04_flip: test_path("04-flip.nes"),
+                test_05_left_clip: test_path("05-left_clip.nes"),
+                test_06_right_edge: test_path("06-right_edge.nes"),
+                test_07_screen_bottom: test_path("07-screen_bottom.nes"),
+                test_08_double_height: test_path("08-double_height.nes"),
+                test_10_timing_order: test_path("10-timing_order.nes"),
+            );
+        }
+
+        mod sprite_overflow {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/ppu/sprite_overflow/{}", file_name)
+            }
+
+            text_tests!(
+                test_01_basics: test_path("01-basics.nes"),
+                test_02_details: test_path("02-details.nes"),
+                test_05_emulator: test_path("05-emulator.nes"),
+            );
+        }
+
+        mod vbl_nmi {
+            fn test_path(file_name: &str) -> String {
+                format!("./tests/ppu/vbl_nmi/{}", file_name)
+            }
+
+            text_tests!(
+                test_01_vbl_basics: test_path("01-vbl_basics.nes"),
+                test_03_clear_time: test_path("03-vbl_clear_time.nes"),
             );
         }
     }
