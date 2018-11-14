@@ -2,3 +2,4 @@
 **/target/
 pkg/
 wasm-pack.log
+Cargo.lock
