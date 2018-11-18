@@ -46,5 +46,9 @@ pub trait Mapper {
     #[cfg(not(target_arch = "wasm32"))]
     fn save_state(&self) -> bincode::Result<Vec<u8>>;
     #[cfg(not(target_arch = "wasm32"))]
-    fn load_state(&mut self, mapper_data: &[u8], save_data_opt: Option<Vec<u8>>) -> bincode::Result<()>;
+    fn load_state(
+        &mut self,
+        mapper_data: &[u8],
+        save_data_opt: Option<Vec<u8>>,
+    ) -> bincode::Result<()>;
 }

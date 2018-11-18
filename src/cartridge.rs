@@ -149,7 +149,11 @@ impl Cartridge {
         if !self.has_battery {
             return Ok(None);
         }
-        let chr_ram = if self.is_chr_ram { Some(&self.chr_rom) } else { None };
+        let chr_ram = if self.is_chr_ram {
+            Some(&self.chr_rom)
+        } else {
+            None
+        };
         bincode::serialize(&(&self.prg_ram, chr_ram)).map(|data| Some(data))
     }
 

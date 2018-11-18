@@ -2,12 +2,12 @@ mod registers;
 
 use self::registers::Registers;
 use bus::Bus;
-#[cfg(not(target_arch = "wasm32"))]
-use BigArray;
 use cpu::Interrupt;
 #[cfg(target_arch = "wasm32")]
 use debug;
 use std::mem;
+#[cfg(not(target_arch = "wasm32"))]
+use BigArray;
 
 const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;
@@ -53,7 +53,10 @@ const MIRRORING_MODE_TABLE: [usize; 20] = [
 pub struct Ppu {
     pub r: Registers,
     pub buffer_index: usize,
-    #[cfg_attr(not(target_arch = "wasm32"), serde(skip, default = "Ppu::empty_buffer"))]
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        serde(skip, default = "Ppu::empty_buffer")
+    )]
     pub buffer: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 4],
     pub cycle: u16,    // [0, 340]
     pub scanline: u16, // [0, 261]

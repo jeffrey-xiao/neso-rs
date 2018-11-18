@@ -13,7 +13,10 @@ pub enum Variant {
 
 #[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct UxROM {
-    #[cfg_attr(not(target_arch = "wasm32"), serde(skip, default = "Cartridge::empty_cartridge"))]
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        serde(skip, default = "Cartridge::empty_cartridge")
+    )]
     cartridge: Cartridge,
     variant: Variant,
     prg_rom_bank: u8,
@@ -91,7 +94,11 @@ impl Mapper for UxROM {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn load_state(&mut self, mapper_data: &[u8], save_data_opt: Option<Vec<u8>>) -> bincode::Result<()> {
+    fn load_state(
+        &mut self,
+        mapper_data: &[u8],
+        save_data_opt: Option<Vec<u8>>,
+    ) -> bincode::Result<()> {
         let mut saved_mapper = bincode::deserialize(mapper_data)?;
         std::mem::swap(self, &mut saved_mapper);
         std::mem::swap(&mut self.cartridge, &mut saved_mapper.cartridge);

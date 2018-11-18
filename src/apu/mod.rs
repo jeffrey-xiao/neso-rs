@@ -309,14 +309,20 @@ impl Dmc {
 #[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Apu {
     pub buffer_index: usize,
-    #[cfg_attr(not(target_arch = "wasm32"), serde(skip, default = "Apu::empty_buffer"))]
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        serde(skip, default = "Apu::empty_buffer")
+    )]
     pub buffer: [f32; BUFFER_SIZE],
     pub cycle: u64,
     pulses: [Pulse; 2],
     triangle: Triangle,
     noise: Noise,
     dmc: Dmc,
-    #[cfg_attr(not(target_arch = "wasm32"), serde(skip, default = "Apu::default_filters"))]
+    #[cfg_attr(
+        not(target_arch = "wasm32"),
+        serde(skip, default = "Apu::default_filters")
+    )]
     filters: [Box<FirstOrderFilter>; 3],
     #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
     mixer: Mixer,

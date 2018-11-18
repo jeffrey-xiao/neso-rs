@@ -4,11 +4,11 @@ mod registers;
 
 use self::registers::Registers;
 use bus::Bus;
-#[cfg(not(target_arch = "wasm32"))]
-use BigArray;
 use controller::Controller;
 #[cfg(target_arch = "wasm32")]
 use debug;
+#[cfg(not(target_arch = "wasm32"))]
+use BigArray;
 
 const STACK_START: u16 = 0x100;
 
