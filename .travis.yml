@@ -21,6 +21,7 @@ addons:
       - libiberty-dev
 
 before_script:
+  - rustup target add wasm32-unknown-unknown
   - rustup install nightly
   - rustup component add clippy-preview --toolchain nightly
   - rustup component add rustfmt-preview --toolchain nightly
@@ -29,6 +30,7 @@ script:
   - cargo +nightly clippy --all-targets
   - cargo +nightly fmt --verbose --all -- --check
   - cargo build --verbose --all
+  - cargo build --verbose --all --target wasm32-unknown-unknown
   - cargo test --verbose --all
 
 after_success:
