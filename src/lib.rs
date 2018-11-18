@@ -267,10 +267,9 @@ impl Nes {
         self.cpu = cpu;
         self.apu = apu;
         self.ppu = ppu;
-        let mapper = self.mapper.expect("[NES] No ROM loaded.");
-        self.attach_bus(mapper);
-        let mapper = unsafe { &mut *mapper };
+        let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
         mapper.load_state(&mapper_data, save_data_opt)?;
+        self.attach_bus(mapper);
         Ok(())
     }
 }
