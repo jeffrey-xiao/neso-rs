@@ -39,4 +39,12 @@ pub trait Mapper {
     fn mirroring_mode(&self) -> MirroringMode;
     fn attach_bus(&mut self, _bus: Bus) {}
     fn step(&mut self) {}
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save(&self) -> bincode::Result<Option<Vec<u8>>>;
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load(&mut self, save_data: &[u8]) -> bincode::Result<()>;
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_state(&self) -> bincode::Result<Vec<u8>>;
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_state(&mut self, mapper_data: &[u8], save_data_opt: Option<Vec<u8>>) -> bincode::Result<()>;
 }

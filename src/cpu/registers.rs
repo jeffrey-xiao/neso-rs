@@ -6,6 +6,7 @@ pub const BREAK_COMMAND_MASK: u8 = 0x10;
 pub const OVERFLOW_MASK: u8 = 0x40;
 pub const NEGATIVE_MASK: u8 = 0x80;
 
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Registers {
     pub pc: u16,
     pub sp: u8,

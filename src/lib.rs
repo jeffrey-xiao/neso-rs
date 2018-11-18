@@ -2,13 +2,13 @@
 
 #[macro_use]
 extern crate cfg_if;
-#[cfg(all(target_arch = "wasm32", console_error_panic_hook))]
-extern crate console_error_panic_hook;
-#[cfg(target_arch = "wasm32")]
-extern crate wasm_bindgen;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
+        #[cfg(console_error_panic_hook)]
+        extern crate console_error_panic_hook;
+        extern crate wasm_bindgen;
+
         #[wasm_bindgen]
         extern "C" {
             #[wasm_bindgen(js_namespace = console)]
@@ -18,9 +18,83 @@ cfg_if! {
         macro_rules! debug {
             ($($t:tt)*) => (debug(&format_args!($($t)*).to_string()))
         }
+
+        mod bincode {
+            pub type Result<T> = std::result::Result<T, ()>;
+        }
     } else {
         #[macro_use]
         extern crate log;
+        #[macro_use]
+        extern crate serde_derive;
+        extern crate serde;
+        extern crate bincode;
+
+        use std::fmt;
+        use std::marker::PhantomData;
+        use serde::ser::{Serialize, Serializer, SerializeTuple};
+        use serde::de::{Deserialize, Deserializer, Visitor, SeqAccess, Error};
+
+        trait BigArray<'de>: Sized {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                where S: Serializer;
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+                where D: Deserializer<'de>;
+        }
+
+        macro_rules! big_array {
+            ($($len:expr$(,)*)+) => {
+                $(
+                    impl<'de, T> BigArray<'de> for [T; $len]
+                        where T: Default + Copy + Serialize + Deserialize<'de>
+                    {
+                        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                            where S: Serializer
+                        {
+                            let mut seq = serializer.serialize_tuple(self.len())?;
+                            for elem in &self[..] {
+                                seq.serialize_element(elem)?;
+                            }
+                            seq.end()
+                        }
+
+                        fn deserialize<D>(deserializer: D) -> Result<[T; $len], D::Error>
+                            where D: Deserializer<'de>
+                        {
+                            struct ArrayVisitor<T> {
+                                element: PhantomData<T>,
+                            }
+
+                            impl<'de, T> Visitor<'de> for ArrayVisitor<T>
+                                where T: Default + Copy + Deserialize<'de>
+                            {
+                                type Value = [T; $len];
+
+                                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                                    formatter.write_str(concat!("an array of length ", $len))
+                                }
+
+                                fn visit_seq<A>(self, mut seq: A) -> Result<[T; $len], A::Error>
+                                    where A: SeqAccess<'de>
+                                {
+                                    let mut arr = [T::default(); $len];
+                                    for i in 0..$len {
+                                        arr[i] = seq.next_element()?
+                                            .ok_or_else(|| Error::invalid_length(i, &self))?;
+                                    }
+                                    Ok(arr)
+                                }
+                            }
+
+                            let visitor = ArrayVisitor { element: PhantomData };
+                            deserializer.deserialize_tuple($len, visitor)
+                        }
+                    }
+                )+
+            }
+        }
+
+        big_array! { 0x100, 0x800, 0x2000 }
     }
 }
 
@@ -70,22 +144,29 @@ impl Nes {
         }
     }
 
-    pub fn load_rom(&mut self, buffer: &[u8]) {
-        let cartridge = Cartridge::from_buffer(buffer);
-        let mapper = mapper::from_cartridge(cartridge);
+    fn attach_bus(&mut self, mapper: *mut Mapper) {
         let mut bus = Bus::new(&mut self.apu, &mut self.cpu, &mut self.ppu, mapper);
         self.apu.attach_bus(bus.clone());
         self.cpu.attach_bus(bus.clone());
         self.ppu.attach_bus(bus.clone());
         let bus_clone = bus.clone();
         bus.mapper_mut().attach_bus(bus_clone);
+        self.mapper = Some(bus.mapper);
+    }
 
+    pub fn load_rom(&mut self, buffer: &[u8]) {
         if let Some(mapper) = self.mapper.take() {
             unsafe {
                 Box::from_raw(mapper);
             }
         }
-        self.mapper = Some(bus.mapper);
+
+        let cartridge = Cartridge::from_buffer(buffer);
+        let mapper = Box::into_raw(mapper::from_cartridge(cartridge));
+        self.attach_bus(mapper);
+        self.apu.initialize();
+        self.cpu.initialize();
+        self.ppu.initialize();
     }
 
     pub fn step(&mut self) {
@@ -107,11 +188,11 @@ impl Nes {
     }
 
     pub fn reset(&mut self) {
-        self.ppu.buffer_index = 0;
         self.apu.buffer_index = 0;
+        self.ppu.buffer_index = 0;
+        self.apu.reset();
         self.cpu.reset();
         self.ppu.reset();
-        self.apu.reset();
     }
 
     pub fn image_buffer(&self) -> *const u8 {
@@ -159,6 +240,38 @@ impl Nes {
 
     pub fn release_button(&mut self, controller_index: usize, button_index: u8) {
         self.cpu.controllers[controller_index].release_button(button_index);
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+impl Nes {
+    pub fn save(&self) -> bincode::Result<Option<Vec<u8>>> {
+        let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
+        mapper.save()
+    }
+
+    pub fn load(&mut self, save_data: &[u8]) -> bincode::Result<()> {
+        let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
+        mapper.load(save_data)
+    }
+
+    pub fn save_state(&self) -> bincode::Result<Vec<u8>> {
+        let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
+        let mapper_data = mapper.save_state()?;
+        let save_data = self.save()?;
+        bincode::serialize(&(&self.apu, &self.cpu, &self.ppu, mapper_data, save_data))
+    }
+
+    pub fn load_state(&mut self, save_state_data: &[u8]) -> bincode::Result<()> {
+        let (apu, cpu, ppu, mapper_data, save_data_opt): (_, _, _, Vec<u8>, Option<Vec<u8>>) = bincode::deserialize(save_state_data)?;
+        self.cpu = cpu;
+        self.apu = apu;
+        self.ppu = ppu;
+        let mapper = self.mapper.expect("[NES] No ROM loaded.");
+        self.attach_bus(mapper);
+        let mapper = unsafe { &mut *mapper };
+        mapper.load_state(&mapper_data, save_data_opt)?;
+        Ok(())
     }
 }
 

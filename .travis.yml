@@ -28,8 +28,8 @@ before_script:
 script:
   - cargo +nightly clippy --all-targets
   - cargo +nightly fmt --verbose --all -- --check
-  - cargo build --verbose --lib
-  - cargo test --verbose --lib
+  - cargo build --verbose --all
+  - cargo test --verbose --all
 
 after_success:
   - |

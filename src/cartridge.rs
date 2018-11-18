@@ -4,16 +4,30 @@ use ppu::MirroringMode;
 
 const CARTRIDGE_HEADER: u32 = 0x1A53_454E;
 
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Cartridge {
     prg_rom: Vec<u8>,
     chr_rom: Vec<u8>,
     prg_ram: Vec<u8>,
+    pub is_chr_ram: bool,
     pub has_battery: bool,
     pub mapper: u8,
     pub mirroring_mode: MirroringMode,
 }
 
 impl Cartridge {
+    pub fn empty_cartridge() -> Self {
+        Cartridge {
+            prg_rom: Vec::new(),
+            chr_rom: Vec::new(),
+            prg_ram: Vec::new(),
+            is_chr_ram: false,
+            has_battery: false,
+            mapper: 0,
+            mirroring_mode: MirroringMode::default(),
+        }
+    }
+
     pub fn from_buffer(mut buffer: &[u8]) -> Self {
         let header = u32::from(buffer[0])
             | (u32::from(buffer[1]) << 8)
@@ -53,12 +67,13 @@ impl Cartridge {
         let (prg_rom_buffer, buffer) = buffer.split_at(prg_rom_len);
         let prg_rom = prg_rom_buffer.to_vec();
 
-        let chr_rom = if chr_rom_len > 0 {
+        let (is_chr_ram, chr_rom) = if chr_rom_len > 0 {
+            debug!("[CARTRIDGE] Using CHR ROM.");
             let (chr_rom_buffer, _) = buffer.split_at(chr_rom_len);
-            chr_rom_buffer.to_vec()
+            (false, chr_rom_buffer.to_vec())
         } else {
             debug!("[CARTRIDGE] Using CHR RAM.");
-            vec![0; 0x2000]
+            (true, vec![0; 0x2000])
         };
 
         let has_battery = flags_6 & 0x10 != 0;
@@ -82,6 +97,7 @@ impl Cartridge {
             prg_rom,
             chr_rom,
             prg_ram: vec![0; prg_ram_len],
+            is_chr_ram,
             has_battery,
             mapper,
             mirroring_mode,
@@ -126,5 +142,24 @@ impl Cartridge {
 
     pub fn chr_bank(&self, offset: usize) -> *const u8 {
         unsafe { self.chr_rom.as_ptr().add(offset * 0x400) }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn save(&self) -> bincode::Result<Option<Vec<u8>>> {
+        if !self.has_battery {
+            return Ok(None);
+        }
+        let chr_ram = if self.is_chr_ram { Some(&self.chr_rom) } else { None };
+        bincode::serialize(&(&self.prg_ram, chr_ram)).map(|data| Some(data))
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load(&mut self, save_data: &[u8]) -> bincode::Result<()> {
+        let (prg_ram, chr_ram_opt) = bincode::deserialize(save_data)?;
+        self.prg_ram = prg_ram;
+        if let Some(chr_ram) = chr_ram_opt {
+            self.chr_rom = chr_ram;
+        }
+        Ok(())
     }
 }

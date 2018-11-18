@@ -1,6 +1,7 @@
 use std::cmp;
 
 #[derive(Default)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Controller {
     // A, B, Select, Start, Up, Down, Left, Right
     value: u8,

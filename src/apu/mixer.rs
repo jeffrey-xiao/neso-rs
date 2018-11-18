@@ -37,3 +37,9 @@ impl Mixer {
         pulse_out + tnd_out
     }
 }
+
+impl Default for Mixer {
+    fn default() -> Self {
+        Mixer::new()
+    }
+}

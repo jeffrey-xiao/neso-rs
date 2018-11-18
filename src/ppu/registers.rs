@@ -1,3 +1,4 @@
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Registers {
     pub high_tile_byte: u8,
     pub low_tile_byte: u8,

@@ -2,6 +2,8 @@ mod registers;
 
 use self::registers::Registers;
 use bus::Bus;
+#[cfg(not(target_arch = "wasm32"))]
+use BigArray;
 use cpu::Interrupt;
 #[cfg(target_arch = "wasm32")]
 use debug;
@@ -24,6 +26,7 @@ pub const COLORS: [u32; 64] = [
 ];
 
 #[derive(Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub enum MirroringMode {
     Horizontal = 0,
     Vertical = 1,
@@ -46,22 +49,31 @@ const MIRRORING_MODE_TABLE: [usize; 20] = [
     0, 1, 2, 3, // None
 ];
 
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Ppu {
     pub r: Registers,
     pub buffer_index: usize,
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip, default = "Ppu::empty_buffer"))]
     pub buffer: [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 4],
     pub cycle: u16,    // [0, 340]
     pub scanline: u16, // [0, 261]
     pub frame: u64,
+    #[cfg_attr(not(target_arch = "wasm32"), serde(with = "BigArray"))]
     pub primary_oam: [u8; 0x100],
     secondary_oam: [u8; 0x20],
     is_sprite_0: [bool; 8],
+    #[cfg_attr(not(target_arch = "wasm32"), serde(with = "BigArray"))]
     vram: [u8; 0x2000],
     palette_ram: [u8; 0x20],
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
     bus: Option<Bus>,
 }
 
 impl Ppu {
+    fn empty_buffer() -> [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 4] {
+        [0; SCREEN_WIDTH * SCREEN_HEIGHT * 4]
+    }
+
     pub fn new() -> Ppu {
         #[rustfmt::skip]
         let palette_ram = [
@@ -106,7 +118,6 @@ impl Ppu {
 
     pub fn attach_bus(&mut self, bus: Bus) {
         self.bus = Some(bus);
-        self.initialize();
     }
 
     fn bus(&self) -> &Bus {

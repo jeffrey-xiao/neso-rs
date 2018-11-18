@@ -5,8 +5,6 @@ use self::filter::{FirstOrderFilter, HighPassFilter, LowPassFilter};
 use self::mixer::Mixer;
 use bus::Bus;
 use cpu::Interrupt;
-#[cfg(target_arch = "wasm32")]
-use debug;
 
 // https://wiki.nesdev.com/w/index.php/APU_Length_Counter
 #[rustfmt::skip]
@@ -54,12 +52,14 @@ const SAMPLE_CYCLES: f64 = CLOCK_FREQ as f64 / SAMPLE_FREQ as f64;
 const BUFFER_SIZE: usize = 735;
 
 #[derive(Debug)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub enum FrameCounterMode {
     FourStep,
     FiveStep,
 }
 
 #[derive(Default)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct LengthCounter {
     pub enabled: bool,
     pub val: u8,
@@ -78,6 +78,7 @@ impl LengthCounter {
 }
 
 #[derive(Default)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Envelope {
     enabled: bool,
     looped: bool,
@@ -119,6 +120,7 @@ impl Envelope {
 }
 
 #[derive(Default)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Pulse {
     enabled: bool,
     duty_cycle: u8,
@@ -157,6 +159,7 @@ impl Pulse {
 }
 
 #[derive(Default)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Triangle {
     enabled: bool,
     duty_val: u8,
@@ -199,6 +202,7 @@ impl Triangle {
     }
 }
 
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Noise {
     enabled: bool,
     mode: bool,
@@ -248,6 +252,7 @@ impl Default for Noise {
 }
 
 #[derive(Default)]
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Dmc {
     enabled: bool,
     silenced: bool,
@@ -301,15 +306,19 @@ impl Dmc {
     }
 }
 
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Apu {
     pub buffer_index: usize,
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip, default = "Apu::empty_buffer"))]
     pub buffer: [f32; BUFFER_SIZE],
     pub cycle: u64,
     pulses: [Pulse; 2],
     triangle: Triangle,
     noise: Noise,
     dmc: Dmc,
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip, default = "Apu::default_filters"))]
     filters: [Box<FirstOrderFilter>; 3],
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
     mixer: Mixer,
     frame_counter_mode: FrameCounterMode,
     frame_counter_val: u16,
@@ -317,10 +326,23 @@ pub struct Apu {
     irq_enabled: bool,
     irq_pending: bool,
     last_written_byte: u8,
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
     bus: Option<Bus>,
 }
 
 impl Apu {
+    fn empty_buffer() -> [f32; BUFFER_SIZE] {
+        [0.0; BUFFER_SIZE]
+    }
+
+    fn default_filters() -> [Box<FirstOrderFilter>; 3] {
+        [
+            Box::new(HighPassFilter::new(90, SAMPLE_FREQ)),
+            Box::new(HighPassFilter::new(440, SAMPLE_FREQ)),
+            Box::new(LowPassFilter::new(14000, SAMPLE_FREQ)),
+        ]
+    }
+
     pub fn new() -> Self {
         Apu {
             buffer_index: 0,
@@ -330,11 +352,7 @@ impl Apu {
             triangle: Triangle::default(),
             noise: Noise::default(),
             dmc: Dmc::default(),
-            filters: [
-                Box::new(HighPassFilter::new(90, SAMPLE_FREQ)),
-                Box::new(HighPassFilter::new(440, SAMPLE_FREQ)),
-                Box::new(LowPassFilter::new(14000, SAMPLE_FREQ)),
-            ],
+            filters: Apu::default_filters(),
             mixer: Mixer::new(),
             frame_counter_mode: FrameCounterMode::FourStep,
             frame_counter_val: FOUR_STEP_FRAME_COUNTER_CYCLES[0],
@@ -370,7 +388,6 @@ impl Apu {
 
     pub fn attach_bus(&mut self, bus: Bus) {
         self.bus = Some(bus);
-        self.initialize();
     }
 
     fn bus(&self) -> &Bus {

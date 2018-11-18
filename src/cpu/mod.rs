@@ -4,19 +4,24 @@ mod registers;
 
 use self::registers::Registers;
 use bus::Bus;
+#[cfg(not(target_arch = "wasm32"))]
+use BigArray;
 use controller::Controller;
 #[cfg(target_arch = "wasm32")]
 use debug;
 
 const STACK_START: u16 = 0x100;
 
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Cpu {
     pub cycle: u64,
     pub stall_cycle: u64,
     pub controllers: [Controller; 2],
-    ram: [u8; 0x800],
+    #[cfg_attr(not(target_arch = "wasm32"), serde(with = "BigArray"))]
+    pub ram: [u8; 0x800],
     interrupt_flags: [bool; 2],
     r: Registers,
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
     bus: Option<Bus>,
 }
 
@@ -50,7 +55,6 @@ impl Cpu {
 
     pub fn attach_bus(&mut self, bus: Bus) {
         self.bus = Some(bus);
-        self.initialize()
     }
 
     fn bus(&self) -> &Bus {

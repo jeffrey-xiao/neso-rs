@@ -4,7 +4,9 @@ use debug;
 use mapper::Mapper;
 use ppu::MirroringMode;
 
+#[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct CNROM {
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip, default = "Cartridge::empty_cartridge"))]
     cartridge: Cartridge,
     chr_rom_bank: u8,
 }
@@ -49,5 +51,31 @@ impl Mapper for CNROM {
 
     fn mirroring_mode(&self) -> MirroringMode {
         self.cartridge.mirroring_mode
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save(&self) -> bincode::Result<Option<Vec<u8>>> {
+        self.cartridge.save()
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load(&mut self, save_data: &[u8]) -> bincode::Result<()> {
+        self.cartridge.load(save_data)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_state(&self) -> bincode::Result<Vec<u8>> {
+        bincode::serialize(&self)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_state(&mut self, mapper_data: &[u8], save_data_opt: Option<Vec<u8>>) -> bincode::Result<()> {
+        let mut saved_mapper = bincode::deserialize(mapper_data)?;
+        std::mem::swap(self, &mut saved_mapper);
+        std::mem::swap(&mut self.cartridge, &mut saved_mapper.cartridge);
+        if let Some(save_data) = save_data_opt {
+            self.load(&save_data)?;
+        }
+        Ok(())
     }
 }
