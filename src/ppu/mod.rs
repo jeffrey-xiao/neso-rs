@@ -147,10 +147,8 @@ impl Ppu {
                 self.vram[MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400 + offset]
             },
             0x3F00..=0x3FFF => {
-                if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F1C {
-                    addr -= 0x10;
-                }
-                self.palette_ram[((addr - 0x3F00) % 0x20) as usize]
+                let modulus = if addr % 0x04 == 0 { 0x10 } else { 0x20 };
+                self.palette_ram[((addr - 0x3F00) % modulus) as usize]
             },
             _ => panic!("[PPU] Invalid read with memory address: {:#06x}.", addr),
         }
@@ -172,10 +170,8 @@ impl Ppu {
             },
 
             0x3F00..=0x3FFF => {
-                if addr == 0x3F10 || addr == 0x3F14 || addr == 0x3F18 || addr == 0x3F1C {
-                    addr -= 0x10;
-                }
-                self.palette_ram[((addr - 0x3F00) % 0x20) as usize] = val
+                let modulus = if addr % 0x04 == 0 { 0x10 } else { 0x20 };
+                self.palette_ram[((addr - 0x3F00) % modulus) as usize] = val;
             },
             _ => panic!("[PPU] Invalid write with memory address: {:#06x}.", addr),
         }
