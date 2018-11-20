@@ -195,7 +195,8 @@ impl Triangle {
     }
 
     pub fn output(&self) -> u8 {
-        if !self.enabled || self.linear_counter == 0 || self.length_counter.val == 0 {
+        // Mute ultrasonic frequencies.
+        if !self.enabled || self.linear_counter == 0 || self.length_counter.val == 0 || self.timer_period < 2 {
             return 0;
         }
         TRIANGLE_TABLE[self.duty_val as usize]
