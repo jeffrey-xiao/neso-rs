@@ -344,7 +344,7 @@ mod tests {
                     use tests::run_text_test;
 
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
-                    let mut nes = Nes::new();
+                    let mut nes = Nes::default();
                     nes.load_rom(&buffer);
                     run_text_test(&mut nes);
                 }
@@ -362,7 +362,7 @@ mod tests {
                     use tests::run_text_test;
 
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
-                    let mut nes = Nes::new();
+                    let mut nes = Nes::default();
                     nes.load_rom(&buffer);
 
                     for _ in 0..$frames {
@@ -388,7 +388,7 @@ mod tests {
                     use Nes;
 
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
-                    let mut nes = Nes::new();
+                    let mut nes = Nes::default();
                     nes.load_rom(&buffer);
 
                     for _ in 0..$frames {

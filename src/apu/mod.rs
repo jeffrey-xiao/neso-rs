@@ -744,7 +744,6 @@ impl Apu {
             }
         }
 
-        // Output sample device is 44.1 kHz
         let curr_sample = f32::floor(curr_cycle / self.sample_cycles) as u64;
         let next_sample = f32::floor(next_cycle as f32 / self.sample_cycles) as u64;
         if curr_sample != next_sample {
