@@ -4,9 +4,9 @@ pub trait FirstOrderFilter {
     fn process(&mut self, input_sample: f32) -> f32;
 }
 
-fn get_alpha(frequency: u64, sample_rate: u64) -> f32 {
+fn get_alpha(frequency: u64, sample_rate: f32) -> f32 {
     let rc = 1.0 / (2.0 * consts::PI * frequency as f32);
-    let dt = 1.0 / sample_rate as f32;
+    let dt = 1.0 / sample_rate;
     rc / (rc + dt)
 }
 
@@ -18,7 +18,7 @@ pub struct LowPassFilter {
 }
 
 impl LowPassFilter {
-    pub fn new(frequency: u64, sample_rate: u64) -> Self {
+    pub fn new(frequency: u64, sample_rate: f32) -> Self {
         LowPassFilter {
             prev_input_sample: 0.0,
             prev_output_sample: 0.0,
@@ -45,7 +45,7 @@ pub struct HighPassFilter {
 }
 
 impl HighPassFilter {
-    pub fn new(frequency: u64, sample_rate: u64) -> Self {
+    pub fn new(frequency: u64, sample_rate: f32) -> Self {
         HighPassFilter {
             prev_input_sample: 0.0,
             prev_output_sample: 0.0,

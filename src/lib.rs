@@ -127,11 +127,11 @@ pub struct Nes {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Nes {
-    pub fn new() -> Self {
+    pub fn new(sample_freq: f32) -> Self {
         #[cfg(all(target_arch = "wasm32", console_error_panic_hook))]
         set_once();
 
-        let apu = Apu::new();
+        let apu = Apu::new(sample_freq);
         let cpu = Cpu::new();
         let ppu = Ppu::new();
         let mapper = None;
@@ -169,7 +169,7 @@ impl Nes {
         self.ppu.initialize();
     }
 
-    pub fn step(&mut self) {
+    fn step(&mut self) {
         self.cpu.step();
         let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
         for _ in 0..3 {
@@ -278,11 +278,15 @@ impl Nes {
         self.attach_bus(mapper);
         Ok(())
     }
+
+    pub fn set_sample_freq(&mut self, sample_freq: f32) {
+        self.apu.set_sample_freq(sample_freq);
+    }
 }
 
 impl Default for Nes {
     fn default() -> Self {
-        Nes::new()
+        Nes::new(44_100.0)
     }
 }
 

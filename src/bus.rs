@@ -21,16 +21,8 @@ impl Bus {
         }
     }
 
-    pub fn apu(&self) -> &Apu {
-        unsafe { &(*self.apu) }
-    }
-
     pub fn apu_mut(&mut self) -> &mut Apu {
         unsafe { &mut (*self.apu) }
-    }
-
-    pub fn cpu(&self) -> &Cpu {
-        unsafe { &(*self.cpu) }
     }
 
     pub fn cpu_mut(&mut self) -> &mut Cpu {

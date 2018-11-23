@@ -154,7 +154,7 @@ impl Cartridge {
         } else {
             None
         };
-        bincode::serialize(&(&self.prg_ram, chr_ram)).map(|data| Some(data))
+        bincode::serialize(&(&self.prg_ram, chr_ram)).map(Some)
     }
 
     #[cfg(not(target_arch = "wasm32"))]

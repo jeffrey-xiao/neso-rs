@@ -45,11 +45,8 @@ const DMC_PERIOD_TABLE: [u16; 16] = [
 
 const FOUR_STEP_FRAME_COUNTER_CYCLES: [u16; 4] = [7456, 7458, 7458, 7458];
 const FIVE_STEP_FRAME_COUNTER_CYCLES: [u16; 5] = [7458, 7456, 7458, 7458, 7452];
-
 const CLOCK_FREQ: u64 = 1_789_773;
-const SAMPLE_FREQ: u64 = 44_100;
-const SAMPLE_CYCLES: f64 = CLOCK_FREQ as f64 / SAMPLE_FREQ as f64;
-const BUFFER_SIZE: usize = 735;
+const FRAMES_PER_SEC: u64 = 60;
 
 #[derive(Debug)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
@@ -314,21 +311,17 @@ impl Dmc {
 #[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct Apu {
     pub buffer_index: usize,
-    #[cfg_attr(
-        not(target_arch = "wasm32"),
-        serde(skip, default = "Apu::empty_buffer")
-    )]
-    pub buffer: [f32; BUFFER_SIZE],
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
+    pub buffer: Vec<f32>,
     pub cycle: u64,
+    sample_freq: f32,
+    sample_cycles: f32,
     pulses: [Pulse; 2],
     triangle: Triangle,
     noise: Noise,
     dmc: Dmc,
-    #[cfg_attr(
-        not(target_arch = "wasm32"),
-        serde(skip, default = "Apu::default_filters")
-    )]
-    filters: [Box<FirstOrderFilter>; 3],
+    #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
+    filters: Option<[Box<FirstOrderFilter>; 3]>,
     #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
     mixer: Mixer,
     frame_counter_mode: FrameCounterMode,
@@ -342,28 +335,23 @@ pub struct Apu {
 }
 
 impl Apu {
-    fn empty_buffer() -> [f32; BUFFER_SIZE] {
-        [0.0; BUFFER_SIZE]
+    pub fn initialize_buffer(&mut self) {
+        let buffer_size = f32::ceil(self.sample_freq / FRAMES_PER_SEC as f32);
+        self.buffer.resize(buffer_size as usize, 0.0);
     }
 
-    fn default_filters() -> [Box<FirstOrderFilter>; 3] {
-        [
-            Box::new(HighPassFilter::new(90, SAMPLE_FREQ)),
-            Box::new(HighPassFilter::new(440, SAMPLE_FREQ)),
-            Box::new(LowPassFilter::new(14000, SAMPLE_FREQ)),
-        ]
-    }
-
-    pub fn new() -> Self {
+    pub fn new(sample_freq: f32) -> Self {
         Apu {
             buffer_index: 0,
-            buffer: [0.0; BUFFER_SIZE],
+            buffer: Vec::new(),
             cycle: 0,
+            sample_freq,
+            sample_cycles: CLOCK_FREQ as f32 / sample_freq,
             pulses: [Pulse::default(), Pulse::default()],
             triangle: Triangle::default(),
             noise: Noise::default(),
             dmc: Dmc::default(),
-            filters: Apu::default_filters(),
+            filters: None,
             mixer: Mixer::new(),
             frame_counter_mode: FrameCounterMode::FourStep,
             frame_counter_val: FOUR_STEP_FRAME_COUNTER_CYCLES[0],
@@ -399,10 +387,6 @@ impl Apu {
 
     pub fn attach_bus(&mut self, bus: Bus) {
         self.bus = Some(bus);
-    }
-
-    fn bus(&self) -> &Bus {
-        self.bus.as_ref().expect("[APU] No bus attached.")
     }
 
     fn bus_mut(&mut self) -> &mut Bus {
@@ -655,10 +639,27 @@ impl Apu {
         }
     }
 
+    fn process_sample(&mut self, mut sample: f32) -> f32 {
+        let sample_freq = self.sample_freq;
+        let filters = self.filters.get_or_insert_with(|| {
+            [
+                Box::new(HighPassFilter::new(90, sample_freq)),
+                Box::new(HighPassFilter::new(440, sample_freq)),
+                Box::new(LowPassFilter::new(14_000, sample_freq)),
+            ]
+        });
+
+        for filter in filters {
+            sample = filter.process(sample);
+        }
+
+        sample
+    }
+
     pub fn step(&mut self) {
         self.cycle += 1;
-        let curr_cycle = self.cycle as f64;
-        let next_cycle = (self.cycle + 1) as f64;
+        let curr_cycle = self.cycle as f32;
+        let next_cycle = (self.cycle + 1) as f32;
 
         self.triangle.step();
         if self.dmc.enabled {
@@ -744,23 +745,25 @@ impl Apu {
         }
 
         // Output sample device is 44.1 kHz
-        let curr_sample = f64::floor(curr_cycle / SAMPLE_CYCLES) as u64;
-        let next_sample = f64::floor(next_cycle as f64 / SAMPLE_CYCLES) as u64;
+        let curr_sample = f32::floor(curr_cycle / self.sample_cycles) as u64;
+        let next_sample = f32::floor(next_cycle as f32 / self.sample_cycles) as u64;
         if curr_sample != next_sample {
-            let mut sample = self.mixer.sample(
+            let sample = self.process_sample(self.mixer.sample(
                 self.pulses[0].output(),
                 self.pulses[1].output(),
                 self.triangle.output(),
                 self.noise.output(),
                 self.dmc.output(),
-            );
+            ));
 
-            for filter in &mut self.filters {
-                sample = filter.process(sample);
-            }
-
+            self.initialize_buffer();
             self.buffer[self.buffer_index] = sample;
             self.buffer_index += 1;
         }
+    }
+
+    pub fn set_sample_freq(&mut self, sample_freq: f32) {
+        self.sample_freq = sample_freq;
+        self.sample_cycles = CLOCK_FREQ as f32 / self.sample_freq as f32;
     }
 }

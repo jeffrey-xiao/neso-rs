@@ -132,7 +132,7 @@ impl Ppu {
     }
 
     // memory map related functions
-    pub fn read_byte(&self, mut addr: u16) -> u8 {
+    pub fn read_byte(&self, addr: u16) -> u8 {
         match addr {
             0x0000..=0x1FFF => {
                 let mapper = self.bus().mapper();
@@ -154,7 +154,7 @@ impl Ppu {
         }
     }
 
-    pub fn write_byte(&mut self, mut addr: u16, val: u8) {
+    pub fn write_byte(&mut self, addr: u16, val: u8) {
         match addr {
             0x0000..=0x1FFF => {
                 let mapper = self.bus_mut().mapper_mut();
