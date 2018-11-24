@@ -13,10 +13,16 @@ cfg_if! {
         extern "C" {
             #[wasm_bindgen(js_namespace = console)]
             fn debug(s: &str);
+            #[wasm_bindgen(js_namespace = console)]
+            fn log(s: &str);
         }
 
         macro_rules! debug {
             ($($t:tt)*) => (debug(&format_args!($($t)*).to_string()))
+        }
+
+        macro_rules! info {
+            ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
         }
 
         mod bincode {
@@ -224,6 +230,10 @@ impl Nes {
     pub fn nametable_bank(&self, index: usize) -> *const u8 {
         assert!(index < 8);
         self.ppu.nametable_bank(index)
+    }
+
+    pub fn object_attribute_memory(&self) -> *const u8 {
+        self.ppu.primary_oam.as_ptr()
     }
 
     pub fn background_chr_bank(&self) -> usize {

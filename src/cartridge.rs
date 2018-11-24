@@ -1,5 +1,5 @@
 #[cfg(target_arch = "wasm32")]
-use debug;
+use log;
 use ppu::MirroringMode;
 
 const CARTRIDGE_HEADER: u32 = 0x1A53_454E;
@@ -44,11 +44,11 @@ impl Cartridge {
         }
 
         let prg_rom_len = buffer[4] as usize * 0x4000;
-        debug!("[CARTRIDGE] PRG ROM length: {} bytes.", prg_rom_len);
+        info!("[CARTRIDGE] PRG ROM length: {} bytes.", prg_rom_len);
         let chr_rom_len = buffer[5] as usize * 0x2000;
-        debug!("[CARTRIDGE] CHR ROM length: {} bytes.", chr_rom_len);
+        info!("[CARTRIDGE] CHR ROM length: {} bytes.", chr_rom_len);
         let mut prg_ram_len = buffer[8] as usize * 0x2000;
-        debug!("[CARTRIDGE] PRG RAM length: {} bytes.", prg_ram_len);
+        info!("[CARTRIDGE] PRG RAM length: {} bytes.", prg_ram_len);
 
         if prg_ram_len == 0 {
             prg_ram_len = 0x4000;
@@ -60,7 +60,7 @@ impl Cartridge {
         buffer = buffer.split_at(16).1;
 
         if flags_6 & 0x04 != 0 {
-            debug!("[CARTRIDGE] Trainer present.");
+            info!("[CARTRIDGE] Trainer present.");
             buffer = buffer.split_at(512).1;
         }
 
@@ -68,19 +68,19 @@ impl Cartridge {
         let prg_rom = prg_rom_buffer.to_vec();
 
         let (is_chr_ram, chr_rom) = if chr_rom_len > 0 {
-            debug!("[CARTRIDGE] Using CHR ROM.");
+            info!("[CARTRIDGE] Using CHR ROM.");
             let (chr_rom_buffer, _) = buffer.split_at(chr_rom_len);
             (false, chr_rom_buffer.to_vec())
         } else {
-            debug!("[CARTRIDGE] Using CHR RAM.");
+            info!("[CARTRIDGE] Using CHR RAM.");
             (true, vec![0; 0x2000])
         };
 
         let has_battery = flags_6 & 0x10 != 0;
-        debug!("[CARTRIDGE] Has battery: {}.", has_battery);
+        info!("[CARTRIDGE] Has battery: {}.", has_battery);
 
         let mapper = (flags_7 & 0xF0) | (flags_6 >> 4);
-        debug!("[CARTRIDGE] Mapper: {}.", mapper);
+        info!("[CARTRIDGE] Mapper: {}.", mapper);
 
         let mirroring_mode = {
             if flags_6 & 0x08 != 0 {
@@ -91,7 +91,7 @@ impl Cartridge {
                 MirroringMode::Horizontal
             }
         };
-        debug!("[CARTRIDGE] Mirroring mode: {:?}.", mirroring_mode);
+        info!("[CARTRIDGE] Mirroring mode: {:?}.", mirroring_mode);
 
         Cartridge {
             prg_rom,
