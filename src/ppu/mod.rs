@@ -325,7 +325,7 @@ impl Ppu {
 
             let mut py = y - sprite_y;
             let mut px = 7 - (x - sprite_x);
-            let mut nametable_address = self.r.sprite_pattern_table_address;
+            let mut pattern_table_address = self.r.sprite_pattern_table_address;
 
             if attributes & 0x40 != 0 {
                 px = self.r.sprite_size.0 - 1 - px;
@@ -336,7 +336,7 @@ impl Ppu {
             }
 
             if self.r.sprite_size.1 == 16 {
-                nametable_address = (u16::from(tile_index) & 0x01) * 0x1000;
+                pattern_table_address = (u16::from(tile_index) & 0x01) * 0x1000;
                 tile_index &= 0xFE;
                 if py >= 8 {
                     py -= 8;
@@ -344,7 +344,7 @@ impl Ppu {
                 }
             }
 
-            let addr = nametable_address + u16::from(tile_index) * 16 + u16::from(py);
+            let addr = pattern_table_address + u16::from(tile_index) * 16 + u16::from(py);
             let low_tile_bit = (self.read_byte(addr) >> px) & 0x01;
             let high_tile_bit = (self.read_byte(addr + 8) >> px) & 0x01;
             let palette = (attributes & 0x03) as u8;

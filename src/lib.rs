@@ -236,6 +236,10 @@ impl Nes {
         self.ppu.primary_oam.as_ptr()
     }
 
+    pub fn tall_sprites_enabled(&self) -> bool {
+        self.ppu.r.sprite_size.1 == 16
+    }
+
     pub fn background_chr_bank(&self) -> usize {
         if self.ppu.r.background_pattern_table_address == 0x1000 {
             4

@@ -83,7 +83,7 @@
     - `03-timing`: Fail
     - `04-obscure`: Fail
     - `05-emulator`: Pass
-  - blargg's `ppu_vbl_nmi`:
+  - blargg's `ppu_vbl_nmi`: (2/10)
     - `01-vbl_basics`: Pass
     - `02-vbl_set_time`: Fail
     - `03-vbl_clear_time`: Pass
