@@ -271,19 +271,18 @@ impl Nes {
 
     pub fn save_state(&self) -> bincode::Result<Vec<u8>> {
         let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
-        let mapper_data = mapper.save_state()?;
-        let save_data = self.save()?;
+        let (mapper_data, save_data) = mapper.save_state()?;
         bincode::serialize(&(&self.apu, &self.cpu, &self.ppu, mapper_data, save_data))
     }
 
     pub fn load_state(&mut self, save_state_data: &[u8]) -> bincode::Result<()> {
-        let (apu, cpu, ppu, mapper_data, save_data_opt): (Apu, Cpu, Ppu, Vec<u8>, Option<Vec<u8>>) =
+        let (apu, cpu, ppu, mapper_data, save_data): (Apu, Cpu, Ppu, Vec<u8>, Vec<u8>) =
             bincode::deserialize(save_state_data)?;
         self.cpu = cpu;
         self.apu = apu;
         self.ppu = ppu;
         let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
-        mapper.load_state(&mapper_data, save_data_opt)?;
+        mapper.load_state(&mapper_data, &save_data)?;
         self.attach_bus(mapper);
         Ok(())
     }

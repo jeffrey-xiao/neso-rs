@@ -284,22 +284,16 @@ impl Mapper for MMC1 {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn save_state(&self) -> bincode::Result<Vec<u8>> {
-        bincode::serialize(&self)
+    fn save_state(&self) -> bincode::Result<(Vec<u8>, Vec<u8>)> {
+        Ok((bincode::serialize(&self)?, self.cartridge.save_state()?))
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    fn load_state(
-        &mut self,
-        mapper_data: &[u8],
-        save_data_opt: Option<Vec<u8>>,
-    ) -> bincode::Result<()> {
+    fn load_state(&mut self, mapper_data: &[u8], save_data: &[u8]) -> bincode::Result<()> {
         let mut saved_mapper = bincode::deserialize(mapper_data)?;
         std::mem::swap(self, &mut saved_mapper);
         std::mem::swap(&mut self.cartridge, &mut saved_mapper.cartridge);
-        if let Some(save_data) = save_data_opt {
-            self.load(&save_data)?;
-        }
+        self.load(&save_data)?;
         Ok(())
     }
 }

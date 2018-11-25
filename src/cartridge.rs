@@ -150,12 +150,17 @@ impl Cartridge {
         if !self.has_battery {
             return Ok(None);
         }
-        let chr_ram = if self.is_chr_ram {
+        self.save_state().map(Some)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn save_state(&self) -> bincode::Result<Vec<u8>> {
+        let chr_ram_opt = if self.is_chr_ram {
             Some(&self.chr_rom)
         } else {
             None
         };
-        bincode::serialize(&(&self.prg_ram, chr_ram)).map(Some)
+        bincode::serialize(&(&self.prg_ram, chr_ram_opt))
     }
 
     #[cfg(not(target_arch = "wasm32"))]
