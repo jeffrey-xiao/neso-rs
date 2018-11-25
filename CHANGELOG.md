@@ -4,8 +4,7 @@
 
 ### Fixed
 
- - Save state now save PRG RAM and CHR RAM regardless of whether there is a battery on the
-   cartridge.
+ - Save states now save PRG RAM and CHR RAM even if there is not battery in the cartridge.
 
 ## 0.4.0 - 2018-11-24
 
