@@ -17,7 +17,7 @@ include = ["src/**/*", "Cargo.toml"]
 travis-ci = { repository = "jeffrey-xiao/neso-rs", branch = "master" }
 
 [lib]
-crate-type = ["cdylib", "dylib", "rlib"]
+crate-type = ["cdylib", "lib"]
 
 [dependencies]
 cfg-if = "0.1.2"

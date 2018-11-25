@@ -5,8 +5,6 @@ mod registers;
 use self::registers::Registers;
 use bus::Bus;
 use controller::Controller;
-#[cfg(target_arch = "wasm32")]
-use debug;
 #[cfg(not(target_arch = "wasm32"))]
 use BigArray;
 
@@ -90,7 +88,6 @@ impl Cpu {
     pub fn trigger_interrupt(&mut self, interrupt: Interrupt) {
         let is_disabled = self.r.get_status_flag(registers::INTERRUPT_DISABLE_MASK);
         if !is_disabled || interrupt == Interrupt::NMI {
-            // debug!("[CPU] Interrupt triggered: {:?}.", interrupt);
             self.interrupt_flags[interrupt as usize] = true;
         }
     }
@@ -186,7 +183,6 @@ impl Cpu {
                 }
             },
             0x4014 => {
-                // debug!("[CPU] Performing OAM DMA on address {:#06x}.", val);
                 let cpu_addr = u16::from(val) << 8;
                 for offset in 0..=0xFF {
                     let cpu_addr = cpu_addr + offset;

@@ -24,10 +24,6 @@ cfg_if! {
         macro_rules! info {
             ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
         }
-
-        mod bincode {
-            pub type Result<T> = std::result::Result<T, ()>;
-        }
     } else {
         #[macro_use]
         extern crate log;
@@ -255,6 +251,10 @@ impl Nes {
     pub fn release_button(&mut self, controller_index: usize, button_index: u8) {
         self.cpu.controllers[controller_index].release_button(button_index);
     }
+
+    pub fn set_sample_freq(&mut self, sample_freq: f32) {
+        self.apu.set_sample_freq(sample_freq);
+    }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -286,10 +286,6 @@ impl Nes {
         mapper.load_state(&mapper_data, save_data_opt)?;
         self.attach_bus(mapper);
         Ok(())
-    }
-
-    pub fn set_sample_freq(&mut self, sample_freq: f32) {
-        self.apu.set_sample_freq(sample_freq);
     }
 }
 
@@ -333,7 +329,7 @@ mod tests {
         let mut output = Vec::new();
         addr = 0x6004;
         byte = nes.cpu.read_byte(addr);
-        while byte != '\0' as u8 {
+        while byte != b'\0' {
             output.push(byte);
             addr += 1;
             byte = nes.cpu.read_byte(addr);

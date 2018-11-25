@@ -16,6 +16,7 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn empty_cartridge() -> Self {
         Cartridge {
             prg_rom: Vec::new(),

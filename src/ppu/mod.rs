@@ -3,8 +3,6 @@ mod registers;
 use self::registers::Registers;
 use bus::Bus;
 use cpu::Interrupt;
-#[cfg(target_arch = "wasm32")]
-use debug;
 use std::mem;
 #[cfg(not(target_arch = "wasm32"))]
 use BigArray;
@@ -73,6 +71,7 @@ pub struct Ppu {
 }
 
 impl Ppu {
+    #[cfg(not(target_arch = "wasm32"))]
     fn empty_buffer() -> [u8; SCREEN_WIDTH * SCREEN_HEIGHT * 4] {
         [0; SCREEN_WIDTH * SCREEN_HEIGHT * 4]
     }
@@ -487,8 +486,6 @@ impl Ppu {
             if self.r.nmi_enabled {
                 let cpu = self.bus_mut().cpu_mut();
                 cpu.trigger_interrupt(Interrupt::NMI);
-            } else {
-                // debug!("[PPU] NMI is not enabled, so interrupt is skipped.");
             }
         }
 
