@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.1 - 2018-11-24
+
+### Fixed
+
+ - Save state now save PRG RAM and CHR RAM regardless of whether there is a battery on the
+   cartridge.
+
 ## 0.4.0 - 2018-11-24
 
 ### Added
