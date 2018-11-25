@@ -10,17 +10,17 @@
  - Interface for object attribute memory and checking if tall sprites are enabled.
  - More PPU tests.
 
+### Changed
+
+ - Cartridge information is now logged with `info!`/`console.log` instead of
+   `debug!`/`console.debug`.
+
 ### Fixed
 
  - Mute ultrasonic frequencies in triangle channel. Since triangle channel clocks faster than the
    square channels, it can produce ultrasonic frequencies that produce undesirable audible sounds
    when passed into the mixer.
  - Fix small issues with palette mirroring and sprite-0 hit.
-
-### Changed
-
- - Cartridge information is now logged with `info!`/`console.log` instead of
-   `debug!`/`console.debug`.
 
 ## 0.3.0 - 2018-11-11
 
