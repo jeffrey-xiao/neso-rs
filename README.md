@@ -11,14 +11,28 @@
 NES Oxidized (NESO) is a Nintendo Entertainment System emulator written in Rust that can compile to
 WebAssembly.
 
-## Usage
+## JavaScript Usage
 
 Install `neso` from [npm](https://www.npmjs.com/):
 ```
 $ npm install neso
 ```
 
-Example usage: [`neso-web`](https://gitlab.com/jeffrey-xiao/neso-web).
+Example JavaScript usage: [`neso-web`](https://gitlab.com/jeffrey-xiao/neso-web).
+
+## Rust Usage
+
+Add this to your `Cargo.toml`:
+```toml
+[dependencies]
+neso = "*"
+```
+and this to your crate root:
+```rust
+extern crate neso;
+```
+
+Example Rust usage: [`neso-gui`](https://gitlab.com/jeffrey-xiao/neso-gui).
 
 ## Features
 
