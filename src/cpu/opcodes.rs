@@ -1,4 +1,4 @@
-use cpu::{addressing_modes, registers, Cpu, Interrupt};
+use crate::cpu::{addressing_modes, registers, Cpu, Interrupt};
 
 pub struct Operand {
     pub val: u8,

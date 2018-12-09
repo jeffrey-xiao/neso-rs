@@ -3,8 +3,10 @@ mod mixer;
 
 use self::filter::{FirstOrderFilter, HighPassFilter, LowPassFilter};
 use self::mixer::Mixer;
-use bus::Bus;
-use cpu::Interrupt;
+use crate::bus::Bus;
+use crate::cpu::Interrupt;
+#[cfg(not(target_arch = "wasm32"))]
+use serde_derive::{Deserialize, Serialize};
 
 // https://wiki.nesdev.com/w/index.php/APU_Length_Counter
 #[rustfmt::skip]
@@ -321,7 +323,7 @@ pub struct Apu {
     noise: Noise,
     dmc: Dmc,
     #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
-    filters: Option<[Box<FirstOrderFilter>; 3]>,
+    filters: Option<[Box<dyn FirstOrderFilter>; 3]>,
     #[cfg_attr(not(target_arch = "wasm32"), serde(skip))]
     mixer: Mixer,
     frame_counter_mode: FrameCounterMode,

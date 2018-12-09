@@ -1,8 +1,9 @@
-use cartridge::Cartridge;
-#[cfg(target_arch = "wasm32")]
-use debug;
-use mapper::Mapper;
-use ppu::MirroringMode;
+use crate::cartridge::Cartridge;
+use crate::debug;
+use crate::mapper::Mapper;
+use crate::ppu::MirroringMode;
+#[cfg(not(target_arch = "wasm32"))]
+use serde_derive::{Deserialize, Serialize};
 use std::mem;
 
 #[derive(Debug)]

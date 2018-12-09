@@ -1,18 +1,18 @@
-use apu::Apu;
-use cpu::Cpu;
-use mapper::Mapper;
-use ppu::Ppu;
+use crate::apu::Apu;
+use crate::cpu::Cpu;
+use crate::mapper::Mapper;
+use crate::ppu::Ppu;
 
 #[derive(Clone)]
 pub struct Bus {
     pub apu: *mut Apu,
     pub cpu: *mut Cpu,
     pub ppu: *mut Ppu,
-    pub mapper: *mut Mapper,
+    pub mapper: *mut dyn Mapper,
 }
 
 impl Bus {
-    pub fn new(apu: &mut Apu, cpu: &mut Cpu, ppu: &mut Ppu, mapper: *mut Mapper) -> Self {
+    pub fn new(apu: &mut Apu, cpu: &mut Cpu, ppu: &mut Ppu, mapper: *mut dyn Mapper) -> Self {
         Bus {
             apu: apu as *mut Apu,
             cpu: cpu as *mut Cpu,
@@ -37,11 +37,11 @@ impl Bus {
         unsafe { &mut (*self.ppu) }
     }
 
-    pub fn mapper(&self) -> &Mapper {
+    pub fn mapper(&self) -> &dyn Mapper {
         unsafe { &(*self.mapper) }
     }
 
-    pub fn mapper_mut(&mut self) -> &mut Mapper {
+    pub fn mapper_mut(&mut self) -> &mut dyn Mapper {
         unsafe { &mut (*self.mapper) }
     }
 }

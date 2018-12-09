@@ -1,11 +1,13 @@
 mod registers;
 
 use self::registers::Registers;
-use bus::Bus;
-use cpu::Interrupt;
-use std::mem;
+use crate::bus::Bus;
+use crate::cpu::Interrupt;
 #[cfg(not(target_arch = "wasm32"))]
-use BigArray;
+use crate::BigArray;
+#[cfg(not(target_arch = "wasm32"))]
+use serde_derive::{Deserialize, Serialize};
+use std::mem;
 
 const SCREEN_WIDTH: usize = 256;
 const SCREEN_HEIGHT: usize = 240;

@@ -12,6 +12,7 @@ An NES emulator.
 categories = ["wasm", "emulators"]
 keywords = ["nes", "emulator"]
 include = ["src/**/*", "Cargo.toml"]
+edition = "2018"
 
 [badges]
 travis-ci = { repository = "jeffrey-xiao/neso-rs", branch = "master" }

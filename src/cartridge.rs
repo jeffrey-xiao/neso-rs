@@ -1,6 +1,7 @@
-#[cfg(target_arch = "wasm32")]
-use log;
-use ppu::MirroringMode;
+use crate::info;
+use crate::ppu::MirroringMode;
+#[cfg(not(target_arch = "wasm32"))]
+use serde_derive::{Deserialize, Serialize};
 
 const CARTRIDGE_HEADER: u32 = 0x1A53_454E;
 

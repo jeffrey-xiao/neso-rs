@@ -13,9 +13,9 @@ use self::mmc1::MMC1;
 use self::mmc3::MMC3;
 use self::nrom::NROM;
 use self::uxrom::UxROM;
-use bus::Bus;
-use cartridge::Cartridge;
-use ppu::MirroringMode;
+use crate::bus::Bus;
+use crate::cartridge::Cartridge;
+use crate::ppu::MirroringMode;
 
 pub fn from_cartridge(cartridge: Cartridge) -> Box<dyn Mapper> {
     match cartridge.mapper {

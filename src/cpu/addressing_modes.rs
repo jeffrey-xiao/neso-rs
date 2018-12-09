@@ -1,4 +1,4 @@
-use cpu::Cpu;
+use crate::cpu::Cpu;
 
 pub const ABSOLUTE: usize = 1;
 pub const ABSOLUTE_X: usize = 2;

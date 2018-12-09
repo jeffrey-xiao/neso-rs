@@ -1,6 +1,8 @@
-use cartridge::Cartridge;
-use mapper::Mapper;
-use ppu::MirroringMode;
+use crate::cartridge::Cartridge;
+use crate::mapper::Mapper;
+use crate::ppu::MirroringMode;
+#[cfg(not(target_arch = "wasm32"))]
+use serde_derive::{Deserialize, Serialize};
 
 #[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]
 pub struct NROM {

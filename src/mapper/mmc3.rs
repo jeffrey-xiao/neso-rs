@@ -1,10 +1,11 @@
-use bus::Bus;
-use cartridge::Cartridge;
-use cpu::Interrupt;
-#[cfg(target_arch = "wasm32")]
-use debug;
-use mapper::Mapper;
-use ppu::MirroringMode;
+use crate::bus::Bus;
+use crate::cartridge::Cartridge;
+use crate::cpu::Interrupt;
+use crate::debug;
+use crate::mapper::Mapper;
+use crate::ppu::MirroringMode;
+#[cfg(not(target_arch = "wasm32"))]
+use serde_derive::{Deserialize, Serialize};
 
 #[derive(Debug)]
 #[cfg_attr(not(target_arch = "wasm32"), derive(Deserialize, Serialize))]

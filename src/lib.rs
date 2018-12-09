@@ -1,20 +1,93 @@
-#![feature(nll)]
+//! # neso-rs
+//!
+//! [![NPM version](https://img.shields.io/npm/v/neso.svg?style=flat)](https://www.npmjs.com/package/neso)
+//! [![neso](http://meritbadge.herokuapp.com/neso)](https://crates.io/crates/neso)
+//! [![Documentation](https://docs.rs/neso/badge.svg)](https://docs.rs/neso)
+//! [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+//! [![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+//! [![Build Status](https://travis-ci.org/jeffrey-xiao/neso-rs.svg?branch=master)](https://travis-ci.org/jeffrey-xiao/neso-rs)
+//! [![codecov](https://codecov.io/gh/jeffrey-xiao/neso-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/jeffrey-xiao/neso-rs)
+//!
+//! NES Oxidized (NESO) is a Nintendo Entertainment System emulator written in Rust that can compile to
+//! WebAssembly.
+//!
+//! ## JavaScript Usage
+//!
+//! Install `neso` from [npm](https://www.npmjs.com/):
+//! ```
+//! $ npm install neso
+//! ```
+//!
+//! Example JavaScript usage: [`neso-web`](https://gitlab.com/jeffrey-xiao/neso-web).
+//!
+//! ## Rust Usage
+//!
+//! Add this to your `Cargo.toml`:
+//! ```toml
+//! [dependencies]
+//! neso = "*"
+//! ```
+//! and this to your crate root if you are using Rust 2015:
+//! ```rust
+//! extern crate neso;
+//! ```
+//!
+//! Example Rust usage: [`neso-gui`](https://gitlab.com/jeffrey-xiao/neso-gui).
+//!
+//! ## Features
+//!
+//!  - Instruction-cycle accurate MOS 6502 CPU with unofficial instructions.
+//!  - Mostly cycle accurate PPU.
+//!  - Mostly accurate APU.
+//!
+//! ## Compatibility
+//!
+//! The following mappers are implemented:
+//!  - `000`: [NROM](http://bootgod.dyndns.org:7777/search.php?ines=0)
+//!  - `001`: [MMC1](http://bootgod.dyndns.org:7777/search.php?ines=1)
+//!  - `002`: [UNROM](http://bootgod.dyndns.org:7777/search.php?ines=2)
+//!  - `003`: [CNROM](http://bootgod.dyndns.org:7777/search.php?ines=3)
+//!  - `004`: [MMC3](http://bootgod.dyndns.org:7777/search.php?ines=4)
+//!  - `007`: [AxROM](http://bootgod.dyndns.org:7777/search.php?ines=7)
+//!  - `011`: [ColorDreams](http://bootgod.dyndns.org:7777/search.php?ines=11)
+//!  - `094`: [UN1ROM](http://bootgod.dyndns.org:7777/search.php?ines=94)
+//!  - `180`: [_Crazy Climber_](http://bootgod.dyndns.org:7777/search.php?ines=180)
+//!
+//! These mappers provide support for approximately 89% (1417/1591) games listed in this
+//! [comprehensive mapper list](http://tuxnes.sourceforge.net/nesmapper.txt).
+//!
+//! ## Test Rom Coverage
+//!
+//! See [TEST_ROM_COVERAGE](TEST_ROM_COVERAGE.md) for more details.
+//!
+//! ## Changelog
+//!
+//! See [CHANGELOG](CHANGELOG.md) for more details.
+//!
+//! ## References
+//!
+//!  - [NESDev Wiki](https://wiki.nesdev.com)
+//!  - [Obelisk 6502 Reference](http://www.obelisk.me.uk/6502/reference.html)
+//!
+//! ## License
+//!
+//! `neso-rs` is distributed under the terms of both the MIT License and the Apache License (Version
+//! 2.0).
+//!
+//! See [LICENSE-APACHE](LICENSE-APACHE) and [LICENSE-MIT](LICENSE-MIT) for more details.
 
-#[macro_use]
-extern crate cfg_if;
+#![warn(missing_docs)]
+
+use cfg_if::cfg_if;
 
 cfg_if! {
     if #[cfg(target_arch = "wasm32")] {
-        #[cfg(console_error_panic_hook)]
-        extern crate console_error_panic_hook;
-        extern crate wasm_bindgen;
-
         #[wasm_bindgen]
         extern "C" {
             #[wasm_bindgen(js_namespace = console)]
             fn debug(s: &str);
-            #[wasm_bindgen(js_namespace = console)]
-            fn log(s: &str);
+            #[wasm_bindgen(js_namespace = console, js_name = "log")]
+            fn info(s: &str);
         }
 
         macro_rules! debug {
@@ -22,16 +95,10 @@ cfg_if! {
         }
 
         macro_rules! info {
-            ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+            ($($t:tt)*) => (info(&format_args!($($t)*).to_string()))
         }
     } else {
-        #[macro_use]
-        extern crate log;
-        #[macro_use]
-        extern crate serde_derive;
-        extern crate serde;
-        extern crate bincode;
-
+        use log::{debug, info};
         use std::fmt;
         use std::marker::PhantomData;
         use serde::ser::{Serialize, Serializer, SerializeTuple};
@@ -72,7 +139,10 @@ cfg_if! {
                             {
                                 type Value = [T; $len];
 
-                                fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                                fn expecting(
+                                    &self,
+                                    formatter: &mut fmt::Formatter<'_>,
+                                ) -> fmt::Result {
                                     formatter.write_str(concat!("an array of length ", $len))
                                 }
 
@@ -108,14 +178,14 @@ mod cpu;
 mod mapper;
 mod ppu;
 
-use apu::Apu;
-use bus::Bus;
-use cartridge::Cartridge;
+use crate::apu::Apu;
+use crate::bus::Bus;
+use crate::cartridge::Cartridge;
+use crate::cpu::Cpu;
+use crate::mapper::Mapper;
+use crate::ppu::{Ppu, COLORS};
 #[cfg(all(target_arch = "wasm32", console_error_panic_hook))]
 use console_error_panic_hook::set_once;
-use cpu::Cpu;
-use mapper::Mapper;
-use ppu::{Ppu, COLORS};
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
@@ -124,7 +194,7 @@ pub struct Nes {
     apu: Apu,
     cpu: Cpu,
     ppu: Ppu,
-    mapper: Option<*mut Mapper>,
+    mapper: Option<*mut dyn Mapper>,
 }
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
@@ -146,7 +216,7 @@ impl Nes {
         }
     }
 
-    fn attach_bus(&mut self, mapper: *mut Mapper) {
+    fn attach_bus(&mut self, mapper: *mut dyn Mapper) {
         let mut bus = Bus::new(&mut self.apu, &mut self.cpu, &mut self.ppu, mapper);
         self.apu.attach_bus(bus.clone());
         self.cpu.attach_bus(bus.clone());
@@ -306,7 +376,7 @@ impl Drop for Nes {
 
 #[cfg(test)]
 mod tests {
-    use Nes;
+    use crate::Nes;
 
     fn run_text_test(nes: &mut Nes) {
         // Run until test status is running by polling $6000.
@@ -344,8 +414,8 @@ mod tests {
                 #[test]
                 fn $test_name() {
                     use std::fs;
-                    use Nes;
-                    use tests::run_text_test;
+                    use crate::Nes;
+                    use crate::tests::run_text_test;
 
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
                     let mut nes = Nes::default();
@@ -362,8 +432,8 @@ mod tests {
                 #[test]
                 fn $test_name() {
                     use std::fs;
-                    use Nes;
-                    use tests::run_text_test;
+                    use crate::Nes;
+                    use crate::tests::run_text_test;
 
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
                     let mut nes = Nes::default();
@@ -389,7 +459,7 @@ mod tests {
                     use std::collections::hash_map::DefaultHasher;
                     use std::fs;
                     use std::hash::Hasher;
-                    use Nes;
+                    use crate::Nes;
 
                     let buffer = fs::read($path).expect("Expected test rom to exist.");
                     let mut nes = Nes::default();

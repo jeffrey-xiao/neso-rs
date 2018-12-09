@@ -3,10 +3,12 @@ mod opcodes;
 mod registers;
 
 use self::registers::Registers;
-use bus::Bus;
-use controller::Controller;
+use crate::bus::Bus;
+use crate::controller::Controller;
 #[cfg(not(target_arch = "wasm32"))]
-use BigArray;
+use crate::BigArray;
+#[cfg(not(target_arch = "wasm32"))]
+use serde_derive::{Deserialize, Serialize};
 
 const STACK_START: u16 = 0x100;
 

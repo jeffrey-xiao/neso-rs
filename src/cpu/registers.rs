@@ -1,3 +1,6 @@
+#[cfg(not(target_arch = "wasm32"))]
+use serde_derive::{Deserialize, Serialize};
+
 pub const CARRY_MASK: u8 = 0x01;
 pub const ZERO_MASK: u8 = 0x02;
 pub const INTERRUPT_DISABLE_MASK: u8 = 0x04;
