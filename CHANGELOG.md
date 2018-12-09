@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 - 2018-12-09
+
+### Changed
+
+ - Upgrade to Rust 2018.
+
 ## 0.4.1 - 2018-11-24
 
 ### Fixed
