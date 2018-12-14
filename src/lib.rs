@@ -8,8 +8,8 @@
 //! [![Build Status](https://travis-ci.org/jeffrey-xiao/neso-rs.svg?branch=master)](https://travis-ci.org/jeffrey-xiao/neso-rs)
 //! [![codecov](https://codecov.io/gh/jeffrey-xiao/neso-rs/branch/master/graph/badge.svg)](https://codecov.io/gh/jeffrey-xiao/neso-rs)
 //!
-//! NES Oxidized (NESO) is a Nintendo Entertainment System emulator written in Rust that can compile to
-//! WebAssembly.
+//! NES Oxidized (NESO) is a Nintendo Entertainment System emulator written in Rust that can compile
+//! to WebAssembly.
 //!
 //! ## JavaScript Usage
 //!

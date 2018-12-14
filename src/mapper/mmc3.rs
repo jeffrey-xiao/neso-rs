@@ -12,8 +12,8 @@ use serde_derive::{Deserialize, Serialize};
 enum PrgRomBankMode {
     // prg rom is two switchable 8K banks and two fixed 8K banks on last two banks
     TwoSwitchTwoFix,
-    // prg rom is one fixed 8K bank on the second last bank, two switchable 8K banks, and one fixed
-    // 8K bank on the last bank
+    // prg rom is one fixed 8K bank on the second last bank, two switchable 8K banks, and one
+    // fixed 8K bank on the last bank
     FixTwoSwitchFix,
 }
 

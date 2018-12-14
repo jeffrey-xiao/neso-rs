@@ -1,5 +1,6 @@
 **/*.rs.bk
 **/target/
+bin/
 pkg/
 wasm-pack.log
 Cargo.lock

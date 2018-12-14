@@ -28,15 +28,15 @@ addons:
 
 before_script:
   - rustup target add wasm32-unknown-unknown
-  - rustup install nightly-2018-12-06
-  - rustup component add clippy-preview --toolchain nightly-2018-12-06
-  - rustup component add rustfmt-preview --toolchain nightly-2018-12-06
+  - rustup install nightly
+  - rustup component add clippy-preview --toolchain nightly
+  - rustup component add rustfmt-preview --toolchain nightly
 
 script:
   - cargo build --verbose --all-targets
   - cargo build --verbose --all-targets --target wasm32-unknown-unknown
-  - cargo +nightly-2018-12-06 fmt --verbose --all -- --verbose --check
-  - cargo +nightly-2018-12-06 clippy --verbose --all-targets
+  - cargo +nightly fmt --verbose --all -- --verbose --check
+  - cargo +nightly clippy --verbose --all-targets
   - cargo test --verbose --all-targets
 
 after_success:
