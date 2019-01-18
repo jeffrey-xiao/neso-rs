@@ -162,7 +162,7 @@ impl Cpu {
                 let mapper = self.bus().mapper();
                 mapper.read_byte(addr)
             },
-             _ => panic!("[CPU] Invalid read with memory address: {:#06x}.", addr),
+            _ => panic!("[CPU] Invalid read with memory address: {:#06x}.", addr),
         }
     }
 
@@ -214,7 +214,7 @@ impl Cpu {
                 let mapper = self.bus_mut().mapper_mut();
                 mapper.write_byte(addr, val);
             },
-             _ => panic!("[CPU] Invalid write with memory address: {:#06x}.", addr),
+            _ => panic!("[CPU] Invalid write with memory address: {:#06x}.", addr),
         }
     }
 
