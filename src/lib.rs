@@ -112,7 +112,7 @@ cfg_if! {
         }
 
         macro_rules! big_array {
-            ($($len:expr$(,)*)+) => {
+            ($($len:expr$(,)?)+) => {
                 $(
                     impl<'de, T> BigArray<'de> for [T; $len]
                         where T: Default + Copy + Serialize + Deserialize<'de>
@@ -189,6 +189,7 @@ use console_error_panic_hook::set_once;
 #[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
+/// A NES emulator.
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 pub struct Nes {
     apu: Apu,
@@ -199,6 +200,7 @@ pub struct Nes {
 
 #[cfg_attr(target_arch = "wasm32", wasm_bindgen)]
 impl Nes {
+    /// Constructs a new `Nes`.
     pub fn new(sample_freq: f32) -> Self {
         #[cfg(all(target_arch = "wasm32", console_error_panic_hook))]
         set_once();
@@ -226,6 +228,7 @@ impl Nes {
         self.mapper = Some(bus.mapper);
     }
 
+    /// Loads a ROM represented as a buffer of bytes into the emulator.
     pub fn load_rom(&mut self, buffer: &[u8]) {
         if let Some(mapper) = self.mapper.take() {
             unsafe {
@@ -251,6 +254,11 @@ impl Nes {
         self.apu.step();
     }
 
+    /// Runs the emulator for one frame.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no ROM loaded.
     pub fn step_frame(&mut self) {
         self.apu.buffer_index = 0;
         let frame = self.ppu.frame;
@@ -259,6 +267,7 @@ impl Nes {
         }
     }
 
+    /// Resets the emulator.
     pub fn reset(&mut self) {
         self.apu.buffer_index = 0;
         self.ppu.buffer_index = 0;
@@ -267,45 +276,68 @@ impl Nes {
         self.ppu.reset();
     }
 
+    /// Returns a `*const u8` to the image buffer. The image buffer is an array of bytes of size
+    /// 256x240x4. Each pixel is represented by four bytes (ABGR) and the pixels are listed in
+    /// row-major order.
     pub fn image_buffer(&self) -> *const u8 {
         self.ppu.buffer.as_ptr()
     }
 
+    /// Returns a `*const f32` to the audio buffer. The audio buffer contains samples for one frame.
+    /// Note that the samples is down-sampled to `sample_freq`.
     pub fn audio_buffer(&self) -> *const f32 {
         self.apu.buffer.as_ptr()
     }
 
+    /// Returns the length of the audio buffer.
     pub fn audio_buffer_len(&self) -> usize {
         self.apu.buffer_index
     }
 
+    /// Returns a `*const u32` to the colors used by the emulator. The colors are formatted as RGB.
     pub fn colors(&self) -> *const u32 {
         COLORS.as_ptr()
     }
 
+    /// Returns a `*const u8` to the palettes used by the emulator. Each value represents an index
+    /// into the colors array.
     pub fn palettes(&self) -> *const u8 {
         self.ppu.palettes()
     }
 
+    /// Returns a `*const u8` to the CHR bank at `index`. It requires that a ROM be loaded into the
+    /// emulator since the cartridge stores the CHR banks. Each bank is 1024 bytes and there are 8
+    /// banks.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no ROM loaded.
     pub fn chr_bank(&self, index: usize) -> *const u8 {
         assert!(index < 8);
         let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
         mapper.chr_bank(index)
     }
 
+    /// Returns a `*const u8` to the nametable at `index`. Each bank is 1024 bytes and there are 4
+    /// banks.
     pub fn nametable_bank(&self, index: usize) -> *const u8 {
-        assert!(index < 8);
+        assert!(index < 4);
         self.ppu.nametable_bank(index)
     }
 
+    /// Returns a `*const u8` to the object attribute memory (OAM). The OAM is 256 bytes and
+    /// contains 64 entries. Each entry is a tuple of (sprite_y, tile_index, attributes, sprite_x).
     pub fn object_attribute_memory(&self) -> *const u8 {
         self.ppu.primary_oam.as_ptr()
     }
 
+    /// Returns `true` is tall sprites are enabled.
     pub fn tall_sprites_enabled(&self) -> bool {
         self.ppu.r.sprite_size.1 == 16
     }
 
+    /// Returns the starting index of the background CHR banks. The starting index will either by
+    /// `0` or `4`.
     pub fn background_chr_bank(&self) -> usize {
         if self.ppu.r.background_pattern_table_address == 0x1000 {
             4
@@ -314,14 +346,17 @@ impl Nes {
         }
     }
 
+    /// Presses the button at `button_index` for the controller at `controller_index`.
     pub fn press_button(&mut self, controller_index: usize, button_index: u8) {
         self.cpu.controllers[controller_index].press_button(button_index);
     }
 
+    /// Releases the button at `button_index` for the controller at `controller_index`.
     pub fn release_button(&mut self, controller_index: usize, button_index: u8) {
         self.cpu.controllers[controller_index].release_button(button_index);
     }
 
+    /// Sets the sample frequency of the audio processing unit (APU).
     pub fn set_sample_freq(&mut self, sample_freq: f32) {
         self.apu.set_sample_freq(sample_freq);
     }
@@ -329,22 +364,43 @@ impl Nes {
 
 #[cfg(not(target_arch = "wasm32"))]
 impl Nes {
+    /// Saves the battery backed data of the emulator as a buffer of bytes. It is possible that
+    /// the emulator has no battery backed data. In this case, `None` is returned.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no ROM loaded.
     pub fn save(&self) -> bincode::Result<Option<Vec<u8>>> {
         let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
         mapper.save()
     }
 
+    /// Loads the battery backed data of the emulator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no ROM loaded.
     pub fn load(&mut self, save_data: &[u8]) -> bincode::Result<()> {
         let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
         mapper.load(save_data)
     }
 
+    /// Saves the state of the emulator as a buffer of bytes.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no ROM loaded.
     pub fn save_state(&self) -> bincode::Result<Vec<u8>> {
         let mapper = unsafe { &mut (*self.mapper.expect("[NES] No ROM loaded.")) };
         let (mapper_data, save_data) = mapper.save_state()?;
         bincode::serialize(&(&self.apu, &self.cpu, &self.ppu, mapper_data, save_data))
     }
 
+    /// Loads a state of the emulator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if there is no ROM loaded.
     pub fn load_state(&mut self, save_state_data: &[u8]) -> bincode::Result<()> {
         let (apu, cpu, ppu, mapper_data, save_data): (Apu, Cpu, Ppu, Vec<u8>, Vec<u8>) =
             bincode::deserialize(save_state_data)?;
