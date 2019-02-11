@@ -14,7 +14,7 @@
 //! ## JavaScript Usage
 //!
 //! Install `neso` from [npm](https://www.npmjs.com/):
-//! ```
+//! ```no_run
 //! $ npm install neso
 //! ```
 //!
