@@ -15,7 +15,7 @@
 //!
 //! Install `neso` from [npm](https://www.npmjs.com/):
 //!
-//! ```ignore
+//! ```text
 //! $ npm install neso
 //! ```
 //!

@@ -15,7 +15,7 @@ WebAssembly.
 
 Install `neso` from [npm](https://www.npmjs.com/):
 
-```
+```text
 $ npm install neso
 ```
 
