@@ -24,11 +24,14 @@
 //! ## Rust Usage
 //!
 //! Add this to your `Cargo.toml`:
+//!
 //! ```toml
 //! [dependencies]
 //! neso = "*"
 //! ```
+//!
 //! and this to your crate root if you are using Rust 2015:
+//!
 //! ```rust
 //! extern crate neso;
 //! ```
