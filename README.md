@@ -14,6 +14,7 @@ WebAssembly.
 ## JavaScript Usage
 
 Install `neso` from [npm](https://www.npmjs.com/):
+
 ```
 $ npm install neso
 ```
@@ -23,11 +24,14 @@ Example JavaScript usage: [`neso-web`](https://gitlab.com/jeffrey-xiao/neso-web)
 ## Rust Usage
 
 Add this to your `Cargo.toml`:
+
 ```toml
 [dependencies]
 neso = "*"
 ```
+
 and this to your crate root if you are using Rust 2015:
+
 ```rust
 extern crate neso;
 ```
@@ -36,22 +40,23 @@ Example Rust usage: [`neso-gui`](https://gitlab.com/jeffrey-xiao/neso-gui).
 
 ## Features
 
- - Instruction-cycle accurate MOS 6502 CPU with unofficial instructions.
- - Mostly cycle accurate PPU.
- - Mostly accurate APU.
+- Instruction-cycle accurate MOS 6502 CPU with unofficial instructions.
+- Mostly cycle accurate PPU.
+- Mostly accurate APU.
 
 ## Compatibility
 
 The following mappers are implemented:
- - `000`: [NROM](http://bootgod.dyndns.org:7777/search.php?ines=0)
- - `001`: [MMC1](http://bootgod.dyndns.org:7777/search.php?ines=1)
- - `002`: [UNROM](http://bootgod.dyndns.org:7777/search.php?ines=2)
- - `003`: [CNROM](http://bootgod.dyndns.org:7777/search.php?ines=3)
- - `004`: [MMC3](http://bootgod.dyndns.org:7777/search.php?ines=4)
- - `007`: [AxROM](http://bootgod.dyndns.org:7777/search.php?ines=7)
- - `011`: [ColorDreams](http://bootgod.dyndns.org:7777/search.php?ines=11)
- - `094`: [UN1ROM](http://bootgod.dyndns.org:7777/search.php?ines=94)
- - `180`: [_Crazy Climber_](http://bootgod.dyndns.org:7777/search.php?ines=180)
+
+- `000`: [NROM](http://bootgod.dyndns.org:7777/search.php?ines=0)
+- `001`: [MMC1](http://bootgod.dyndns.org:7777/search.php?ines=1)
+- `002`: [UNROM](http://bootgod.dyndns.org:7777/search.php?ines=2)
+- `003`: [CNROM](http://bootgod.dyndns.org:7777/search.php?ines=3)
+- `004`: [MMC3](http://bootgod.dyndns.org:7777/search.php?ines=4)
+- `007`: [AxROM](http://bootgod.dyndns.org:7777/search.php?ines=7)
+- `011`: [ColorDreams](http://bootgod.dyndns.org:7777/search.php?ines=11)
+- `094`: [UN1ROM](http://bootgod.dyndns.org:7777/search.php?ines=94)
+- `180`: [_Crazy Climber_](http://bootgod.dyndns.org:7777/search.php?ines=180)
 
 These mappers provide support for approximately 89% (1417/1591) games listed in this
 [comprehensive mapper list](http://tuxnes.sourceforge.net/nesmapper.txt).
@@ -66,8 +71,8 @@ See [CHANGELOG](CHANGELOG.md) for more details.
 
 ## References
 
- - [NESDev Wiki](https://wiki.nesdev.com)
- - [Obelisk 6502 Reference](http://www.obelisk.me.uk/6502/reference.html)
+- [NESDev Wiki](https://wiki.nesdev.com)
+- [Obelisk 6502 Reference](http://www.obelisk.me.uk/6502/reference.html)
 
 ## License
 
