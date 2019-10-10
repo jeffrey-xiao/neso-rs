@@ -427,7 +427,7 @@ impl Apu {
                 }
 
                 ret
-            },
+            }
             _ => 0,
         }
     }
@@ -442,7 +442,7 @@ impl Apu {
                 self.pulses[index].envelope.looped = val & 0x20 != 0;
                 self.pulses[index].envelope.enabled = val & 0x10 == 0;
                 self.pulses[index].envelope.period = val & 0x0F;
-            },
+            }
             0x4001 | 0x4005 => {
                 let index = ((addr - 0x4000) / 4) as usize;
                 self.pulses[index].sweep_period = ((val >> 4) & 0x07) + 1;
@@ -451,13 +451,13 @@ impl Apu {
                 self.pulses[index].sweep_reset = true;
                 self.pulses[index].sweep_enabled =
                     val & 0x80 != 0 && self.pulses[index].sweep_shift != 0;
-            },
+            }
             0x4002 | 0x4006 => {
                 let index = ((addr - 0x4000) / 4) as usize;
                 let timer_period_low = u16::from(val);
                 self.pulses[index].timer_period &= 0xFF00;
                 self.pulses[index].timer_period |= timer_period_low;
-            },
+            }
             0x4003 | 0x4007 => {
                 let index = ((addr - 0x4000) / 4) as usize;
                 let timer_period_high = (u16::from(val) & 0x07) << 8;
@@ -469,18 +469,18 @@ impl Apu {
                 // Timer should _not_ be reset according to the APU Phase Reset Test ROM.
                 self.pulses[index].duty_val = 0;
                 self.pulses[index].envelope.reset = true;
-            },
+            }
             // Triangle
             0x4008 => {
                 self.triangle.length_counter.enabled = val & 0x80 == 0;
                 self.triangle.linear_counter_enabled = val & 0x80 == 0;
                 self.triangle.linear_counter_period = val & 0x7F;
-            },
+            }
             0x400A => {
                 let timer_period_low = u16::from(val);
                 self.triangle.timer_period &= 0xFF00;
                 self.triangle.timer_period |= timer_period_low;
-            },
+            }
             0x400B => {
                 let timer_period_high = (u16::from(val) & 0x07) << 8;
                 self.triangle.timer_period &= 0x00FF;
@@ -489,24 +489,24 @@ impl Apu {
                     self.triangle.length_counter.reload(val as usize >> 3);
                 }
                 self.triangle.linear_counter_reset = true;
-            },
+            }
             // Noise
             0x400C => {
                 self.noise.length_counter.enabled = val & 0x20 == 0;
                 self.noise.envelope.looped = val & 0x20 != 0;
                 self.noise.envelope.enabled = val & 0x10 == 0;
                 self.noise.envelope.period = val & 0x0F;
-            },
+            }
             0x400E => {
                 self.noise.mode = val & 0x80 != 0;
                 self.noise.timer_period = NOISE_PERIOD_TABLE[(val & 0x0F) as usize];
-            },
+            }
             0x400F => {
                 if self.noise.enabled {
                     self.noise.length_counter.reload(val as usize >> 3);
                 }
                 self.noise.envelope.reset = true;
-            },
+            }
             // DMC
             0x4010 => {
                 self.dmc.irq_enabled = val & 0x80 != 0;
@@ -515,7 +515,7 @@ impl Apu {
                 }
                 self.dmc.looped = val & 0x40 != 0;
                 self.dmc.timer_period = DMC_PERIOD_TABLE[(val & 0x0F) as usize];
-            },
+            }
             0x4011 => self.dmc.volume = val & 0x7F,
             0x4012 => self.dmc.sample_addr = 0xC000 | (u16::from(val) << 6),
             0x4013 => self.dmc.sample_len = 1 | (u16::from(val) << 4),
@@ -547,7 +547,7 @@ impl Apu {
                 } else if self.dmc.curr_len == 0 {
                     self.dmc.restart_sample();
                 }
-            },
+            }
             0x4017 => {
                 self.last_written_byte = val;
                 // Special timings for writing to 0x4017.
@@ -565,8 +565,8 @@ impl Apu {
                     self.irq_pending = false;
                 }
                 self.frame_counter_phase = 0;
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
@@ -687,7 +687,7 @@ impl Apu {
                             self.step_envelope();
                             self.triangle.step_linear_counter();
                             self.frame_counter_phase += 1;
-                        },
+                        }
                         1 => {
                             // envelope
                             self.step_envelope();
@@ -696,7 +696,7 @@ impl Apu {
                             self.step_length_counter();
                             self.step_sweep();
                             self.frame_counter_phase += 1;
-                        },
+                        }
                         3 => {
                             // envelope
                             self.step_envelope();
@@ -711,10 +711,10 @@ impl Apu {
                                 cpu.trigger_interrupt(Interrupt::IRQ);
                             }
                             self.frame_counter_phase = 0;
-                        },
+                        }
                         _ => panic!("[APU] Invalid frame counter phase."),
                     }
-                },
+                }
                 FrameCounterMode::FiveStep => {
                     let index = self.frame_counter_phase as usize;
                     self.frame_counter_val = FIVE_STEP_FRAME_COUNTER_CYCLES[index] - 1;
@@ -727,22 +727,22 @@ impl Apu {
                             self.step_length_counter();
                             self.step_sweep();
                             self.frame_counter_phase += 1;
-                        },
+                        }
                         1 => {
                             // envelope
                             self.step_envelope();
                             self.triangle.step_linear_counter();
                             self.frame_counter_phase += 1;
-                        },
+                        }
                         3 => {
                             // envelope
                             self.step_envelope();
                             self.triangle.step_linear_counter();
                             self.frame_counter_phase = 0;
-                        },
+                        }
                         _ => panic!("[APU] Invalid frame counter phase."),
                     }
-                },
+                }
             }
         }
 

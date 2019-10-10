@@ -31,10 +31,10 @@ impl Mapper for CNROM {
             0x0000..=0x1FFF => {
                 let addr = self.chr_rom_bank as usize * 0x2000 + addr;
                 self.cartridge.read_chr_rom(addr)
-            },
+            }
             0x8000..=0xFFFF if self.cartridge.prg_rom_len() == 0x8000 => {
                 self.cartridge.read_prg_rom(addr - 0x8000)
-            },
+            }
             0x8000..=0xFFFF => self.cartridge.read_prg_rom((addr - 0x8000) % 0x4000),
             _ => 0,
         }

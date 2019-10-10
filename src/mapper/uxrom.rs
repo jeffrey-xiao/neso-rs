@@ -44,14 +44,14 @@ impl Mapper for UxROM {
                     Variant::Mapper180 => 0,
                 };
                 self.cartridge.read_prg_rom(bank * 0x4000 + addr - 0x8000)
-            },
+            }
             0xC000..=0xFFFF => {
                 let bank = match self.variant {
                     Variant::UNROM | Variant::UN1ROM => self.cartridge.prg_rom_len() / 0x4000 - 1,
                     Variant::Mapper180 => self.prg_rom_bank as usize,
                 };
                 self.cartridge.read_prg_rom(bank * 0x4000 + addr - 0xC000)
-            },
+            }
             _ => 0,
         }
     }
@@ -66,8 +66,8 @@ impl Mapper for UxROM {
                     Variant::UN1ROM => self.prg_rom_bank = (val >> 2) & 0x07,
                 }
                 debug!("[UxROM] Write prg rom bank: {}.", self.prg_rom_bank);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 

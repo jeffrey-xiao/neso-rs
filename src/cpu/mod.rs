@@ -150,19 +150,18 @@ impl Cpu {
                 let ppu = self.bus_mut().ppu_mut();
                 let addr = (addr - 0x2000) % 8 + 0x2000;
                 ppu.read_register(addr)
-            },
+            }
             0x4016 => self.controllers[0].read_value(),
             0x4017 => self.controllers[1].read_value(),
             0x4000..=0x4015 => {
                 let apu = self.bus_mut().apu_mut();
                 apu.read_register(addr)
-            },
+            }
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFF => {
                 let mapper = self.bus().mapper();
                 mapper.read_byte(addr)
-            },
-            _ => panic!("[CPU] Invalid read with memory address: {:#06x}.", addr),
+            }
         }
     }
 
@@ -183,7 +182,7 @@ impl Cpu {
                 if nmi_enabled_toggled && ppu.r.v_blank_started {
                     self.trigger_interrupt(Interrupt::NMI);
                 }
-            },
+            }
             0x4014 => {
                 let cpu_addr = u16::from(val) << 8;
                 for offset in 0..=0xFF {
@@ -200,21 +199,20 @@ impl Cpu {
                 } else {
                     self.stall_cycle += 513;
                 }
-            },
+            }
             0x4016 => {
                 self.controllers[0].write_strobe(val & 0x01 != 0);
                 self.controllers[1].write_strobe(val & 0x01 != 0);
-            },
+            }
             0x4000..=0x4017 => {
                 let apu = self.bus_mut().apu_mut();
                 apu.write_register(addr, val);
-            },
+            }
             0x4018..=0x401F => panic!("CPU Test Mode not implemented."),
             0x4020..=0xFFFF => {
                 let mapper = self.bus_mut().mapper_mut();
                 mapper.write_byte(addr, val);
-            },
-            _ => panic!("[CPU] Invalid write with memory address: {:#06x}.", addr),
+            }
         }
     }
 
@@ -226,12 +224,10 @@ impl Cpu {
 
     fn get_operand(&mut self, addressing_mode: usize) -> opcodes::Operand {
         match addressing_mode {
-            addressing_modes::ACCUMULATOR => {
-                opcodes::Operand {
-                    val: self.r.a,
-                    addr: None,
-                    page_crossing: false,
-                }
+            addressing_modes::ACCUMULATOR => opcodes::Operand {
+                val: self.r.a,
+                addr: None,
+                page_crossing: false,
             },
             _ => {
                 let (addr, page_crossing) = addressing_modes::FUNCTION_TABLE[addressing_mode](self);
@@ -240,7 +236,7 @@ impl Cpu {
                     addr: Some(addr),
                     page_crossing,
                 }
-            },
+            }
         }
     }
 

@@ -138,7 +138,7 @@ impl Ppu {
             0x0000..=0x1FFF => {
                 let mapper = self.bus().mapper();
                 mapper.read_byte(addr)
-            },
+            }
             0x2000..=0x3EFF => {
                 let mapper = self.bus().mapper();
                 let addr = (addr - 0x2000) % 0x1000;
@@ -146,11 +146,11 @@ impl Ppu {
                 let offset = (addr % 0x400) as usize;
                 let mirroring_mode = mapper.mirroring_mode() as usize;
                 self.vram[MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400 + offset]
-            },
+            }
             0x3F00..=0x3FFF => {
                 let modulus = if addr % 0x04 == 0 { 0x10 } else { 0x20 };
                 self.palette_ram[((addr - 0x3F00) % modulus) as usize]
-            },
+            }
             _ => panic!("[PPU] Invalid read with memory address: {:#06x}.", addr),
         }
     }
@@ -160,7 +160,7 @@ impl Ppu {
             0x0000..=0x1FFF => {
                 let mapper = self.bus_mut().mapper_mut();
                 mapper.write_byte(addr, val);
-            },
+            }
             0x2000..=0x3EFF => {
                 let mapper = self.bus().mapper();
                 let addr = (addr - 0x2000) % 0x1000;
@@ -168,12 +168,12 @@ impl Ppu {
                 let offset = (addr % 0x400) as usize;
                 let mirroring_mode = mapper.mirroring_mode() as usize;
                 self.vram[MIRRORING_MODE_TABLE[mirroring_mode * 4 + index] * 0x400 + offset] = val;
-            },
+            }
 
             0x3F00..=0x3FFF => {
                 let modulus = if addr % 0x04 == 0 { 0x10 } else { 0x20 };
                 self.palette_ram[((addr - 0x3F00) % modulus) as usize] = val;
-            },
+            }
             _ => panic!("[PPU] Invalid write with memory address: {:#06x}.", addr),
         }
     }
@@ -215,7 +215,7 @@ impl Ppu {
                 }
                 self.r.bus_address += self.r.vram_address_increment;
                 ret
-            },
+            }
             _ => panic!("[PPU] Invalid ppu register to read: {:#06x}.", addr),
         }
     }
@@ -228,14 +228,14 @@ impl Ppu {
             // PPUMASK
             0x2001 => self.r.write_ppu_mask(val),
             // PPUSTATUS
-            0x2002 => return,
+            0x2002 => {},
             // OAMADDR
             0x2003 => self.r.oam_addr = val,
             // OAMDATA
             0x2004 => {
                 self.primary_oam[self.r.oam_addr as usize] = val;
                 self.r.oam_addr = self.r.oam_addr.wrapping_add(1);
-            },
+            }
             // PPUSCROLL
             0x2005 => self.r.write_ppu_scroll(val),
             // PPUADDR
@@ -245,7 +245,7 @@ impl Ppu {
                 let addr = self.r.bus_address;
                 self.write_byte(addr, val);
                 self.r.bus_address += self.r.vram_address_increment;
-            },
+            }
             _ => panic!("[PPU] Invalid ppu register to write: {:#06x}.", addr),
         }
     }
@@ -386,7 +386,7 @@ impl Ppu {
                 } else {
                     0x3F00 + background_pixel
                 }
-            },
+            }
         };
 
         let color = COLORS[self.read_byte(addr) as usize & 0x3F];
@@ -444,8 +444,8 @@ impl Ppu {
                         } else {
                             self.r.increment_scroll_x();
                         }
-                    },
-                    _ => {},
+                    }
+                    _ => {}
                 }
             }
 

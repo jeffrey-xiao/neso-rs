@@ -27,11 +27,11 @@ impl Mapper for NROM {
             0x6000..=0x7FFF => {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.read_prg_ram(addr)
-            },
+            }
             0x8000..=0xFFFF => {
                 let addr = (addr - 0x8000) % self.cartridge.prg_rom_len();
                 self.cartridge.read_prg_rom(addr)
-            },
+            }
             _ => 0,
         }
     }
@@ -43,8 +43,8 @@ impl Mapper for NROM {
             0x6000..=0x7FFF => {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.write_prg_ram(addr, val);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 

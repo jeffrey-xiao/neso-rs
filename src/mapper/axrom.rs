@@ -34,7 +34,7 @@ impl Mapper for AxROM {
             0x8000..=0xFFFF => {
                 let addr = self.prg_rom_bank as usize * 0x8000 + addr - 0x8000;
                 self.cartridge.read_prg_rom(addr)
-            },
+            }
             _ => 0,
         }
     }
@@ -53,8 +53,8 @@ impl Mapper for AxROM {
 
                 self.prg_rom_bank = val & 0x07;
                 debug!("[AxROM] Write prg rom bank: {}.", self.prg_rom_bank);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 

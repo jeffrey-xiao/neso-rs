@@ -172,18 +172,18 @@ impl Mapper for MMC1 {
                     ChrRomBankMode::Switch4K => self.r.chr_rom_bank_0 as usize,
                 } as usize;
                 self.cartridge.read_chr_rom(bank * 0x1000 + addr)
-            },
+            }
             0x1000..=0x1FFF => {
                 let bank = match self.r.chr_rom_bank_mode {
                     ChrRomBankMode::Switch8K => self.r.chr_rom_bank_0 as usize | 0x01,
                     ChrRomBankMode::Switch4K => self.r.chr_rom_bank_1 as usize,
                 };
                 self.cartridge.read_chr_rom(bank * 0x1000 + addr - 0x1000)
-            },
+            }
             0x6000..=0x7FFF if self.r.prg_ram_enabled => {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.read_prg_ram(addr)
-            },
+            }
             0x8000..=0xBFFF => {
                 let bank = match self.r.prg_rom_bank_mode {
                     PrgRomBankMode::Switch32K => self.r.prg_rom_bank as usize & !0x01,
@@ -191,7 +191,7 @@ impl Mapper for MMC1 {
                     PrgRomBankMode::FixLastBank => self.r.prg_rom_bank as usize,
                 };
                 self.cartridge.read_prg_rom(bank * 0x4000 + addr - 0x8000)
-            },
+            }
             0xC000..=0xFFFF => {
                 let bank = match self.r.prg_rom_bank_mode {
                     PrgRomBankMode::Switch32K => self.r.prg_rom_bank as usize | 0x01,
@@ -199,7 +199,7 @@ impl Mapper for MMC1 {
                     PrgRomBankMode::FixLastBank => self.cartridge.prg_rom_len() / 0x4000 - 1,
                 };
                 self.cartridge.read_prg_rom(bank * 0x4000 + addr - 0xC000)
-            },
+            }
             _ => 0,
         }
     }
@@ -216,7 +216,7 @@ impl Mapper for MMC1 {
                     ChrRomBankMode::Switch4K => self.r.chr_rom_bank_0 as usize,
                 } as usize;
                 self.cartridge.write_chr_rom(bank * 0x1000 + addr, val);
-            },
+            }
             0x1000..=0x1FFF => {
                 let bank = match self.r.chr_rom_bank_mode {
                     ChrRomBankMode::Switch8K => self.r.chr_rom_bank_0 as usize | 0x01,
@@ -224,11 +224,11 @@ impl Mapper for MMC1 {
                 };
                 self.cartridge
                     .write_chr_rom(bank * 0x1000 + addr - 0x1000, val)
-            },
+            }
             0x6000..=0x7FFF if self.r.prg_ram_enabled => {
                 let addr = (addr - 0x6000) % self.cartridge.prg_ram_len();
                 self.cartridge.write_prg_ram(addr, val);
-            },
+            }
             0x8000..=0xFFFF => {
                 let val = match self.r.push_val(val) {
                     Some(val) => val,
@@ -239,16 +239,16 @@ impl Mapper for MMC1 {
                     0xA000..=0xBFFF => {
                         self.r.chr_rom_bank_0 = val;
                         debug!("[MMC1] Write chr rom bank 0: {}.", self.r.chr_rom_bank_0);
-                    },
+                    }
                     0xC000..=0xDFFF => {
                         self.r.chr_rom_bank_1 = val;
                         debug!("[MMC1] Write chr rom bank 1: {}.", self.r.chr_rom_bank_1);
-                    },
+                    }
                     0xE000..=0xFFFF => self.r.write_prg_bank(val),
-                    _ => {},
+                    _ => {}
                 }
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 

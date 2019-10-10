@@ -33,11 +33,11 @@ impl Mapper for ColorDreams {
             0x0000..=0x1FFF => {
                 let addr = self.chr_rom_bank as usize * 0x2000 + addr;
                 self.cartridge.read_chr_rom(addr)
-            },
+            }
             0x8000..=0xFFFF => {
                 let addr = self.prg_rom_bank as usize * 0x8000 + addr - 0x8000;
                 self.cartridge.read_prg_rom(addr)
-            },
+            }
             _ => 0,
         }
     }
@@ -48,14 +48,14 @@ impl Mapper for ColorDreams {
             0x0000..=0x1FFF => {
                 let addr = self.chr_rom_bank as usize * 0x2000 + addr;
                 self.cartridge.write_chr_rom(addr, val);
-            },
+            }
             0x8000..=0xFFFF => {
                 self.prg_rom_bank = val & 0x03;
                 debug!("[ColorDreams] Write prg rom bank: {}.", self.prg_rom_bank);
                 self.chr_rom_bank = (val >> 4) & 0x0F;
                 debug!("[ColorDreams] Write chr rom bank: {}.", self.chr_rom_bank);
-            },
-            _ => {},
+            }
+            _ => {}
         }
     }
 
