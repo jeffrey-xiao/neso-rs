@@ -228,7 +228,7 @@ impl Ppu {
             // PPUMASK
             0x2001 => self.r.write_ppu_mask(val),
             // PPUSTATUS
-            0x2002 => {},
+            0x2002 => {}
             // OAMADDR
             0x2003 => self.r.oam_addr = val,
             // OAMDATA
